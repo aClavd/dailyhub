@@ -1,27 +1,12 @@
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-
-export function MailPlaceholder() {
+export function MailBody() {
   return (
-    <Card>
-      <CardHeader className="border-b">
-        <CardTitle>Mail importanti</CardTitle>
-        <CardAction>
-          <span className="font-mono text-[0.7rem] tracking-wide text-ink-faint uppercase">
-            Fase 3
-          </span>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        <p className="py-8 text-center text-sm text-ink-faint">
-          Gmail + Libero, in sola lettura. Arriva nella Fase 3.
-        </p>
-      </CardContent>
-    </Card>
+    <div>
+      <p className="text-ink-faint mb-2 font-mono text-[0.68rem] tracking-wide uppercase">
+        Fase 3
+      </p>
+      <p className="text-ink-faint py-6 text-center text-sm">
+        Gmail + Libero, in sola lettura. Arriva nella Fase 3.
+      </p>
+    </div>
   )
 }
