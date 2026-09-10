@@ -50,10 +50,10 @@ Tab **Clients** dentro Google Auth Platform (oppure **API e servizi → Credenzi
 
 ## 5. Metti le credenziali in `.env.local`
 
-Nella root del progetto:
+Nella root del progetto, **solo se `.env.local` non esiste ancora** (altrimenti `cp` cancella quello che c'è):
 
 ```bash
-cp .env.example .env.local
+[ -f .env.local ] || cp .env.example .env.local
 ```
 
 Poi in `.env.local`:
