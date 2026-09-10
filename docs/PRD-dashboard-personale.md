@@ -1,21 +1,26 @@
 # PRD — Dashboard Personale
 **Working title:** DailyHub (nome provvisorio, da cambiare)
-**Autore:** [tuo nome]
+**Autore:** Claudio Ammirata
 **Data:** Settembre 2026
-**Versione:** 0.1
+**Versione:** 0.2
+
+> **Changelog 0.1 → 0.2 (10 set 2026)**
+> - La dashboard non è più 3 blocchi fissi ma una **board componibile**: 2 blocchi sempre attivi (Impegni, Mail) + una **libreria di blocchi** che l'utente trascina sulla board quando servono (Studio/Pomodoro, Diario, Abitudini, ecc.). Vedi §4.
+> - Barra laterale (libreria) **comprimibile a icone**.
+> - Testata **centrata**: saluto in base all'ora (buondì / buon pomeriggio / buonasera), frase del giorno, banner "Oggi conta questo".
+> - Il Diario diventa **uno dei blocchi di libreria**, non un blocco a sé. Il layout della board è **persistente per-utente**.
+> - Blocco Mail **multi-provider da subito**: Gmail (API) + **Libero** (IMAP), perché l'indirizzo principale è `@libero.it`.
+> - Fase 0 completata.
 
 ---
 
 ## 1. Visione del prodotto
 
-Una dashboard web personale, unica pagina di ingresso alla propria giornata, che unisce in un'unica interfaccia:
-- gli impegni del giorno (calendario),
-- le email importanti da gestire,
-- un daily tracker per il journaling.
+Una dashboard web personale, unica pagina di ingresso alla propria giornata. Due blocchi sono sempre lì — **gli impegni del giorno** e **le email importanti** — e attorno a questi l'utente **compone la propria board** trascinando dalla libreria i blocchi che gli servono in quel periodo (diario, timer di studio, abitudini, note…).
 
-L'obiettivo è ridurre il context-switching tra Google Calendar, Gmail e un'app/quaderno di journaling separati, avendo un unico posto dove partire ogni mattina e chiudere ogni sera.
+L'obiettivo è ridurre il context-switching tra Google Calendar, Gmail/Libero e app separate per journaling/focus/abitudini, avendo un unico posto dove partire ogni mattina e chiudere ogni sera.
 
-**Non è:** un sostituto di Gmail/Calendar (restano la fonte dati), né un task manager complesso, né un CRM. È un pannello di sintesi + un diario.
+**Non è:** un sostituto di Gmail/Calendar (restano la fonte dati), né un task manager complesso, né un CRM. È un pannello di sintesi componibile + un diario.
 
 ---
 
@@ -35,27 +40,46 @@ Tu, in prima battuta (progetto personale). Design e feature vanno tarati sul tuo
 
 ---
 
-## 4. Struttura della dashboard (i "blocchi")
+## 4. Struttura della dashboard
 
-Layout a blocchi/card su un'unica pagina, responsive.
+Una pagina sola, responsive. Dall'alto:
 
-### Blocco 1 — Impegni di oggi
-- Vista rapida degli eventi della giornata corrente (orario, titolo, luogo/link se presente).
-- Evidenza del prossimo impegno imminente.
-- Eventuale vista settimanale secondaria (nice-to-have, non MVP).
+### Testata (centrata)
+- **Saluto** in base all'ora di apertura: *buondì* (mattina) / *buon pomeriggio* / *buonasera*, + data.
+- **Frase del giorno** (breve, motivazionale) in card in alto a destra.
+- Banner **"Oggi conta questo"**: una riga editabile con la cosa importante della giornata.
 
-### Blocco 2 — Mail importanti
-- Elenco delle mail filtrate come "importanti" (starred, da mittenti specifici, con label dedicata, o filtrate da regole tue).
-- Azioni rapide: segna come letta, archivia, apri in Gmail.
-- **Non MVP:** rispondere direttamente dalla dashboard (rischio complessità/sicurezza da valutare dopo).
+### Barra laterale — Libreria dei blocchi
+- A sinistra, **comprimibile a sole icone** (stato ricordato).
+- Sezione *Sempre attivi*: Impegni, Mail (non rimovibili).
+- Sezione *Libreria*: blocchi da **trascinare** (o toccare, su mobile) sulla board. Set iniziale: **Studio/Pomodoro, Diario, Abitudini, Note rapide, Obiettivi della settimana, Lettura, Acqua, Meteo** — da rivedere con l'uso reale (candidati: spese, allenamento, link rapidi, streak).
 
-### Blocco 3 — Daily tracker / Journaling
-- Campo di scrittura libera per il giorno corrente.
-- Storico consultabile (giorni precedenti).
-- Eventuali campi strutturati aggiuntivi (umore, 3 cose fatte bene, obiettivo del giorno) — da decidere in base a cosa userai davvero.
+### Board
+- Griglia di blocchi. I due fissi + quelli aggiunti dalla libreria. La × rimuove un blocco (torna disponibile in libreria).
+- **Layout persistente per-utente** (quali blocchi, in che ordine).
+- Post-MVP: riordino drag-and-drop, ridimensionamento 1/2 colonne.
 
-### Blocco 4 (opzionale, fase successiva) — Quick add
-- Aggiungere velocemente un evento o una nota senza uscire dalla dashboard.
+### Blocco — Impegni di oggi *(fisso)*
+- Eventi della giornata corrente (orario, titolo, luogo/link Meet se presente).
+- Evidenza del prossimo impegno imminente; eventi passati attenuati.
+- Stati: nessun impegno / errore (token scaduto) / non connesso.
+- Vista settimanale: nice-to-have, non MVP.
+
+### Blocco — Mail importanti *(fisso, multi-provider)*
+- Elenco mail "importanti" da **Gmail** (API) e **Libero** (IMAP), con targhetta del provider.
+- "Importante" = speciali/starred, label dedicata, o mittenti chiave — da raffinare con l'uso.
+- Azioni rapide (segna letta, archivia, apri): **non MVP**, sola lettura all'inizio.
+- Rispondere dalla dashboard: fuori scope per ora.
+
+### Blocco — Diario *(dalla libreria)*
+- Scrittura libera per il giorno corrente + storico consultabile.
+- Campi strutturati: umore, obiettivo del giorno, "3 cose andate bene" — tenere quelli che usi davvero.
+
+### Blocco — Studio / Pomodoro *(dalla libreria)*
+- Timer 25/5, conteggio sessioni del giorno.
+
+### Altri blocchi di libreria
+- Abitudini (spunta giornaliera), Note rapide, Obiettivi della settimana, Lettura, Acqua, Meteo. Tenere/togliere in base all'uso.
 
 ---
 
@@ -65,29 +89,35 @@ Layout a blocchi/card su un'unica pagina, responsive.
 |---|---|---|
 | Login con Google (OAuth) | ✅ | |
 | Vista impegni di oggi (sola lettura) | ✅ | |
-| Journaling con salvataggio persistente | ✅ | |
-| Mail importanti (sola lettura, filtro base) | ✅ | |
+| Board componibile: aggiungi/rimuovi blocchi, layout persistente | ✅ | |
+| Rail comprimibile a icone | ✅ | |
+| Blocco Diario con salvataggio persistente | ✅ | |
+| Mail importanti da Gmail (sola lettura, filtro base) | ✅ | |
+| Mail importanti da Libero via IMAP | ✅ | |
+| Blocco Studio/Pomodoro | ✅ | |
+| Altri blocchi di libreria (abitudini, note, obiettivi, lettura, acqua, meteo) | ~ | in base all'uso |
+| Riordino drag-and-drop / resize blocchi | | ✅ |
 | Azioni su mail (archivia/segna letta) | | ✅ |
 | Vista calendario settimanale | | ✅ |
 | Statistiche/streak sul journaling | | ✅ |
 | Notifiche/reminder | | ✅ |
-| Multi-account (più caselle mail/calendari) | | ✅ |
 | App mobile / PWA | | ✅ |
 
-**Regola guida:** l'MVP deve rispondere solo alla domanda "cosa ho oggi + cosa mi scrivo oggi", in sola lettura per calendario/mail. Le azioni (rispondere, archiviare, modificare eventi) arrivano dopo, quando la base è stabile.
+**Regola guida:** l'MVP deve rispondere a "cosa ho oggi + cosa mi scrivo oggi", in sola lettura per calendario/mail. La board è componibile ma i blocchi di libreria si aggiungono **uno alla volta, solo se li usi davvero**. Le azioni (rispondere, archiviare, modificare eventi) arrivano dopo, quando la base è stabile.
 
 ---
 
-## 6. Stack tecnico proposto
+## 6. Stack tecnico (scelto e in uso dalla Fase 0)
 
-- **Frontend/Framework:** Next.js (React) — gestisce sia le pagine che le API routes lato server, comodo per l'OAuth.
-- **Autenticazione:** NextAuth.js (Auth.js) con provider Google — gestisce OAuth, token, refresh in modo standard, senza reinventarlo da zero.
+- **Framework:** Next.js 16 (App Router, Turbopack) + React 19 + TypeScript.
+- **Autenticazione:** Auth.js v5 (NextAuth) con provider Google — sessione **JWT** (nessun DB per il login), refresh dell'access token nel callback `jwt`.
+- **UI:** Tailwind CSS v4 + shadcn/ui (stile `base-nova`, primitive Base UI). Font: Fraunces (titoli), Instrument Sans (UI), IBM Plex Mono (orari). Accento ocra su neutri ardesia, tema chiaro/scuro.
 - **API esterne:**
   - Google Calendar API (lettura eventi)
-  - Gmail API (lettura mail, filtro per label/importanza)
-- **Database:** Supabase (Postgres gratuito) o Vercel Postgres — per salvare le voci di journal e le tue preferenze/filtri.
-- **Hosting:** Vercel — deploy automatico da GitHub, free tier sufficiente per uso personale.
-- **Styling:** Tailwind CSS — veloce per costruire un layout a blocchi pulito.
+  - Gmail API (lettura mail)
+  - **Libero Mail via IMAP** (`imapmail.libero.it:993`, `imapflow`) — niente OAuth, credenziali cifrate lato server. Vedi `docs/SETUP-LIBERO.md`.
+- **Database:** Supabase (Postgres, free tier) + **Prisma** — dalla **Fase 2** (voci di diario + layout della board + preferenze/filtri).
+- **Hosting:** Vercel — deploy da GitHub, free tier.
 
 ---
 
@@ -107,41 +137,45 @@ Layout a blocchi/card su un'unica pagina, responsive.
 
 ## 8. Roadmap dettagliata
 
-### Fase 0 — Setup (1-2 sessioni)
-- Inizializzare repo Next.js + Tailwind.
-- Configurare progetto su Vercel (deploy "hello world").
-- Creare progetto su Google Cloud Console, abilitare le API, generare credenziali.
-- Configurare NextAuth con provider Google, verificare login funzionante.
+### Fase 0 — Setup ✅ FATTA (10 set 2026)
+- Repo Next.js 16 + Tailwind v4 + shadcn + TypeScript.
+- Google Cloud Console: progetto, Calendar + Gmail API, consent screen in Testing, credenziali OAuth.
+- Auth.js con provider Google (sessione JWT), login verificato end-to-end.
+- Guide `docs/SETUP-GOOGLE.md`, `docs/SETUP-LIBERO.md`, `.env.example`.
+- Deploy Vercel: rimandato (si fa in Fase 4, o prima se comodo).
 
-**Obiettivo di fine fase:** riesci a fare login con Google e vedere il tuo nome/email nella pagina.
-
----
-
-### Fase 1 — Blocco Calendario (MVP)
-- Chiamata a Google Calendar API per recuperare gli eventi del giorno corrente.
-- Componente UI: lista eventi con orario, titolo, eventuale link Meet/luogo.
-- Gestione stato vuoto ("nessun impegno oggi") e stato di errore (token scaduto, ecc.).
-
-**Obiettivo di fine fase:** apri la dashboard e vedi i tuoi impegni reali di oggi.
+**Obiettivo raggiunto:** login con Google, si atterra su `/dashboard` col proprio nome.
 
 ---
 
-### Fase 2 — Blocco Journaling (MVP)
-- Schema database per le voci di journal (data, testo, eventuali campi strutturati).
-- UI per scrivere/salvare la voce del giorno.
-- Vista storico (lista o calendario delle voci passate).
-- Autosave o salvataggio esplicito (da decidere in base a preferenza d'uso).
+### Fase 1 — Blocco Impegni + testata (MVP)
+- Chiamata a Google Calendar API per gli eventi del giorno corrente.
+- Design system completo portato in React (palette ocra/ardesia, Fraunces, tema chiaro/scuro).
+- Testata: saluto orario centrato + data + frase del giorno + banner "Oggi conta questo".
+- Blocco Impegni: lista eventi (orario, titolo, luogo/link Meet), evidenza del prossimo, eventi passati attenuati.
+- Stati: nessun impegno / errore (token scaduto) / non connesso.
 
-**Obiettivo di fine fase:** puoi scrivere oggi e ritrovare quello che hai scritto ieri.
+**Obiettivo di fine fase:** apri la dashboard e vedi i tuoi impegni reali di oggi, con l'aspetto giusto.
 
 ---
 
-### Fase 3 — Blocco Mail Importanti (MVP)
-- Chiamata a Gmail API, filtro iniziale (es. label "Important" di Gmail, o starred).
-- UI: lista mail con mittente, oggetto, snippet, link per aprire in Gmail.
-- Definire insieme (nell'uso reale) cosa significa "importante" per te — probabilmente andrà raffinato dopo le prime settimane d'uso.
+### Fase 2 — Board componibile + Blocco Diario (MVP)
+- DB: Supabase + Prisma. Schema: voci di diario, layout della board per-utente, preferenze.
+- Barra laterale con libreria di blocchi, comprimibile a icone.
+- Board: aggiungi/rimuovi blocchi dalla libreria, layout persistente sul DB.
+- Blocco Diario: scrittura + salvataggio del giorno, storico, campi strutturati (umore, obiettivo, "3 cose").
 
-**Obiettivo di fine fase:** dashboard completa in versione MVP, sola lettura su tutti e 3 i blocchi.
+**Obiettivo di fine fase:** componi la tua board, scrivi il diario oggi e ritrovi quello di ieri.
+
+---
+
+### Fase 3 — Blocco Mail Importanti, multi-provider (MVP)
+- **Gmail:** Gmail API, filtro iniziale (label "Important" o starred).
+- **Libero:** IMAP (`imapflow`), messaggi `\Flagged` e/o mittenti chiave; credenziali cifrate lato server.
+- Interfaccia comune ai due provider; UI con targhetta provider, mittente, oggetto, snippet, link per aprire.
+- Definire con l'uso reale cosa è "importante".
+
+**Obiettivo di fine fase:** dashboard MVP completa, sola lettura su Impegni e Mail (Gmail + Libero).
 
 ---
 
@@ -166,10 +200,11 @@ Da questa fase in poi la priorità la detta l'uso reale, non il piano iniziale. 
 
 ## 9. Rischi e cose a cui stare attenti
 
-- **Scope creep:** la tentazione di aggiungere blocchi (task manager, note, abitudini...) è alta. Tenere l'MVP stretto ai 3 blocchi core prima di espandere.
+- **Scope creep:** la board componibile rende facile aggiungere blocchi all'infinito. Regola: prima Impegni + Mail + Diario solidi, poi un blocco di libreria alla volta **solo se lo usi davvero**. La libreria è una tentazione, non una checklist.
 - **Rate limit API Google:** per uso personale non è un problema, ma va gestita la cache (non richiamare le API a ogni render).
-- **Sicurezza token:** i token OAuth vanno gestiti lato server (API routes), mai esposti al client.
-- **Google Cloud Console in "Testing" mode:** i token di test possono avere scadenze più corte finché l'app non è "verificata" — per uso personale non serve la verifica ufficiale, ma va capito il comportamento dei refresh token in questa modalità.
+- **Sicurezza token/credenziali:** token OAuth Google e credenziali IMAP Libero solo lato server, mai esposti al client. Libero: password applicativa dedicata, in env var cifrate.
+- **Google Cloud Console in "Testing" mode:** i refresh token possono scadere dopo ~7 giorni di inattività finché l'app non è verificata — per uso personale non serve la verifica, il codice prova comunque a rinnovare l'access token a ogni richiesta.
+- **Persistenza layout board:** finché non c'è il DB (Fase 2) il layout vive solo in `localStorage`; con più dispositivi va spostato sul DB.
 
 ---
 
@@ -183,7 +218,8 @@ Da questa fase in poi la priorità la detta l'uso reale, non il piano iniziale. 
 
 ## 11. Prossimi passi immediati
 
-1. Aprire Claude Code nella cartella del progetto.
-2. Fase 0: setup Next.js + Tailwind + deploy Vercel iniziale.
-3. Fase 0: setup Google Cloud Console + NextAuth.
-4. Procedere fase per fase come da roadmap, validando ogni "obiettivo di fine fase" prima di passare oltre.
+1. ~~Fase 0: setup Next.js + Google Cloud + NextAuth~~ ✅ fatto.
+2. **Fase 1:** blocco Impegni (Google Calendar) + testata + design system in React.
+3. Fase 2: DB Supabase + Prisma, board componibile, blocco Diario.
+4. Procedere fase per fase, validando ogni "obiettivo di fine fase" prima di passare oltre.
+5. Deploy Vercel + variabili d'ambiente (`AUTH_*`, `LIBERO_*`) quando la base è stabile.
