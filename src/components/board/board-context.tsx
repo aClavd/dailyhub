@@ -1,20 +1,17 @@
 "use client"
 
-import { createContext, useCallback, useContext, useMemo } from "react"
+import { createContext, useCallback, useContext, useMemo, useState, useTransition } from "react"
 
+import { saveBoardLayout } from "@/lib/actions/board"
 import {
-  BOARD_ORDER_KEY,
-  BOARD_SIZES_KEY,
-  DEFAULT_ORDER,
   FIXED_WIDGETS,
-  RAIL_STORAGE_KEY,
   SIZE_CYCLE,
   WIDGET_META,
   isWidgetType,
+  type BoardState,
   type WidgetSize,
   type WidgetType,
 } from "@/lib/board"
-import { useLocalStorage } from "@/lib/use-local-storage"
 
 type SizeOverrides = Partial<Record<WidgetType, WidgetSize>>
 
@@ -34,12 +31,11 @@ type BoardApi = {
 
 const BoardContext = createContext<BoardApi | null>(null)
 
-function sanitizeOrder(raw: unknown): WidgetType[] {
-  if (!Array.isArray(raw)) return DEFAULT_ORDER
+function sanitizeOrder(raw: WidgetType[]): WidgetType[] {
   const seen = new Set<WidgetType>()
   const cleaned: WidgetType[] = []
   for (const entry of raw) {
-    if (typeof entry === "string" && isWidgetType(entry) && !seen.has(entry)) {
+    if (isWidgetType(entry) && !seen.has(entry)) {
       seen.add(entry)
       cleaned.push(entry)
     }
@@ -48,66 +44,89 @@ function sanitizeOrder(raw: unknown): WidgetType[] {
   return [...missingFixed, ...cleaned]
 }
 
-export function BoardProvider({ children }: { children: React.ReactNode }) {
-  const [rawOrder, setOrder] = useLocalStorage<WidgetType[]>(BOARD_ORDER_KEY, DEFAULT_ORDER)
-  const [sizes, setSizes] = useLocalStorage<SizeOverrides>(BOARD_SIZES_KEY, {})
-  const [railCollapsed, setRailCollapsed] = useLocalStorage<boolean>(RAIL_STORAGE_KEY, false)
+export function BoardProvider({
+  initial,
+  children,
+}: {
+  initial: BoardState
+  children: React.ReactNode
+}) {
+  const [order, setOrder] = useState<WidgetType[]>(() => sanitizeOrder(initial.order))
+  const [sizes, setSizes] = useState<SizeOverrides>(initial.sizes)
+  const [railCollapsed, setRailCollapsed] = useState(initial.railCollapsed)
+  const [, startTransition] = useTransition()
 
-  const order = useMemo(() => sanitizeOrder(rawOrder), [rawOrder])
+  // Salva sul DB in background; lo stato locale è già aggiornato, quindi la
+  // UI non aspetta il giro di rete.
+  const persist = useCallback((patch: Partial<BoardState>) => {
+    startTransition(() => {
+      void saveBoardLayout({
+        order: patch.order ?? order,
+        sizes: patch.sizes ?? sizes,
+        railCollapsed: patch.railCollapsed ?? railCollapsed,
+      })
+    })
+    // order/sizes/railCollapsed intenzionalmente fuori dalle dipendenze:
+    // ogni chiamante passa già il valore aggiornato nel patch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const addWidget = useCallback(
     (type: WidgetType) => {
-      if (FIXED_WIDGETS.includes(type)) return
-      setOrder((prev) => {
-        const list = sanitizeOrder(prev)
-        return list.includes(type) ? list : [...list, type]
-      })
+      if (FIXED_WIDGETS.includes(type) || order.includes(type)) return
+      const next = [...order, type]
+      setOrder(next)
+      persist({ order: next })
     },
-    [setOrder],
+    [order, persist],
   )
 
   const removeWidget = useCallback(
     (type: WidgetType) => {
       if (FIXED_WIDGETS.includes(type)) return
-      setOrder((prev) => sanitizeOrder(prev).filter((t) => t !== type))
+      const next = order.filter((t) => t !== type)
+      setOrder(next)
+      persist({ order: next })
     },
-    [setOrder],
+    [order, persist],
   )
 
   const moveWidget = useCallback(
     (from: WidgetType, to: WidgetType) => {
       if (from === to) return
-      setOrder((prev) => {
-        const list = sanitizeOrder(prev)
-        const i = list.indexOf(from)
-        const j = list.indexOf(to)
-        if (i === -1 || j === -1) return list
-        const next = [...list]
-        ;[next[i], next[j]] = [next[j], next[i]]
-        return next
-      })
+      const i = order.indexOf(from)
+      const j = order.indexOf(to)
+      if (i === -1 || j === -1) return
+      const next = [...order]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      setOrder(next)
+      persist({ order: next })
     },
-    [setOrder],
+    [order, persist],
   )
 
   const sizeOf = useCallback(
-    (type: WidgetType) => sizes?.[type] ?? WIDGET_META[type].size,
+    (type: WidgetType) => sizes[type] ?? WIDGET_META[type].size,
     [sizes],
   )
 
   const cycleSize = useCallback(
     (type: WidgetType) => {
-      setSizes((prev) => {
-        const current = prev?.[type] ?? WIDGET_META[type].size
-        const idx = SIZE_CYCLE.indexOf(current)
-        const next = SIZE_CYCLE[(idx + 1) % SIZE_CYCLE.length]
-        return { ...prev, [type]: next }
-      })
+      const current = sizes[type] ?? WIDGET_META[type].size
+      const idx = SIZE_CYCLE.indexOf(current)
+      const nextSize = SIZE_CYCLE[(idx + 1) % SIZE_CYCLE.length]
+      const next = { ...sizes, [type]: nextSize }
+      setSizes(next)
+      persist({ sizes: next })
     },
-    [setSizes],
+    [sizes, persist],
   )
 
-  const toggleRail = useCallback(() => setRailCollapsed((prev) => !prev), [setRailCollapsed])
+  const toggleRail = useCallback(() => {
+    const next = !railCollapsed
+    setRailCollapsed(next)
+    persist({ railCollapsed: next })
+  }, [railCollapsed, persist])
 
   const value = useMemo<BoardApi>(
     () => ({

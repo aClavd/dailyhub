@@ -64,12 +64,21 @@ export const DEFAULT_LAYOUT: WidgetType[] = ["diario", "pomodoro", "abitudini"]
 /** Ordine completo iniziale: fissi + layout di default, in quest'ordine. */
 export const DEFAULT_ORDER: WidgetType[] = [...FIXED_WIDGETS, ...DEFAULT_LAYOUT]
 
+/** Layout della board: quali blocchi, in che ordine, con che taglia. */
+export type BoardState = {
+  order: WidgetType[]
+  sizes: Partial<Record<WidgetType, WidgetSize>>
+  railCollapsed: boolean
+}
+
+export const DEFAULT_BOARD_STATE: BoardState = {
+  order: DEFAULT_ORDER,
+  sizes: {},
+  railCollapsed: false,
+}
+
 /** In che ordine si passa da una taglia alla successiva col pulsante ridimensiona. */
 export const SIZE_CYCLE: readonly WidgetSize[] = ["1x1", "2x1", "2x2", "1x2"]
-
-export const BOARD_ORDER_KEY = "dailyhub:board:order"
-export const BOARD_SIZES_KEY = "dailyhub:board:sizes"
-export const RAIL_STORAGE_KEY = "dailyhub:rail"
 
 /** MIME per trascinare un blocco dalla libreria sulla board. */
 export const DND_MIME = "application/x-dailyhub-widget"

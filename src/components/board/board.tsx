@@ -12,9 +12,11 @@ import { WidgetShell } from "./widget-shell"
 export function Board({
   agendaSlot,
   mailSlot,
+  diarioSlot,
 }: {
   agendaSlot: React.ReactNode
   mailSlot: React.ReactNode
+  diarioSlot: React.ReactNode
 }) {
   const { order, addWidget } = useBoard()
   const [dragOver, setDragOver] = useState(false)
@@ -60,6 +62,13 @@ export function Board({
           return (
             <WidgetShell key={type} type="mail" fixed>
               {mailSlot}
+            </WidgetShell>
+          )
+        }
+        if (type === "diario") {
+          return (
+            <WidgetShell key={type} type="diario">
+              {diarioSlot}
             </WidgetShell>
           )
         }

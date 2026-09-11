@@ -86,6 +86,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       session.accessToken = token.access_token
       session.error = token.error
+      // token.sub è il Google `sub` (id stabile dell'account): lo usiamo
+      // come chiave per le righe del DB, senza bisogno dell'adapter Prisma.
+      if (token.sub) session.user.id = token.sub
       return session
     },
   },

@@ -11,16 +11,27 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { HistoryPanel } from "@/components/dashboard/history-panel"
 import { MailBody } from "@/components/dashboard/mail-placeholder"
 import { TopBar } from "@/components/dashboard/top-bar"
+import { DiarioWidget } from "@/components/widgets/diario-widget"
+import { chiaveGiorno } from "@/lib/datetime"
+import { getBoardLayout } from "@/lib/queries/board"
+import { getDiarioEntry } from "@/lib/queries/diario"
 import { getTodayEvents } from "@/lib/google/calendar"
 
 export default async function DashboardPage() {
   const session = await auth()
-  if (!session?.user) redirect("/")
+  if (!session?.user?.id) redirect("/")
 
   const firstName = session.user.name?.split(" ")[0]?.toLowerCase()
 
+  // Board e diario vengono dal DB: si leggono prima di disegnare la pagina,
+  // sono veloci (query indicizzate) e servono per lo stato iniziale.
+  const [boardInitial, diarioInitial] = await Promise.all([
+    getBoardLayout(),
+    getDiarioEntry(chiaveGiorno()),
+  ])
+
   return (
-    <BoardProvider>
+    <BoardProvider initial={boardInitial}>
       <div className="flex flex-1">
         <Rail />
         <div className="min-w-0 flex-1 px-4 pb-16 sm:px-6 lg:px-10 xl:px-14">
@@ -36,6 +47,7 @@ export default async function DashboardPage() {
                   </Suspense>
                 }
                 mailSlot={<MailBody />}
+                diarioSlot={<DiarioWidget initial={diarioInitial} />}
               />
             </div>
             <HistoryPanel />

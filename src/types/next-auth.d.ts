@@ -8,7 +8,7 @@ declare module "next-auth" {
     accessToken?: string
     /** Presente se il rinnovo del token è fallito: forzare un nuovo login. */
     error?: AuthError
-    user: DefaultSession["user"]
+    user: DefaultSession["user"] & { id: string }
   }
 }
 

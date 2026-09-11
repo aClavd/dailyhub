@@ -1,20 +1,32 @@
 "use client"
 
-import { DIARIO_EMPTY, MOODS, diarioKey, type DiarioState } from "@/lib/diario"
-import { useLocalStorage } from "@/lib/use-local-storage"
+import { useCallback, useRef, useState, useTransition } from "react"
+
+import { saveDiarioEntry } from "@/lib/actions/diario"
+import { chiaveGiorno } from "@/lib/datetime"
+import { MOODS, type DiarioState } from "@/lib/diario"
 
 import { FieldLabel, Segmented, inputClass, textareaClass } from "./_shared"
 
-export function DiarioWidget() {
-  const [stored, setStored] = useLocalStorage<DiarioState>(diarioKey(), DIARIO_EMPTY)
-  const state: DiarioState = {
-    ...DIARIO_EMPTY,
-    ...stored,
-    wins: (stored?.wins ?? DIARIO_EMPTY.wins).slice(0, 3) as [string, string, string],
-  }
+const SAVE_DELAY_MS = 600
 
-  const patch = (part: Partial<DiarioState>) =>
-    setStored((prev) => ({ ...DIARIO_EMPTY, ...prev, ...part }))
+export function DiarioWidget({ initial }: { initial: DiarioState }) {
+  const [state, setState] = useState<DiarioState>(initial)
+  const [, startTransition] = useTransition()
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const persist = useCallback((next: DiarioState, immediate: boolean) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    const run = () => startTransition(() => void saveDiarioEntry(chiaveGiorno(), next))
+    if (immediate) run()
+    else saveTimer.current = setTimeout(run, SAVE_DELAY_MS)
+  }, [])
+
+  const patch = (part: Partial<DiarioState>, immediate = false) => {
+    const next = { ...state, ...part }
+    setState(next)
+    persist(next, immediate)
+  }
 
   return (
     <div>
@@ -23,7 +35,7 @@ export function DiarioWidget() {
         label="Umore di oggi"
         options={MOODS}
         value={state.mood}
-        onChange={(mood) => patch({ mood })}
+        onChange={(mood) => patch({ mood }, true)}
       />
 
       <FieldLabel>Obiettivo del giorno</FieldLabel>
