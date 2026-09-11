@@ -1,12 +1,12 @@
 "use client"
 
-import { DND_MIME, FIXED_WIDGETS, LIBRARY_WIDGETS, WIDGET_META, type WidgetType } from "@/lib/board"
+import type { ReactNode } from "react"
+
+import { DND_MIME, WIDGET_META, FIXED_WIDGETS, LIBRARY_WIDGETS, type WidgetType } from "@/lib/board"
 import { cn } from "@/lib/utils"
 
 import { useBoard } from "./board-context"
 import { WidgetIcon } from "./widget-icon"
-
-const ALL_TYPES: WidgetType[] = [...FIXED_WIDGETS, ...LIBRARY_WIDGETS]
 
 export function Rail() {
   const { hasWidget, addWidget, railCollapsed, toggleRail } = useBoard()
@@ -41,109 +41,125 @@ export function Rail() {
         </button>
       </div>
 
-      {railCollapsed ? (
-        // Ridotto: un'unica colonna di icone, distribuita su tutta l'altezza
-        // disponibile (non ammassata in alto).
-        <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-2 py-4">
-          {ALL_TYPES.map((type) => {
-            const fixed = (FIXED_WIDGETS as readonly WidgetType[]).includes(type)
-            const added = fixed || hasWidget(type)
-            if (fixed) {
-              return (
-                <div
-                  key={type}
-                  title={WIDGET_META[type].title}
-                  className="border-border bg-card mx-auto flex size-9 items-center justify-center rounded-lg border"
-                >
-                  <WidgetIcon type={type} className="text-primary size-[18px]" />
-                </div>
-              )
-            }
-            return (
-              <button
-                key={type}
-                type="button"
-                draggable={!added}
-                title={WIDGET_META[type].title}
-                aria-disabled={added}
-                onClick={() => !added && addWidget(type)}
-                onDragStart={(event) => {
-                  event.dataTransfer.setData(DND_MIME, type)
-                  event.dataTransfer.setData("text/plain", type)
-                  event.dataTransfer.effectAllowed = "copy"
-                }}
-                className={cn(
-                  "border-border bg-card hover:border-ink-faint hover:bg-muted mx-auto flex size-9 items-center justify-center rounded-lg border transition-colors",
-                  added && "cursor-default opacity-45 hover:border-border hover:bg-card",
-                  !added && "cursor-grab active:cursor-grabbing",
-                )}
-              >
-                <WidgetIcon type={type} className="text-primary size-[18px]" />
-              </button>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
-          <RailSection label="Sempre attivi">
-            {FIXED_WIDGETS.map((type) => (
-              <div
-                key={type}
-                title={WIDGET_META[type].title}
-                className="border-border bg-card text-ink-soft flex items-center gap-2.5 rounded-lg border px-2.5 py-2 text-xs"
-              >
-                <WidgetIcon type={type} className="text-primary size-4 shrink-0" />
-                <span className="truncate">{WIDGET_META[type].title}</span>
-              </div>
-            ))}
-          </RailSection>
+      {/* Stessa struttura a due gruppi in entrambi gli stati — cambia solo
+          come si presenta ogni voce (icona+testo oppure icona sola) e la
+          larghezza. Da ridotto niente "space-between": gap costante, e un
+          margine in più tra i due gruppi al posto dell'etichetta. */}
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4",
+          railCollapsed ? "px-2" : "px-2.5",
+        )}
+      >
+        <RailSection label="Sempre attivi" collapsed={railCollapsed}>
+          {FIXED_WIDGETS.map((type) => (
+            <RailItem key={type} type={type} collapsed={railCollapsed} fixed />
+          ))}
+        </RailSection>
 
-          <RailSection label="Libreria — trascina o tocca">
-            {LIBRARY_WIDGETS.map((type) => {
-              const added = hasWidget(type)
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  draggable={!added}
-                  title={WIDGET_META[type].title}
-                  aria-disabled={added}
-                  onClick={() => !added && addWidget(type)}
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData(DND_MIME, type)
-                    event.dataTransfer.setData("text/plain", type)
-                    event.dataTransfer.effectAllowed = "copy"
-                  }}
-                  className={cn(
-                    "border-border bg-card hover:border-ink-faint hover:bg-muted flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors",
-                    added && "cursor-default opacity-45 hover:border-border hover:bg-card",
-                    !added && "cursor-grab active:cursor-grabbing",
-                  )}
-                >
-                  <WidgetIcon type={type} className="text-primary size-4 shrink-0" />
-                  <span className="flex min-w-0 flex-col">
-                    <span className="truncate text-xs font-medium">{WIDGET_META[type].title}</span>
-                    <span className="text-ink-faint truncate text-[0.65rem]">
-                      {WIDGET_META[type].desc}
-                    </span>
-                  </span>
-                </button>
-              )
-            })}
-          </RailSection>
-        </div>
-      )}
+        <RailSection label="Libreria — trascina o tocca" collapsed={railCollapsed}>
+          {LIBRARY_WIDGETS.map((type) => (
+            <RailItem
+              key={type}
+              type={type}
+              collapsed={railCollapsed}
+              added={hasWidget(type)}
+              onAdd={() => addWidget(type)}
+            />
+          ))}
+        </RailSection>
+      </div>
     </aside>
   )
 }
 
-function RailSection({ label, children }: { label: string; children: React.ReactNode }) {
+function RailSection({
+  label,
+  collapsed,
+  children,
+}: {
+  label: string
+  collapsed: boolean
+  children: ReactNode
+}) {
   return (
     <div>
-      <p className="text-ink-faint mb-2 text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
-        {label}
-      </p>
-      <div className="flex flex-col gap-1.5">{children}</div>
+      {!collapsed && (
+        <p className="text-ink-faint mb-2 text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
+          {label}
+        </p>
+      )}
+      <div className="flex flex-col items-center gap-1.5">{children}</div>
     </div>
+  )
+}
+
+function RailItem({
+  type,
+  collapsed,
+  fixed = false,
+  added = true,
+  onAdd,
+}: {
+  type: WidgetType
+  collapsed: boolean
+  fixed?: boolean
+  added?: boolean
+  onAdd?: () => void
+}) {
+  const draggable = !fixed && !added
+  const meta = WIDGET_META[type]
+  const icon = (
+    <WidgetIcon
+      type={type}
+      className={cn("text-primary shrink-0", collapsed ? "size-[18px]" : "size-4")}
+    />
+  )
+  const onDragStart = draggable
+    ? (event: React.DragEvent) => {
+        event.dataTransfer.setData(DND_MIME, type)
+        event.dataTransfer.setData("text/plain", type)
+        event.dataTransfer.effectAllowed = "copy"
+      }
+    : undefined
+
+  if (fixed) {
+    return (
+      <div
+        title={meta.title}
+        className={cn(
+          "border-border bg-card text-ink-soft flex items-center rounded-lg border",
+          collapsed ? "size-9 justify-center" : "w-full gap-2.5 px-2.5 py-2 text-xs",
+        )}
+      >
+        {icon}
+        {!collapsed && <span className="truncate">{meta.title}</span>}
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      draggable={draggable}
+      onDragStart={onDragStart}
+      title={meta.title}
+      aria-disabled={added}
+      onClick={() => !added && onAdd?.()}
+      className={cn(
+        "border-border bg-card hover:border-ink-faint hover:bg-muted flex items-center rounded-lg border transition-colors",
+        collapsed ? "size-9 justify-center" : "w-full gap-2.5 px-2.5 py-2 text-left",
+        added && "cursor-default opacity-45 hover:border-border hover:bg-card",
+        !added && "cursor-grab active:cursor-grabbing",
+      )}
+    >
+      {icon}
+      {!collapsed && (
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate text-xs font-medium">{meta.title}</span>
+          <span className="text-ink-faint truncate text-[0.65rem]">{meta.desc}</span>
+        </span>
+      )}
+    </button>
   )
 }
