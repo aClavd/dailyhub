@@ -44,8 +44,14 @@ export async function getLiberoMessages(): Promise<LiberoResult> {
       // ultime 25 e si ordinano a ritroso.
       const recent = uids.slice(-25).reverse()
 
+      // Il terzo argomento { uid: true } è quello che conta: dice a fetch()
+      // di leggere `recent` come UID, non come numeri di sequenza — messo
+      // solo nel query object (secondo argomento) non fa niente, `uid: true`
+      // lì significa solo "includi l'UID nella risposta". Bug reale trovato
+      // verificando con le vere credenziali di Claudio: falliva sempre con
+      // errore generico "api", non era un problema di rete.
       const messages: LiberoMessage[] = []
-      for await (const msg of client.fetch(recent, { envelope: true, uid: true })) {
+      for await (const msg of client.fetch(recent, { envelope: true, uid: true }, { uid: true })) {
         const from = msg.envelope?.from?.[0]
         messages.push({
           id: String(msg.uid),
