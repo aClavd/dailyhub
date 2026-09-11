@@ -13,6 +13,9 @@ export async function saveDiarioEntry(date: string, data: DiarioState) {
     obiettivo: data.obiettivo,
     testo: data.testo,
     wins: data.wins,
+    habits: data.habits,
+    weight: data.weight,
+    sleepHours: data.sleepHours,
   }
   await prisma.journalEntry.upsert({
     where: { userId_date: { userId: session.user.id, date } },

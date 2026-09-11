@@ -9,7 +9,9 @@ datasource db {
   // driver adapter in src/lib/prisma.ts (DATABASE_URL, pooler).
 }
 
-/// Una voce di diario per un utente in un giorno. Un utente = un Google `sub`.
+/// Una voce di diario per un utente in un giorno — record unico che copre
+/// journaling, abitudini, peso, sonno e umore (widget "Diario" unificato,
+/// non più blocchi separati). Un utente = un Google `sub`.
 model JournalEntry {
   id        String   @id @default(cuid())
   userId    String
@@ -19,6 +21,11 @@ model JournalEntry {
   obiettivo String   @default("")
   testo     String   @default("")
   wins      String[] @default([])
+  /// { [nomeAbitudine]: fatta oggi sì/no }. La lista dei nomi vive in
+  /// BoardLayout.habitList (condivisa tra i giorni), qui solo lo stato.
+  habits      Json    @default("{}")
+  weight      Float?
+  sleepHours  Float?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -34,5 +41,9 @@ model BoardLayout {
   /// { [widgetType]: "1x1" | "2x1" | "1x2" | "2x2" }, solo le taglie non di default.
   sizes     Json     @default("{}")
   railCollapsed Boolean @default(false)
+  /// Nomi delle abitudini personalizzate, condivisi tra tutti i giorni del
+  /// widget Diario (lo stato "fatta/non fatta" invece è per giorno, su
+  /// JournalEntry.habits).
+  habitList String[] @default([])
   updatedAt DateTime @updatedAt
 }

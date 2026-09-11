@@ -2,8 +2,12 @@
 **Working title:** DailyHub (nome provvisorio, da cambiare)
 **Autore:** Claudio Ammirata
 **Data:** Settembre 2026
-**Versione:** 0.2
+**Versione:** 0.3
 
+> **Changelog 0.2 → 0.3 (11 set 2026)**
+> - **Diario unificato**: Abitudini, Peso e Sonno non sono più blocchi di libreria a sé — sono sezioni del blocco **Diario di oggi**, un solo record al giorno (journaling + abitudini + peso + sonno + umore) invece di 4 tracker separati. Vedi §4.
+> - Fase 3 (Mail) completata: Gmail + Libero via IMAP, sola lettura, 3 sezioni (Tutte/Gmail/Libero).
+>
 > **Changelog 0.1 → 0.2 (10 set 2026)**
 > - La dashboard non è più 3 blocchi fissi ma una **board componibile**: 2 blocchi sempre attivi (Impegni, Mail) + una **libreria di blocchi** che l'utente trascina sulla board quando servono (Studio/Pomodoro, Diario, Abitudini, ecc.). Vedi §4.
 > - Barra laterale (libreria) **comprimibile a icone**.
@@ -71,15 +75,18 @@ Una pagina sola, responsive. Dall'alto:
 - Azioni rapide (segna letta, archivia, apri): **non MVP**, sola lettura all'inizio.
 - Rispondere dalla dashboard: fuori scope per ora.
 
-### Blocco — Diario *(dalla libreria)*
-- Scrittura libera per il giorno corrente + storico consultabile.
-- Campi strutturati: umore, obiettivo del giorno, "3 cose andate bene" — tenere quelli che usi davvero.
+### Blocco — Diario *(dalla libreria, unificato dalla v0.3)*
+Un solo record al giorno, sezioni impilate (separatore leggero, non card multiple):
+- **Diario**: scrittura libera per il giorno corrente + storico consultabile (Cronologia).
+- **Abitudini**: checklist personalizzabile (aggiungi/rimuovi), stato per giorno.
+- **Quick stats**: umore, peso, ore di sonno.
+- Non più 4 blocchi separati (Diario/Abitudini/Peso/Sonno): un solo widget, perché sono tutte cose che si segnano nello stesso momento della giornata.
 
 ### Blocco — Studio / Pomodoro *(dalla libreria)*
 - Timer 25/5, conteggio sessioni del giorno.
 
 ### Altri blocchi di libreria
-- Abitudini (spunta giornaliera), Note rapide, Obiettivi della settimana, Lettura, Acqua, Meteo. Tenere/togliere in base all'uso.
+- Note rapide, Obiettivi della settimana, Lettura, Acqua, Meteo. Tenere/togliere in base all'uso.
 
 ---
 

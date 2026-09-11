@@ -12,6 +12,7 @@ export async function saveBoardLayout(state: BoardState) {
     order: state.order,
     sizes: state.sizes,
     railCollapsed: state.railCollapsed,
+    habitList: state.habitList,
   }
   await prisma.boardLayout.upsert({
     where: { userId: session.user.id },

@@ -28,5 +28,8 @@ export async function getBoardLayout(): Promise<BoardState> {
     order: order.length > 0 ? order : DEFAULT_BOARD_STATE.order,
     sizes: (row.sizes as Partial<Record<WidgetType, WidgetSize>>) ?? {},
     railCollapsed: row.railCollapsed,
+    // A differenza di `order`, una lista vuota qui è uno stato valido (l'utente
+    // ha rimosso tutte le abitudini di proposito): nessun fallback ai default.
+    habitList: row.habitList,
   }
 }

@@ -28,6 +28,10 @@ type BoardApi = {
   setSize: (type: WidgetType, size: WidgetSize) => void
   railCollapsed: boolean
   toggleRail: () => void
+  /** Nomi delle abitudini del widget Diario — condivisi tra tutti i giorni. */
+  habitList: string[]
+  addHabit: (label: string) => void
+  removeHabit: (label: string) => void
 }
 
 const BoardContext = createContext<BoardApi | null>(null)
@@ -55,6 +59,7 @@ export function BoardProvider({
   const [order, setOrder] = useState<WidgetType[]>(() => sanitizeOrder(initial.order))
   const [sizes, setSizes] = useState<SizeOverrides>(initial.sizes)
   const [railCollapsed, setRailCollapsed] = useState(initial.railCollapsed)
+  const [habitList, setHabitList] = useState<string[]>(initial.habitList)
   const [, startTransition] = useTransition()
 
   // Salva sul DB in background; lo stato locale è già aggiornato, quindi la
@@ -65,10 +70,11 @@ export function BoardProvider({
         order: patch.order ?? order,
         sizes: patch.sizes ?? sizes,
         railCollapsed: patch.railCollapsed ?? railCollapsed,
+        habitList: patch.habitList ?? habitList,
       })
     })
-    // order/sizes/railCollapsed intenzionalmente fuori dalle dipendenze:
-    // ogni chiamante passa già il valore aggiornato nel patch.
+    // order/sizes/railCollapsed/habitList intenzionalmente fuori dalle
+    // dipendenze: ogni chiamante passa già il valore aggiornato nel patch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -139,6 +145,25 @@ export function BoardProvider({
     persist({ railCollapsed: next })
   }, [railCollapsed, persist])
 
+  const addHabit = useCallback(
+    (label: string) => {
+      if (habitList.includes(label)) return
+      const next = [...habitList, label]
+      setHabitList(next)
+      persist({ habitList: next })
+    },
+    [habitList, persist],
+  )
+
+  const removeHabit = useCallback(
+    (label: string) => {
+      const next = habitList.filter((h) => h !== label)
+      setHabitList(next)
+      persist({ habitList: next })
+    },
+    [habitList, persist],
+  )
+
   const value = useMemo<BoardApi>(
     () => ({
       order,
@@ -151,6 +176,9 @@ export function BoardProvider({
       setSize,
       railCollapsed,
       toggleRail,
+      habitList,
+      addHabit,
+      removeHabit,
     }),
     [
       order,
@@ -162,6 +190,9 @@ export function BoardProvider({
       setSize,
       railCollapsed,
       toggleRail,
+      habitList,
+      addHabit,
+      removeHabit,
     ],
   )
 

@@ -1,16 +1,15 @@
+import { DEFAULT_HABITS } from "@/lib/diario"
+
 export type WidgetType =
   | "agenda"
   | "mail"
   | "diario"
   | "pomodoro"
-  | "abitudini"
   | "note"
   | "obiettivi"
   | "lettura"
   | "acqua"
   | "meteo"
-  | "peso"
-  | "sonno"
 
 /**
  * Dimensione in celle della griglia, come i widget del Centro di Controllo:
@@ -28,16 +27,17 @@ export type WidgetMeta = {
 export const WIDGET_META: Record<WidgetType, WidgetMeta> = {
   agenda: { title: "Impegni di oggi", desc: "eventi di Google Calendar", size: "2x2" },
   mail: { title: "Mail importanti", desc: "Gmail + Libero", size: "2x2" },
-  diario: { title: "Diario di oggi", desc: "journaling + umore", size: "2x2" },
+  diario: {
+    title: "Diario di oggi",
+    desc: "journaling, abitudini, peso, sonno, umore",
+    size: "2x2",
+  },
   pomodoro: { title: "Studio · Pomodoro", desc: "timer 25 / 5", size: "1x1" },
-  abitudini: { title: "Abitudini", desc: "personalizzabili, spunta del giorno", size: "1x2" },
   note: { title: "Note rapide", desc: "un pensiero al volo", size: "1x1" },
   obiettivi: { title: "Obiettivi della settimana", desc: "3 cose che contano", size: "1x2" },
   lettura: { title: "Lettura", desc: "libro in corso", size: "1x1" },
   acqua: { title: "Acqua", desc: "bicchieri di oggi", size: "1x1" },
   meteo: { title: "Meteo", desc: "oggi, in breve", size: "1x1" },
-  peso: { title: "Peso", desc: "log giornaliero", size: "1x1" },
-  sonno: { title: "Sonno", desc: "ore dormite", size: "1x1" },
 }
 
 /** Blocchi sempre presenti, non rimovibili (ma spostabili). */
@@ -47,18 +47,15 @@ export const FIXED_WIDGETS: readonly WidgetType[] = ["agenda", "mail"]
 export const LIBRARY_WIDGETS: readonly WidgetType[] = [
   "diario",
   "pomodoro",
-  "abitudini",
   "note",
   "obiettivi",
   "lettura",
   "acqua",
   "meteo",
-  "peso",
-  "sonno",
 ]
 
 /** Blocchi di libreria presenti sulla board al primo avvio. */
-export const DEFAULT_LAYOUT: WidgetType[] = ["diario", "pomodoro", "abitudini"]
+export const DEFAULT_LAYOUT: WidgetType[] = ["diario", "pomodoro"]
 
 /** Ordine completo iniziale: fissi + layout di default, in quest'ordine. */
 export const DEFAULT_ORDER: WidgetType[] = [...FIXED_WIDGETS, ...DEFAULT_LAYOUT]
@@ -68,12 +65,15 @@ export type BoardState = {
   order: WidgetType[]
   sizes: Partial<Record<WidgetType, WidgetSize>>
   railCollapsed: boolean
+  /** Nomi delle abitudini del widget Diario, condivisi tra tutti i giorni. */
+  habitList: string[]
 }
 
 export const DEFAULT_BOARD_STATE: BoardState = {
   order: DEFAULT_ORDER,
   sizes: {},
   railCollapsed: false,
+  habitList: [...DEFAULT_HABITS],
 }
 
 /** In che ordine si passa da una taglia alla successiva col pulsante ridimensiona. */
