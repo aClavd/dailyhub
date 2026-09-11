@@ -54,7 +54,7 @@ export function HistoryPanelView({ days }: { days: HistoryDayData[] }) {
         // Simmetrico al rail di sinistra: nascosto sotto lg, poi a tutta
         // altezza e agganciato, larghezza fissa comprimibile a icone.
         "hidden shrink-0 flex-col border-l border-border bg-card transition-[width] duration-150 lg:sticky lg:top-0 lg:flex lg:h-screen",
-        collapsed ? "w-14" : "w-72",
+        collapsed ? "w-[52px]" : "w-72",
       )}
     >
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-3.5">
