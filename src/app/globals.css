@@ -225,3 +225,15 @@
     @apply font-sans;
   }
 }
+
+/* Piccolo "assestamento" quando un blocco cambia taglia: la griglia CSS
+   non anima gli span di colonna/riga, quindi diamo un feedback tattile
+   sul blocco stesso appena la nuova taglia si applica. */
+@keyframes widget-settle {
+  0% {
+    scale: 0.97;
+  }
+  100% {
+    scale: 1;
+  }
+}

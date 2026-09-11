@@ -51,11 +51,13 @@ export function HistoryPanelView({ days }: { days: HistoryDayData[] }) {
   return (
     <aside
       className={cn(
-        "bg-card ring-foreground/10 flex w-full flex-col rounded-xl ring-1 transition-[width] duration-150 xl:sticky xl:top-4 xl:shrink-0",
-        collapsed ? "xl:w-14" : "xl:w-72",
+        // Simmetrico al rail di sinistra: nascosto sotto lg, poi a tutta
+        // altezza e agganciato, larghezza fissa comprimibile a icone.
+        "hidden shrink-0 flex-col border-l border-border bg-card transition-[width] duration-150 lg:sticky lg:top-0 lg:flex lg:h-screen",
+        collapsed ? "w-14" : "w-72",
       )}
     >
-      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-3.5">
         {collapsed ? (
           <HistoryIcon className="text-ink-faint mx-auto size-4" />
         ) : (
@@ -79,7 +81,7 @@ export function HistoryPanelView({ days }: { days: HistoryDayData[] }) {
       </div>
 
       {collapsed ? (
-        <div className="flex flex-col items-center gap-1.5 px-2 py-3">
+        <div className="flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto px-2 py-3">
           {days.map((day) => (
             <div
               key={day.key}
@@ -102,7 +104,7 @@ export function HistoryPanelView({ days }: { days: HistoryDayData[] }) {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col divide-y divide-border px-4">
+        <div className="flex min-h-0 flex-1 flex-col divide-y divide-border overflow-y-auto px-4">
           {days.map((day) => {
             const summary = day.entry?.obiettivo || day.entry?.testo
             return (

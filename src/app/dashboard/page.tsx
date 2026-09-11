@@ -38,21 +38,17 @@ export default async function DashboardPage() {
           <TopBar email={session.user.email} />
           <DashboardHeader firstName={firstName} />
 
-          <div className="flex flex-col items-start gap-5 xl:flex-row">
-            <div className="min-w-0 flex-1 self-stretch">
-              <Board
-                agendaSlot={
-                  <Suspense fallback={<AgendaSkeletonBody />}>
-                    <AgendaSection />
-                  </Suspense>
-                }
-                mailSlot={<MailBody />}
-                diarioSlot={<DiarioWidget initial={diarioInitial} />}
-              />
-            </div>
-            <HistoryPanel />
-          </div>
+          <Board
+            agendaSlot={
+              <Suspense fallback={<AgendaSkeletonBody />}>
+                <AgendaSection />
+              </Suspense>
+            }
+            mailSlot={<MailBody />}
+            diarioSlot={<DiarioWidget initial={diarioInitial} />}
+          />
         </div>
+        <HistoryPanel />
       </div>
     </BoardProvider>
   )

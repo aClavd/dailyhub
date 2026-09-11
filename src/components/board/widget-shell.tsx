@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
   REORDER_MIME,
@@ -37,13 +37,24 @@ export function WidgetShell({
   const meta = WIDGET_META[type]
   const committedSize = sizeOf(type)
   const [previewSize, setPreviewSize] = useState<WidgetSize | null>(null)
+  const [justResized, setJustResized] = useState(false)
   const size = previewSize ?? committedSize
   const [dragOver, setDragOver] = useState(false)
   const sectionRef = useRef<HTMLElement | null>(null)
 
-  // Trascinando l'angolo in basso a destra si sceglie 1 o 2 celle per lato,
-  // in base a dove sta il puntatore rispetto al bordo sinistro/alto del
-  // blocco — niente drag libero: si resta sulle 4 taglie della griglia.
+  // Breve "assestamento" quando la taglia definitiva cambia (non durante
+  // il trascinamento, solo al rilascio).
+  useEffect(() => {
+    if (!justResized) return
+    const id = setTimeout(() => setJustResized(false), 220)
+    return () => clearTimeout(id)
+  }, [justResized])
+
+  // Si può afferrare da un bordo qualsiasi (sopra, sotto, destra, sinistra)
+  // o dall'angolo: tutti calcolano la taglia allo stesso modo, guardando
+  // dove sta il puntatore rispetto al blocco — niente drag libero, si
+  // resta sempre su una delle 4 taglie della griglia. Anteprima dal vivo
+  // mentre trascini, si salva solo al rilascio.
   const onResizeStart = useCallback(
     (event: React.PointerEvent) => {
       event.preventDefault()
@@ -62,8 +73,10 @@ export function WidgetShell({
 
       const onMove = (ev: PointerEvent) => setPreviewSize(targetFor(ev.clientX, ev.clientY))
       const onUp = (ev: PointerEvent) => {
-        setSize(type, targetFor(ev.clientX, ev.clientY))
+        const next = targetFor(ev.clientX, ev.clientY)
+        setSize(type, next)
         setPreviewSize(null)
+        setJustResized(true)
         window.removeEventListener("pointermove", onMove)
         window.removeEventListener("pointerup", onUp)
       }
@@ -94,9 +107,11 @@ export function WidgetShell({
         // h-full riempie esattamente la cella (o le celle) assegnate dalla
         // griglia della board: la tile ha sempre la stessa dimensione, il
         // contenuto che non ci sta scorre dentro invece di deformarla.
-        "bg-card ring-foreground/10 relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl ring-1 transition-shadow",
+        "bg-card ring-foreground/10 relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl ring-1",
+        "transition-[grid-column,grid-row,box-shadow] duration-150 ease-out",
         SIZE_CLASS[size],
         (dragOver || previewSize) && "ring-primary ring-2",
+        justResized && "[animation:widget-settle_220ms_ease-out]",
       )}
     >
       <header className="flex shrink-0 items-center gap-1.5 border-b border-border px-2.5 py-2">
@@ -142,13 +157,41 @@ export function WidgetShell({
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
 
+      {/* Maniglie di ridimensionamento: tutti e quattro i bordi, così si può
+          afferrare il blocco da qualsiasi lato — calcolano tutte la stessa
+          cosa (dove sta il puntatore rispetto al blocco). Zona di presa
+          larga (12px) con una riga che si accende al passaggio del mouse,
+          così si vede dove si può trascinare. */}
+      <div
+        onPointerDown={onResizeStart}
+        className="group/edge absolute inset-x-3 top-0 z-10 h-3 cursor-ns-resize touch-none"
+      >
+        <span className="bg-primary absolute inset-x-2 top-0 h-[3px] scale-x-0 rounded-full opacity-0 transition group-hover/edge:scale-x-100 group-hover/edge:opacity-100" />
+      </div>
+      <div
+        onPointerDown={onResizeStart}
+        className="group/edge absolute inset-x-3 bottom-0 z-10 h-3 cursor-ns-resize touch-none"
+      >
+        <span className="bg-primary absolute inset-x-2 bottom-0 h-[3px] scale-x-0 rounded-full opacity-0 transition group-hover/edge:scale-x-100 group-hover/edge:opacity-100" />
+      </div>
+      <div
+        onPointerDown={onResizeStart}
+        className="group/edge absolute inset-y-3 left-0 z-10 w-3 cursor-ew-resize touch-none"
+      >
+        <span className="bg-primary absolute inset-y-2 left-0 w-[3px] scale-y-0 rounded-full opacity-0 transition group-hover/edge:scale-y-100 group-hover/edge:opacity-100" />
+      </div>
+      <div
+        onPointerDown={onResizeStart}
+        className="group/edge absolute inset-y-3 right-0 z-10 w-3 cursor-ew-resize touch-none"
+      >
+        <span className="bg-primary absolute inset-y-2 right-0 w-[3px] scale-y-0 rounded-full opacity-0 transition group-hover/edge:scale-y-100 group-hover/edge:opacity-100" />
+      </div>
       <div
         onPointerDown={onResizeStart}
         title="Trascina per ridimensionare"
-        aria-hidden="true"
-        className="text-ink-faint/70 hover:text-primary absolute right-0 bottom-0 grid size-6 cursor-nwse-resize touch-none place-items-center"
+        className="text-ink-faint hover:text-primary absolute right-0 bottom-0 z-20 grid size-7 cursor-nwse-resize touch-none place-items-center"
       >
-        <ResizeCornerIcon className="size-3.5" />
+        <ResizeCornerIcon className="size-4" />
       </div>
     </section>
   )

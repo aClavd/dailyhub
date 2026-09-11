@@ -99,7 +99,10 @@ export const inputClass =
 
 export function textareaClass(font: "sans" | "heading" = "sans") {
   return cn(
-    "bg-muted border-border focus:outline-primary w-full resize-y rounded-lg border p-3 text-sm leading-relaxed focus:outline-2 focus:outline-offset-1",
+    // resize-none: il ridimensionamento è del blocco intero (maniglie sui
+    // bordi della tile), non della singola textarea — altrimenti la presa
+    // nativa del browser si confonde con quella della tile.
+    "bg-muted border-border focus:outline-primary w-full resize-none rounded-lg border p-3 text-sm leading-relaxed focus:outline-2 focus:outline-offset-1",
     font === "heading" && "font-heading",
   )
 }
