@@ -9,13 +9,15 @@ import { AgendaBody } from "@/components/dashboard/agenda-card"
 import { AgendaSkeletonBody } from "@/components/dashboard/agenda-skeleton"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { HistoryPanel } from "@/components/dashboard/history-panel"
-import { MailBody } from "@/components/dashboard/mail-placeholder"
+import { MailBody } from "@/components/dashboard/mail-card"
+import { MailSkeletonBody } from "@/components/dashboard/mail-skeleton"
 import { TopBar } from "@/components/dashboard/top-bar"
 import { DiarioWidget } from "@/components/widgets/diario-widget"
 import { chiaveGiorno } from "@/lib/datetime"
 import { getBoardLayout } from "@/lib/queries/board"
 import { getDiarioEntry } from "@/lib/queries/diario"
 import { getTodayEvents } from "@/lib/google/calendar"
+import { getImportantMail } from "@/lib/mail"
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -44,7 +46,11 @@ export default async function DashboardPage() {
                 <AgendaSection />
               </Suspense>
             }
-            mailSlot={<MailBody />}
+            mailSlot={
+              <Suspense fallback={<MailSkeletonBody />}>
+                <MailSection />
+              </Suspense>
+            }
             diarioSlot={<DiarioWidget initial={diarioInitial} />}
           />
         </div>
@@ -57,4 +63,9 @@ export default async function DashboardPage() {
 async function AgendaSection() {
   const result = await getTodayEvents()
   return <AgendaBody result={result} />
+}
+
+async function MailSection() {
+  const result = await getImportantMail()
+  return <MailBody result={result} />
 }

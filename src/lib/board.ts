@@ -27,8 +27,7 @@ export type WidgetMeta = {
 
 export const WIDGET_META: Record<WidgetType, WidgetMeta> = {
   agenda: { title: "Impegni di oggi", desc: "eventi di Google Calendar", size: "2x2" },
-  // "mail" passa a 2x2 quando in Fase 3 avrà contenuto vero.
-  mail: { title: "Mail importanti", desc: "Gmail + Libero", size: "2x1" },
+  mail: { title: "Mail importanti", desc: "Gmail + Libero", size: "2x2" },
   diario: { title: "Diario di oggi", desc: "journaling + umore", size: "2x2" },
   pomodoro: { title: "Studio · Pomodoro", desc: "timer 25 / 5", size: "1x1" },
   abitudini: { title: "Abitudini", desc: "personalizzabili, spunta del giorno", size: "1x2" },
