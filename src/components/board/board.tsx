@@ -16,17 +16,16 @@ export function Board({
   agendaSlot: React.ReactNode
   mailSlot: React.ReactNode
 }) {
-  const { layout, addWidget } = useBoard()
+  const { order, addWidget } = useBoard()
   const [dragOver, setDragOver] = useState(false)
 
   return (
     <div
       onDragOver={(event) => {
-        if (event.dataTransfer.types.includes(DND_MIME)) {
-          event.preventDefault()
-          event.dataTransfer.dropEffect = "copy"
-          setDragOver(true)
-        }
+        if (!event.dataTransfer.types.includes(DND_MIME)) return
+        event.preventDefault()
+        event.dataTransfer.dropEffect = "copy"
+        setDragOver(true)
       }}
       onDragLeave={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node)) {
@@ -34,6 +33,7 @@ export function Board({
         }
       }}
       onDrop={(event) => {
+        if (!event.dataTransfer.types.includes(DND_MIME)) return
         event.preventDefault()
         setDragOver(false)
         const type = event.dataTransfer.getData(DND_MIME)
@@ -48,20 +48,29 @@ export function Board({
         dragOver && "outline-primary outline-2 outline-dashed outline-offset-8",
       )}
     >
-      <WidgetShell type="agenda" fixed>
-        {agendaSlot}
-      </WidgetShell>
-      <WidgetShell type="mail" fixed>
-        {mailSlot}
-      </WidgetShell>
+      {order.map((type) => {
+        if (type === "agenda") {
+          return (
+            <WidgetShell key={type} type="agenda" fixed>
+              {agendaSlot}
+            </WidgetShell>
+          )
+        }
+        if (type === "mail") {
+          return (
+            <WidgetShell key={type} type="mail" fixed>
+              {mailSlot}
+            </WidgetShell>
+          )
+        }
+        return (
+          <WidgetShell key={type} type={type}>
+            <LibraryWidget type={type} />
+          </WidgetShell>
+        )
+      })}
 
-      {layout.map((type) => (
-        <WidgetShell key={type} type={type}>
-          <LibraryWidget type={type} />
-        </WidgetShell>
-      ))}
-
-      <p className="border-border text-ink-faint flex min-h-28 items-center justify-center rounded-xl border border-dashed p-4 text-center text-[0.7rem] leading-snug sm:h-full">
+      <p className="border-border text-ink-faint flex min-h-28 items-center justify-center rounded-xl border border-dashed p-3 text-center text-[0.7rem] leading-snug sm:h-full">
         Trascina un blocco dalla libreria — oppure toccalo
       </p>
     </div>

@@ -11,9 +11,12 @@ const PATHS: Record<WidgetType, string> = {
   abitudini: "M4 5h16v14H4zM8 12l3 3 5-6",
   note: "M5 6h14M5 11h14M5 16h9",
   obiettivi: "M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
-  lettura: "M12 6c-2-1.4-5-1.9-8-1.4v12c3-.5 6 0 8 1.4 2-1.4 5-1.9 8-1.4v-12c-3-.5-6 0-8 1.4zM12 6v12",
+  lettura:
+    "M12 6c-2-1.4-5-1.9-8-1.4v12c3-.5 6 0 8 1.4 2-1.4 5-1.9 8-1.4v-12c-3-.5-6 0-8 1.4zM12 6v12",
   acqua: "M12 3s6 6.4 6 10.4a6 6 0 0 1-12 0C6 9.4 12 3 12 3z",
   meteo: "M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.3A3.5 3.5 0 0 1 17.5 18z",
+  peso: "M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM9.5 14.5l5-5M9.5 9.5h.01M14.5 14.5h.01",
+  sonno: "M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z",
 }
 
 export function WidgetIcon({
@@ -32,6 +35,36 @@ export function WidgetIcon({
       {...props}
     >
       <path d={PATHS[type]} />
+    </svg>
+  )
+}
+
+export function GripIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <circle cx="9" cy="6" r="1.4" />
+      <circle cx="15" cy="6" r="1.4" />
+      <circle cx="9" cy="12" r="1.4" />
+      <circle cx="15" cy="12" r="1.4" />
+      <circle cx="9" cy="18" r="1.4" />
+      <circle cx="15" cy="18" r="1.4" />
+    </svg>
+  )
+}
+
+export function ResizeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M4 15v5h5M20 9V4h-5M20 4l-7 7M4 20l7-7" />
     </svg>
   )
 }

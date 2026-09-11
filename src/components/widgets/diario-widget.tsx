@@ -1,40 +1,20 @@
 "use client"
 
-import { chiaveGiorno } from "@/lib/datetime"
+import { DIARIO_EMPTY, MOODS, diarioKey, type DiarioState } from "@/lib/diario"
 import { useLocalStorage } from "@/lib/use-local-storage"
 
 import { FieldLabel, Segmented, inputClass, textareaClass } from "./_shared"
 
-const MOODS = ["Difficile", "Così così", "Neutro", "Buono", "Ottimo"] as const
-type Mood = (typeof MOODS)[number]
-
-type DiarioState = {
-  mood: Mood | null
-  obiettivo: string
-  testo: string
-  wins: [string, string, string]
-}
-
-const EMPTY: DiarioState = {
-  mood: null,
-  obiettivo: "",
-  testo: "",
-  wins: ["", "", ""],
-}
-
 export function DiarioWidget() {
-  const [stored, setStored] = useLocalStorage<DiarioState>(
-    `dailyhub:diario:${chiaveGiorno()}`,
-    EMPTY,
-  )
+  const [stored, setStored] = useLocalStorage<DiarioState>(diarioKey(), DIARIO_EMPTY)
   const state: DiarioState = {
-    ...EMPTY,
+    ...DIARIO_EMPTY,
     ...stored,
-    wins: (stored?.wins ?? EMPTY.wins).slice(0, 3) as [string, string, string],
+    wins: (stored?.wins ?? DIARIO_EMPTY.wins).slice(0, 3) as [string, string, string],
   }
 
   const patch = (part: Partial<DiarioState>) =>
-    setStored((prev) => ({ ...EMPTY, ...prev, ...part }))
+    setStored((prev) => ({ ...DIARIO_EMPTY, ...prev, ...part }))
 
   return (
     <div>

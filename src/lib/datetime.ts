@@ -78,6 +78,19 @@ export function chiaveSettimana(date = new Date()): string {
   return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`
 }
 
+const GIORNI_BREVI = ["dom", "lun", "mar", "mer", "gio", "ven", "sab"]
+
+/** Data breve per liste/cronologia, es. "mer 10". */
+export function dataBreve(date = new Date()): string {
+  return `${GIORNI_BREVI[date.getDay()]} ${date.getDate()}`
+}
+
+/** Giorno dell'anno (1-366), per far ruotare contenuti "uno al giorno". */
+export function giornoDellAnno(date = new Date()): number {
+  const start = new Date(date.getFullYear(), 0, 0)
+  return Math.floor((date.getTime() - start.getTime()) / 86_400_000)
+}
+
 /** Distanza da adesso, in forma breve: "adesso", "tra 20 min", "tra 3 h". */
 export function traQuanto(target: Date, now = new Date()): string {
   const minutes = Math.round((target.getTime() - now.getTime()) / 60_000)

@@ -50,30 +50,47 @@ export function CheckRow({
   label,
   done,
   onToggle,
+  onRemove,
 }: {
   label: string
   done: boolean
   onToggle: () => void
+  /** Se presente, mostra una × per eliminare la riga (voci personalizzate). */
+  onRemove?: () => void
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={done}
-      onClick={onToggle}
-      className="border-border flex w-full items-center gap-2.5 border-t py-2 text-left text-[0.82rem] first:border-t-0"
-    >
-      <span
-        className={cn(
-          "grid size-[15px] shrink-0 place-items-center rounded border text-[10px] transition-colors",
-          done
-            ? "bg-primary border-primary text-primary-foreground"
-            : "border-ink-faint text-transparent",
-        )}
+    <div className="group border-border flex items-center border-t py-2 first:border-t-0">
+      <button
+        type="button"
+        aria-pressed={done}
+        onClick={onToggle}
+        className="flex min-w-0 flex-1 items-center gap-2.5 text-left text-[0.82rem]"
       >
-        ✓
-      </span>
-      <span className={cn(done && "text-ink-faint line-through")}>{label}</span>
-    </button>
+        <span
+          className={cn(
+            "grid size-[15px] shrink-0 place-items-center rounded border text-[10px] transition-colors",
+            done
+              ? "bg-primary border-primary text-primary-foreground"
+              : "border-ink-faint text-transparent",
+          )}
+        >
+          ✓
+        </span>
+        <span className={cn("truncate", done && "text-ink-faint line-through")}>
+          {label}
+        </span>
+      </button>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Rimuovi ${label}`}
+          className="text-ink-faint hover:text-foreground shrink-0 rounded px-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+        >
+          &times;
+        </button>
+      )}
+    </div>
   )
 }
 

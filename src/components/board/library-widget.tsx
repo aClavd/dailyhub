@@ -8,6 +8,7 @@ import { LetturaWidget } from "@/components/widgets/lettura-widget"
 import { MeteoWidget } from "@/components/widgets/meteo-widget"
 import { NoteWidget } from "@/components/widgets/note-widget"
 import { ObiettiviWidget } from "@/components/widgets/obiettivi-widget"
+import { PesoWidget, SonnoWidget } from "@/components/widgets/metric-widget"
 import { PomodoroWidget } from "@/components/widgets/pomodoro-widget"
 
 export function LibraryWidget({ type }: { type: WidgetType }) {
@@ -28,6 +29,10 @@ export function LibraryWidget({ type }: { type: WidgetType }) {
       return <AcquaWidget />
     case "meteo":
       return <MeteoWidget />
+    case "peso":
+      return <PesoWidget />
+    case "sonno":
+      return <SonnoWidget />
     default:
       return null
   }
