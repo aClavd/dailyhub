@@ -1,9 +1,17 @@
 "use client"
 
-import { WIDGET_META, type WidgetType } from "@/lib/board"
+import { WIDGET_META, type WidgetSize, type WidgetType } from "@/lib/board"
 import { cn } from "@/lib/utils"
 
 import { useBoard } from "./board-context"
+
+/** Quante celle occupa ogni taglia, in stile Centro di Controllo. */
+const SIZE_CLASS: Record<WidgetSize, string> = {
+  "1x1": "",
+  "2x1": "sm:col-span-2",
+  "1x2": "sm:row-span-2",
+  "2x2": "sm:col-span-2 sm:row-span-2",
+}
 
 export function WidgetShell({
   type,
@@ -20,11 +28,14 @@ export function WidgetShell({
   return (
     <section
       className={cn(
-        "bg-card ring-foreground/10 flex min-w-0 flex-col rounded-xl ring-1",
-        meta.span === 2 && "sm:col-span-2",
+        // h-full riempie esattamente la cella (o le celle) assegnate dalla
+        // griglia della board: la tile ha sempre la stessa dimensione, il
+        // contenuto che non ci sta scorre dentro invece di deformarla.
+        "bg-card ring-foreground/10 flex h-full min-w-0 flex-col overflow-hidden rounded-xl ring-1",
+        SIZE_CLASS[meta.size],
       )}
     >
-      <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <h3 className="font-heading text-sm font-medium">{meta.title}</h3>
         {fixed ? (
           <span className="text-[0.6rem] font-medium tracking-wide text-ink-faint uppercase">
@@ -41,7 +52,7 @@ export function WidgetShell({
           </button>
         )}
       </header>
-      <div className="p-4">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
     </section>
   )
 }

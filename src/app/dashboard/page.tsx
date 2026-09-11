@@ -19,7 +19,7 @@ export default async function DashboardPage() {
   const firstName = session.user.name?.split(" ")[0]?.toLowerCase()
 
   return (
-    <div className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 sm:px-6">
+    <div className="w-full flex-1 px-4 pb-16 sm:px-6 lg:px-10 xl:px-14">
       <TopBar email={session.user.email} />
       <DashboardHeader firstName={firstName} />
 

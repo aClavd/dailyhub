@@ -40,7 +40,11 @@ export function Board({
         if (isLibraryWidget(type)) addWidget(type)
       }}
       className={cn(
-        "grid grid-cols-1 gap-4 rounded-xl transition-[outline-color] sm:grid-cols-2 xl:grid-cols-3",
+        // Griglia a tile in stile Control Center: celle di base fisse che si
+        // moltiplicano in base allo spazio disponibile (auto-fill) e un
+        // impacchettamento "dense" che chiude i buchi quando un blocco è più
+        // piccolo di quello sopra. Su mobile diventa una colonna semplice.
+        "grid grid-cols-1 gap-4 rounded-xl transition-[outline-color] sm:grid-flow-dense sm:auto-rows-[12rem] sm:grid-cols-[repeat(auto-fill,minmax(11rem,15rem))]",
         dragOver && "outline-primary outline-2 outline-dashed outline-offset-8",
       )}
     >
@@ -57,7 +61,7 @@ export function Board({
         </WidgetShell>
       ))}
 
-      <p className="border-border text-ink-faint flex min-h-28 items-center justify-center rounded-xl border border-dashed p-4 text-center text-xs sm:col-span-2 xl:col-span-1">
+      <p className="border-border text-ink-faint flex min-h-28 items-center justify-center rounded-xl border border-dashed p-4 text-center text-[0.7rem] leading-snug sm:h-full">
         Trascina un blocco dalla libreria — oppure toccalo
       </p>
     </div>
