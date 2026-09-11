@@ -25,6 +25,7 @@ type BoardApi = {
   moveWidget: (from: WidgetType, to: WidgetType) => void
   sizeOf: (type: WidgetType) => WidgetSize
   cycleSize: (type: WidgetType) => void
+  setSize: (type: WidgetType, size: WidgetSize) => void
   railCollapsed: boolean
   toggleRail: () => void
 }
@@ -122,6 +123,16 @@ export function BoardProvider({
     [sizes, persist],
   )
 
+  const setSize = useCallback(
+    (type: WidgetType, size: WidgetSize) => {
+      if (sizes[type] === size) return
+      const next = { ...sizes, [type]: size }
+      setSizes(next)
+      persist({ sizes: next })
+    },
+    [sizes, persist],
+  )
+
   const toggleRail = useCallback(() => {
     const next = !railCollapsed
     setRailCollapsed(next)
@@ -137,10 +148,21 @@ export function BoardProvider({
       moveWidget,
       sizeOf,
       cycleSize,
+      setSize,
       railCollapsed,
       toggleRail,
     }),
-    [order, addWidget, removeWidget, moveWidget, sizeOf, cycleSize, railCollapsed, toggleRail],
+    [
+      order,
+      addWidget,
+      removeWidget,
+      moveWidget,
+      sizeOf,
+      cycleSize,
+      setSize,
+      railCollapsed,
+      toggleRail,
+    ],
   )
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>

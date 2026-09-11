@@ -85,6 +85,18 @@ export const DND_MIME = "application/x-dailyhub-widget"
 /** MIME per trascinare un blocco già sulla board per riordinarlo. */
 export const REORDER_MIME = "application/x-dailyhub-reorder"
 
+export function sizeCols(size: WidgetSize): 1 | 2 {
+  return size === "2x1" || size === "2x2" ? 2 : 1
+}
+
+export function sizeRows(size: WidgetSize): 1 | 2 {
+  return size === "1x2" || size === "2x2" ? 2 : 1
+}
+
+export function makeSize(cols: 1 | 2, rows: 1 | 2): WidgetSize {
+  return `${cols}x${rows}` as WidgetSize
+}
+
 export function isLibraryWidget(value: string): value is WidgetType {
   return (LIBRARY_WIDGETS as readonly string[]).includes(value)
 }
