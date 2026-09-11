@@ -59,9 +59,10 @@ Una pagina sola, responsive. Dall'alto:
 - Sezione *Libreria*: blocchi da **trascinare** (o toccare, su mobile) sulla board. Set iniziale: **Studio/Pomodoro, Diario, Abitudini, Note rapide, Obiettivi della settimana, Lettura, Acqua, Meteo** — da rivedere con l'uso reale (candidati: spese, allenamento, link rapidi, streak).
 
 ### Board
-- Griglia di blocchi. I due fissi + quelli aggiunti dalla libreria. La × rimuove un blocco (torna disponibile in libreria).
-- **Layout persistente per-utente** (quali blocchi, in che ordine).
-- Post-MVP: riordino drag-and-drop, ridimensionamento 1/2 colonne.
+- Griglia logica di 6 colonne. I due blocchi fissi + quelli aggiunti dalla libreria, ognuno con posizione/dimensione propria (`x/y/w/h` in celle). La × rimuove un blocco (torna disponibile in libreria).
+- **Layout persistente per-utente** (posizione e dimensione di ogni blocco).
+- Riordino drag-and-drop (trascina un blocco su un altro, si scambiano) ✅. Resize per ridistribuzione (trascini un bordo, il vicino che lo condivide cede/riprende lo spazio, entro min/max) ✅ — vedi Fase 5.
+- Board centrata sull'ingombro reale dei blocchi (non a tutta larghezza), cresce quando aggiungi/ridimensioni; scorre in orizzontale (solo lei, non tutta la pagina) se i blocchi usano più colonne di quante ce ne stiano nella finestra.
 
 ### Blocco — Impegni di oggi *(fisso)*
 - Eventi della giornata corrente (orario, titolo, luogo/link Meet se presente).
@@ -205,7 +206,7 @@ Da questa fase in poi la priorità la detta l'uso reale, non il piano iniziale. 
 - Quick-add di eventi/note.
 - PWA per uso da mobile.
 - Recap con grafici (giorno/settimana/mese): trend umore, streak abitudini, sessioni pomodoro — ha senso quando c'è storico DB vero dietro (dopo la Fase 2). Preferire SVG fatti a mano coerenti col design system a una libreria di charting pesante.
-- **Resize continuo con ridistribuzione proporzionale** (widget non più a 4 taglie fisse, ma dimensione libera; il bordo condiviso funge da separatore: chi cresce ruba spazio al vicino che condivide quel bordo, non a tutta la board — a cascata sugli altri solo se quel vicino tocca il suo minimo) — **solo se le 4 taglie fisse iniziano a sembrare limitanti nell'uso reale**. È un modello alternativo a quello scelto in Fase 2 (proporzioni fisse + riposizionamento automatico via CSS Grid dense), non un suo completamento: richiederebbe un motore di layout su misura (constraint solver con min/max, grow/shrink, individuazione del vicino giusto da cui prendere spazio) — settimane di lavoro, sovradimensionato se il modello attuale funziona bene nell'uso quotidiano.
+- ~~Resize continuo con ridistribuzione proporzionale~~ ✅ **FATTO (12 set 2026)** — Claudio l'ha chiesta esplicitamente, non era un problema reale ma una scelta deliberata. Vedi §4: board a griglia logica (6 colonne), ogni blocco con `x/y/w/h` in celle (non più 4 taglie fisse), resize che ruba/cede spazio al vicino condiviso rispettando min/max, board che cresce/si ricentra con l'uso. Scelta di scope: incrementi di una cella (~240px), non pixel singolo, e cascata a un solo vicino diretto (non a catena) — resta CSS Grid nativo (`grid-column`/`grid-row` da x/y/w/h), non un constraint solver generico da zero.
 
 ---
 

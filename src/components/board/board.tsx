@@ -18,80 +18,85 @@ export function Board({
   mailSlot: React.ReactNode
   diarioSlot: React.ReactNode
 }) {
-  const { order, addWidget } = useBoard()
+  const { layout, addWidget } = useBoard()
   const [dragOver, setDragOver] = useState(false)
+
+  // Colonne davvero usate dai blocchi presenti, non un tetto massimo fisso:
+  // con pochi blocchi la griglia (e quindi la board, centrata dal genitore
+  // con mx-auto/w-fit) resta stretta; crescendo si allarga fino a BOARD_COLS.
+  const usedCols = Math.max(1, ...layout.map((p) => p.x + p.w))
 
   return (
     <div>
-      <div
-        onDragOver={(event) => {
-          if (!event.dataTransfer.types.includes(DND_MIME)) return
-          event.preventDefault()
-          event.dataTransfer.dropEffect = "copy"
-          setDragOver(true)
-        }}
-        onDragLeave={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+      {/* Con posizioni esplicite (x/y/w/h) la griglia non si restringe più
+          da sola per stare nello spazio disponibile, a differenza di prima
+          (auto-fit): se i blocchi usano più colonne di quante ce ne stiano
+          nella finestra, l'alternativa a "spingere fuori tutta la pagina"
+          è farla scorrere solo qui, in orizzontale. */}
+      <div className="overflow-x-auto">
+        <div
+          onDragOver={(event) => {
+            if (!event.dataTransfer.types.includes(DND_MIME)) return
+            event.preventDefault()
+            event.dataTransfer.dropEffect = "copy"
+            setDragOver(true)
+          }}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+              setDragOver(false)
+            }
+          }}
+          onDrop={(event) => {
+            if (!event.dataTransfer.types.includes(DND_MIME)) return
+            event.preventDefault()
             setDragOver(false)
-          }
-        }}
-        onDrop={(event) => {
-          if (!event.dataTransfer.types.includes(DND_MIME)) return
-          event.preventDefault()
-          setDragOver(false)
-          const type = event.dataTransfer.getData(DND_MIME)
-          if (isLibraryWidget(type)) addWidget(type)
-        }}
-        className={cn(
-          // Griglia a tile in stile Control Center: celle di base fisse che si
-          // moltiplicano in base allo spazio disponibile. auto-fit (non
-          // auto-fill) è la parte che conta per il centraggio: le colonne
-          // vuote non occupano spazio, quindi la larghezza intrinseca della
-          // griglia segue il numero di blocchi presenti, non il massimo che
-          // ci starebbe. mx-auto + w-fit + max-width devono stare sulla
-          // griglia stessa (non su un contenitore esterno): è lei che deve
-          // conoscere il proprio tetto massimo per calcolare quante colonne
-          // "auto-fit" tentare prima di collassare quelle vuote — su un
-          // antenato non farebbe nulla. Risultato: con pochi blocchi il
-          // gruppo resta compatto e centrato, con tanti si allarga (fino al
-          // tetto) restando centrato allo stesso modo — il centro è quello
-          // dell'area disponibile tra rail e cronologia, non della viewport,
-          // perché questo elemento vive già dentro il contenuto flessibile
-          // tra i due. Impacchettamento "dense" per chiudere i buchi quando
-          // un blocco è più piccolo di quello sopra. Su mobile resta una
-          // colonna semplice a piena larghezza.
-          "grid grid-cols-1 gap-4 rounded-xl transition-[outline-color] sm:mx-auto sm:w-fit sm:max-w-[1400px] sm:grid-flow-dense sm:auto-rows-[12rem] sm:grid-cols-[repeat(auto-fit,minmax(11rem,15rem))]",
-          dragOver && "outline-primary outline-2 outline-dashed outline-offset-8",
-        )}
-      >
-        {order.map((type) => {
-          if (type === "agenda") {
+            const type = event.dataTransfer.getData(DND_MIME)
+            if (isLibraryWidget(type)) addWidget(type)
+          }}
+          style={{ gridTemplateColumns: `repeat(${usedCols}, 15rem)` }}
+          className={cn(
+            // Griglia logica: ogni blocco ha una posizione/dimensione esplicita
+            // (x/y/w/h in celle, vedi board-context.tsx) applicata come
+            // grid-column/grid-row inline su ogni WidgetShell — non più un
+            // impacchettamento automatico del browser. Il numero di colonne
+            // qui sopra viene dai dati stessi (usedCols), quindi la griglia
+            // ha sempre esattamente la larghezza che le serve: niente più
+            // trucchi auto-fit/max-width, il centraggio (mx-auto sul
+            // genitore) funziona perché la larghezza è già quella giusta.
+            "board-grid grid auto-rows-[12rem] gap-4 rounded-xl transition-[outline-color]",
+            "sm:mx-auto sm:w-fit sm:max-w-[1400px]",
+            dragOver && "outline-primary outline-2 outline-dashed outline-offset-8",
+          )}
+        >
+          {layout.map(({ type }) => {
+            if (type === "agenda") {
+              return (
+                <WidgetShell key={type} type="agenda" fixed>
+                  {agendaSlot}
+                </WidgetShell>
+              )
+            }
+            if (type === "mail") {
+              return (
+                <WidgetShell key={type} type="mail" fixed>
+                  {mailSlot}
+                </WidgetShell>
+              )
+            }
+            if (type === "diario") {
+              return (
+                <WidgetShell key={type} type="diario">
+                  {diarioSlot}
+                </WidgetShell>
+              )
+            }
             return (
-              <WidgetShell key={type} type="agenda" fixed>
-                {agendaSlot}
+              <WidgetShell key={type} type={type}>
+                <LibraryWidget type={type} />
               </WidgetShell>
             )
-          }
-          if (type === "mail") {
-            return (
-              <WidgetShell key={type} type="mail" fixed>
-                {mailSlot}
-              </WidgetShell>
-            )
-          }
-          if (type === "diario") {
-            return (
-              <WidgetShell key={type} type="diario">
-                {diarioSlot}
-              </WidgetShell>
-            )
-          }
-          return (
-            <WidgetShell key={type} type={type}>
-              <LibraryWidget type={type} />
-            </WidgetShell>
-          )
-        })}
+          })}
+        </div>
       </div>
 
       {/* Non più un widget finto dentro la griglia: è una didascalia sotto —

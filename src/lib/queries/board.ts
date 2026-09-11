@@ -3,10 +3,9 @@ import "server-only"
 import { auth } from "@/auth"
 import {
   DEFAULT_BOARD_STATE,
-  isWidgetType,
+  migrateLegacyLayout,
   type BoardState,
-  type WidgetSize,
-  type WidgetType,
+  type WidgetPlacement,
 } from "@/lib/board"
 import { prisma } from "@/lib/prisma"
 
@@ -23,12 +22,19 @@ export async function getBoardLayout(): Promise<BoardState> {
   })
   if (!row) return DEFAULT_BOARD_STATE
 
-  const order = row.order.filter(isWidgetType)
+  const saved = row.layout as WidgetPlacement[]
+  // Board create prima della griglia logica: `layout` è ancora vuoto, ma
+  // `order`/`sizes` hanno i dati vecchi — si ricostruisce al volo, nessuna
+  // migrazione manuale richiesta (si salva da sola alla prossima modifica).
+  const layout =
+    Array.isArray(saved) && saved.length > 0
+      ? saved
+      : migrateLegacyLayout(row.order, (row.sizes as Record<string, string>) ?? {})
+
   return {
-    order: order.length > 0 ? order : DEFAULT_BOARD_STATE.order,
-    sizes: (row.sizes as Partial<Record<WidgetType, WidgetSize>>) ?? {},
+    layout: layout.length > 0 ? layout : DEFAULT_BOARD_STATE.layout,
     railCollapsed: row.railCollapsed,
-    // A differenza di `order`, una lista vuota qui è uno stato valido (l'utente
+    // A differenza del layout, una lista vuota qui è uno stato valido (l'utente
     // ha rimosso tutte le abitudini di proposito): nessun fallback ai default.
     habitList: row.habitList,
   }

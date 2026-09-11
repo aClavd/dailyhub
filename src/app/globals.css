@@ -237,3 +237,19 @@
     scale: 1;
   }
 }
+
+/* La board posiziona ogni blocco con grid-column/grid-row inline (calcolati
+   da x/y/w/h in board.tsx), che batte qualsiasi classe Tailwind per
+   specificità. Sotto sm: vogliamo però una colonna singola a piena
+   larghezza (niente griglia logica su schermi stretti) — l'unico modo di
+   vincere uno style inline da un breakpoint è questo, per questo l'unico
+   !important del progetto. */
+@media (max-width: 639px) {
+  .board-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .board-cell {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}

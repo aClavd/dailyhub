@@ -33,13 +33,17 @@ model JournalEntry {
   @@index([userId])
 }
 
-/// Layout della board componibile: quali blocchi, in che ordine, con che taglia.
+/// Layout della board componibile: griglia logica con posizione/dimensione
+/// esplicita per blocco (vedi src/lib/board.ts, WidgetPlacement).
 model BoardLayout {
   userId    String   @id
-  /// WidgetType[] nell'ordine di visualizzazione (fissi inclusi).
+  /// @deprecated — sostituito da `layout`. Non più letto dal codice nuovo,
+  /// tenuto solo per la migrazione automatica delle board create prima.
   order     String[]
-  /// { [widgetType]: "1x1" | "2x1" | "1x2" | "2x2" }, solo le taglie non di default.
+  /// @deprecated — sostituito da `layout`.
   sizes     Json     @default("{}")
+  /// WidgetPlacement[] = { type, x, y, w, h } in celle logiche (non px).
+  layout    Json     @default("[]")
   railCollapsed Boolean @default(false)
   /// Nomi delle abitudini personalizzate, condivisi tra tutti i giorni del
   /// widget Diario (lo stato "fatta/non fatta" invece è per giorno, su
