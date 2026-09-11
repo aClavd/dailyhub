@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 
-import { signIn } from "@/auth"
 import { Button } from "@/components/ui/button"
+import { reconnectGoogle } from "@/lib/actions/auth"
 import { oraBreve, traQuanto } from "@/lib/datetime"
 import type { CalendarEvent, CalendarResult } from "@/lib/google/calendar"
 import { cn } from "@/lib/utils"
@@ -140,11 +140,6 @@ function Tag({
       {children}
     </span>
   )
-}
-
-async function reconnectGoogle() {
-  "use server"
-  await signIn("google", { redirectTo: "/dashboard" })
 }
 
 function AgendaError({ reason }: { reason: "unauthenticated" | "token" | "api" }) {

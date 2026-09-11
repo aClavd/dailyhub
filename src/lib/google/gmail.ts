@@ -42,10 +42,10 @@ function parseFrom(raw: string | undefined): { name: string; email: string | nul
 }
 
 /**
- * Mail "importanti" da Gmail: marcate importanti da Gmail stesso o starred —
- * criterio di partenza, da raffinare con l'uso (vedi PRD §8, Fase 3).
+ * Tutta la posta in arrivo di Gmail (non solo importanti/starred: Claudio
+ * vuole vedere tutto, decide lui cosa conta — vedi PRD §8, Fase 3).
  */
-export async function getImportantGmail(): Promise<GmailResult> {
+export async function getGmailMessages(): Promise<GmailResult> {
   const session = await auth()
   if (!session?.user) return { ok: false, reason: "unauthenticated" }
   if (session.error || !session.accessToken) {
@@ -53,8 +53,8 @@ export async function getImportantGmail(): Promise<GmailResult> {
   }
 
   const listUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages")
-  listUrl.searchParams.set("q", "is:important OR is:starred")
-  listUrl.searchParams.set("maxResults", "12")
+  listUrl.searchParams.set("q", "in:inbox")
+  listUrl.searchParams.set("maxResults", "25")
 
   let listRes: Response
   try {

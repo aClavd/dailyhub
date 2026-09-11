@@ -1,32 +1,48 @@
+"use client"
+
+import { useMemo, useState } from "react"
 import type { ReactNode } from "react"
 
-import { signIn } from "@/auth"
 import { Button } from "@/components/ui/button"
-import type { MailMessage, MailResult, ProviderStatus } from "@/lib/mail"
+import { Segmented } from "@/components/widgets/_shared"
+import { reconnectGoogle } from "@/lib/actions/auth"
+import type { MailMessage, MailProvider, MailResult, ProviderStatus } from "@/lib/mail"
 import { cn } from "@/lib/utils"
+
+// Segmented usa il valore stesso come etichetta del bottone (nessuna
+// mappa a parte): i valori sono già le scritte che vuoi vedere.
+type Tab = "Tutte" | "Gmail" | "Libero"
+const TABS: readonly Tab[] = ["Tutte", "Gmail", "Libero"]
 
 /** Contenuto del blocco Mail (senza card: il guscio lo mette la board). */
 export function MailBody({ result }: { result: MailResult }) {
+  const [tab, setTab] = useState<Tab>("Tutte")
+
+  const messages = useMemo(() => {
+    if (tab === "Tutte") return result.messages
+    return result.messages.filter((m) => m.provider === tab.toLowerCase())
+  }, [result.messages, tab])
+
   return (
     <div>
-      <p className="text-ink-faint mb-2 font-mono text-[0.68rem] tracking-wide uppercase">
-        {countLabel(result.messages.length)}
+      <Segmented label="Casella" options={TABS} value={tab} onChange={setTab} />
+
+      <p className="text-ink-faint mt-3 mb-2 font-mono text-[0.68rem] tracking-wide uppercase">
+        {countLabel(messages.length)}
       </p>
-      {result.messages.length > 0 ? (
-        <MailList messages={result.messages} />
+      {messages.length > 0 ? (
+        <MailList messages={messages} />
       ) : (
-        <p className="text-ink-faint py-6 text-center text-sm">
-          Nessuna mail importante al momento.
-        </p>
+        <p className="text-ink-faint py-6 text-center text-sm">Nessuna mail qui.</p>
       )}
-      <ProviderNotices gmail={result.gmail} libero={result.libero} />
+      <ProviderNotices gmail={result.gmail} libero={result.libero} tab={tab} />
     </div>
   )
 }
 
 function countLabel(n: number) {
-  if (n === 0) return "niente di importante"
-  return `${n} ${n === 1 ? "mail" : "mail"} importanti`
+  if (n === 0) return "nessuna mail"
+  return `${n} ${n === 1 ? "mail" : "mail"}`
 }
 
 function MailList({ messages }: { messages: MailMessage[] }) {
@@ -58,31 +74,27 @@ function MailRow({ message }: { message: MailMessage }) {
     </div>
   )
 
-  const rowClass = "border-border rounded-md border-t px-2 py-2.5 text-sm first:border-t-0"
+  const rowClass = cn(
+    "border-border flex gap-3 border-t border-l-2 px-2.5 py-2.5 text-sm first:border-t-0",
+    message.provider === "gmail" ? "border-l-gmail-fg" : "border-l-libero-fg",
+  )
 
   if (message.link) {
     return (
-      <a
-        href={message.link}
-        target="_blank"
-        rel="noreferrer"
-        className={cn(rowClass, "hover:bg-muted flex gap-3")}
-      >
+      <a href={message.link} target="_blank" rel="noreferrer" className={cn(rowClass, "hover:bg-muted")}>
         {content}
       </a>
     )
   }
-  return <div className={cn(rowClass, "flex gap-3")}>{content}</div>
+  return <div className={rowClass}>{content}</div>
 }
 
-function ProviderTag({ provider }: { provider: MailMessage["provider"] }) {
+function ProviderTag({ provider }: { provider: MailProvider }) {
   return (
     <span
       className={cn(
         "inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[0.62rem] font-semibold tracking-wide uppercase",
-        provider === "gmail"
-          ? "border-border text-ink-soft border"
-          : "bg-primary text-primary-foreground",
+        provider === "gmail" ? "bg-gmail-bg text-gmail-fg" : "bg-libero-bg text-libero-fg",
       )}
     >
       {provider === "gmail" ? "Gmail" : "Libero"}
@@ -104,16 +116,19 @@ function dateLabel(iso: string) {
   return new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short" }).format(d)
 }
 
-async function reconnectGoogle() {
-  "use server"
-  await signIn("google", { redirectTo: "/dashboard" })
-}
-
-/** Piccoli avvisi sotto la lista se un provider non va — l'altro intanto continua a mostrare quello che ha. */
-function ProviderNotices({ gmail, libero }: { gmail: ProviderStatus; libero: ProviderStatus }) {
+/** Piccoli avvisi sotto la lista se un provider non va — solo quelli rilevanti per la sezione aperta. */
+function ProviderNotices({
+  gmail,
+  libero,
+  tab,
+}: {
+  gmail: ProviderStatus
+  libero: ProviderStatus
+  tab: Tab
+}) {
   const notices: ReactNode[] = []
 
-  if (!gmail.ok) {
+  if (!gmail.ok && tab !== "Libero") {
     if (gmail.reason === "token") {
       notices.push(
         <div key="gmail" className="flex items-center gap-2">
@@ -134,7 +149,7 @@ function ProviderNotices({ gmail, libero }: { gmail: ProviderStatus; libero: Pro
     }
   }
 
-  if (!libero.ok) {
+  if (!libero.ok && tab !== "Gmail") {
     notices.push(
       <p key="libero" className="text-ink-faint text-xs">
         {libero.reason === "not-configured"

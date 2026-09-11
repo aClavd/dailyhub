@@ -15,12 +15,12 @@ export type LiberoResult =
   | { ok: false; reason: "not-configured" | "api"; detail?: string }
 
 /**
- * Mail "importanti" da Libero via IMAP: niente OAuth/API, si legge con le
- * credenziali dell'account (password applicativa consigliata — vedi
- * docs/SETUP-LIBERO.md). "Importante" = messaggi contrassegnati speciali
- * (flag \Flagged), stesso criterio di partenza di Gmail (vedi PRD §8, Fase 3).
+ * Tutta la posta in arrivo (INBOX) di Libero via IMAP: niente OAuth/API, si
+ * legge con le credenziali dell'account (password applicativa consigliata —
+ * vedi docs/SETUP-LIBERO.md). Non filtra per importanza: Claudio vuole vedere
+ * tutto (vedi PRD §8, Fase 3).
  */
-export async function getImportantLibero(): Promise<LiberoResult> {
+export async function getLiberoMessages(): Promise<LiberoResult> {
   const email = process.env.LIBERO_EMAIL
   const password = process.env.LIBERO_APP_PASSWORD
   if (!email || !password) return { ok: false, reason: "not-configured" }
@@ -37,12 +37,12 @@ export async function getImportantLibero(): Promise<LiberoResult> {
     await client.connect()
     const lock = await client.getMailboxLock("INBOX")
     try {
-      const uids = await client.search({ flagged: true }, { uid: true })
+      const uids = await client.search({ all: true }, { uid: true })
       if (!uids || uids.length === 0) return { ok: true, messages: [] }
 
       // Le più recenti prima: gli uid crescono nel tempo, si prendono le
-      // ultime 12 e si ordinano a ritroso.
-      const recent = uids.slice(-12).reverse()
+      // ultime 25 e si ordinano a ritroso.
+      const recent = uids.slice(-25).reverse()
 
       const messages: LiberoMessage[] = []
       for await (const msg of client.fetch(recent, { envelope: true, uid: true })) {

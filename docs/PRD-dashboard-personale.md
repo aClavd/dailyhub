@@ -170,12 +170,12 @@ Una pagina sola, responsive. Dall'alto:
 ---
 
 ### Fase 3 — Blocco Mail Importanti, multi-provider ✅ CODICE FATTO (11 set 2026)
-- **Gmail:** REST API diretta (stesso pattern del blocco Calendar, niente SDK `googleapis`), query `is:important OR is:starred`, fino a 12 messaggi, un GET di metadata per messaggio (mittente, oggetto, snippet, data). Link diretto al messaggio su Gmail web.
-- **Libero:** IMAP via `imapflow`, ricerca `\Flagged` sulla INBOX, fino a 12 messaggi via `envelope` (mittente, oggetto, data). Nessun link diretto (IMAP non ha un URL web).
-- Interfaccia comune (`src/lib/mail.ts`): unisce le due liste per data, ogni provider ha uno stato indipendente — se uno fallisce o non è configurato, l'altro continua a mostrare quello che ha. UI: targhetta provider, mittente, oggetto, snippet (solo Gmail), data/ora.
-- Stati gestiti: sessione Google scaduta (bottone "Riconnetti"), Libero non configurato (nota, link alla guida) o non raggiungibile.
+- **Gmail:** REST API diretta (stesso pattern del blocco Calendar, niente SDK `googleapis`), query `in:inbox` (tutta la posta in arrivo, non filtrata), fino a 25 messaggi, un GET di metadata per messaggio (mittente, oggetto, snippet, data). Link diretto al messaggio su Gmail web.
+- **Libero:** IMAP via `imapflow`, tutta la INBOX (`search({all:true})`), fino a 25 messaggi via `envelope` (mittente, oggetto, data). Nessun link diretto (IMAP non ha un URL web).
+- Interfaccia comune (`src/lib/mail.ts`): unisce le due liste per data, ogni provider ha uno stato indipendente — se uno fallisce o non è configurato, l'altro continua a mostrare quello che ha.
+- **UI a 3 sezioni** (richiesta esplicita di Claudio, non filtrare per "importanza": vuole vedere tutto e decidere lui): tab "Tutte / Gmail / Libero" (componente `Segmented` condiviso). Ogni riga ha targhetta provider colorata + bordo sinistro colorato (token design system già esistenti `--gmail-fg/bg` rosso-arancio, `--libero-fg/bg` blu, mai usati finora). Gli avvisi sotto la lista si filtrano per la sezione aperta.
+- Stati gestiti: sessione Google scaduta (bottone "Riconnetti", ora in `src/lib/actions/auth.ts` condivisa con Impegni), Libero non configurato (nota, link alla guida) o non raggiungibile.
 - **Resta da fare (non di codice):** Claudio deve compilare `LIBERO_EMAIL` / `LIBERO_APP_PASSWORD` in `.env.local` (vedi `docs/SETUP-LIBERO.md`) perché il blocco Libero passi da "non configurato" a mail reali.
-- "Importante" resta il criterio di partenza (starred/flagged) — da raffinare con l'uso reale, come da nota originale.
 
 **Obiettivo di fine fase:** dashboard MVP completa, sola lettura su Impegni e Mail (Gmail + Libero).
 

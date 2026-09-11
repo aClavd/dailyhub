@@ -1,7 +1,7 @@
 import "server-only"
 
-import { getImportantGmail } from "@/lib/google/gmail"
-import { getImportantLibero } from "@/lib/libero-mail"
+import { getGmailMessages } from "@/lib/google/gmail"
+import { getLiberoMessages } from "@/lib/libero-mail"
 
 export type MailProvider = "gmail" | "libero"
 
@@ -31,13 +31,16 @@ export type MailResult = {
 }
 
 /**
- * Unisce le mail importanti di Gmail e Libero in un'unica lista, più recenti
- * prima. Ogni provider ha il suo stato: se uno dei due non è configurato o
- * fallisce, l'altro continua a mostrare quello che ha (vedi PRD §8, Fase 3 —
- * "interfaccia comune ai due provider").
+ * Unisce la posta di Gmail e Libero in un'unica lista, più recenti prima —
+ * tutta la posta in arrivo, non filtrata per importanza (Claudio decide lui
+ * cosa conta). Ogni provider ha il suo stato: se uno dei due non è
+ * configurato o fallisce, l'altro continua a mostrare quello che ha (vedi
+ * PRD §8, Fase 3 — "interfaccia comune ai due provider"). Il campo
+ * `provider` su ogni messaggio permette alla UI di offrire le 3 sezioni
+ * (tutte / solo Gmail / solo Libero) senza richieste separate.
  */
-export async function getImportantMail(): Promise<MailResult> {
-  const [gmail, libero] = await Promise.all([getImportantGmail(), getImportantLibero()])
+export async function getMail(): Promise<MailResult> {
+  const [gmail, libero] = await Promise.all([getGmailMessages(), getLiberoMessages()])
 
   const messages: MailMessage[] = [
     ...(gmail.ok

@@ -17,7 +17,7 @@ import { chiaveGiorno } from "@/lib/datetime"
 import { getBoardLayout } from "@/lib/queries/board"
 import { getDiarioEntry } from "@/lib/queries/diario"
 import { getTodayEvents } from "@/lib/google/calendar"
-import { getImportantMail } from "@/lib/mail"
+import { getMail } from "@/lib/mail"
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -66,6 +66,6 @@ async function AgendaSection() {
 }
 
 async function MailSection() {
-  const result = await getImportantMail()
+  const result = await getMail()
   return <MailBody result={result} />
 }
