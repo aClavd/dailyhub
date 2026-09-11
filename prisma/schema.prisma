@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // In Prisma 7 l'URL di connessione non sta più qui: per la CLI (migrate)
+  // è in prisma.config.ts (DIRECT_URL), per PrismaClient a runtime è nel
+  // driver adapter in src/lib/prisma.ts (DATABASE_URL, pooler).
+}
+
+/// Una voce di diario per un utente in un giorno. Un utente = un Google `sub`.
+model JournalEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  /// Formato "YYYY-MM-DD", stesso fuso del client che scrive.
+  date      String
+  mood      String?
+  obiettivo String   @default("")
+  testo     String   @default("")
+  wins      String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+/// Layout della board componibile: quali blocchi, in che ordine, con che taglia.
+model BoardLayout {
+  userId    String   @id
+  /// WidgetType[] nell'ordine di visualizzazione (fissi inclusi).
+  order     String[]
+  /// { [widgetType]: "1x1" | "2x1" | "1x2" | "2x2" }, solo le taglie non di default.
+  sizes     Json     @default("{}")
+  railCollapsed Boolean @default(false)
+  updatedAt DateTime @updatedAt
+}
