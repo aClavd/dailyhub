@@ -195,6 +195,8 @@ Da questa fase in poi la priorità la detta l'uso reale, non il piano iniziale. 
 - Statistiche/streak sul journaling.
 - Quick-add di eventi/note.
 - PWA per uso da mobile.
+- Recap con grafici (giorno/settimana/mese): trend umore, streak abitudini, sessioni pomodoro — ha senso quando c'è storico DB vero dietro (dopo la Fase 2). Preferire SVG fatti a mano coerenti col design system a una libreria di charting pesante.
+- **Resize continuo con ridistribuzione proporzionale** (widget non più a 4 taglie fisse, ma dimensione libera con vicini che assorbono la differenza, come i pannelli di VS Code) — **solo se le 4 taglie fisse iniziano a sembrare limitanti nell'uso reale**. È un modello alternativo a quello scelto in Fase 2 (proporzioni fisse + riposizionamento automatico via CSS Grid dense), non un suo completamento: richiederebbe un motore di layout su misura (constraint solver con min/max, grow/shrink, cascata sui vicini) — settimane di lavoro, sovradimensionato se il modello attuale funziona bene nell'uso quotidiano.
 
 ---
 
