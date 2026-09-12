@@ -9,7 +9,6 @@ export type WidgetType =
   | "obiettivi"
   | "lettura"
   | "acqua"
-  | "meteo"
 
 /** Larghezza della griglia logica della board, in celle (~15rem l'una). */
 export const BOARD_COLS = 6
@@ -62,13 +61,17 @@ export const WIDGET_META: Record<WidgetType, WidgetMeta> = {
   },
   lettura: { title: "Lettura", desc: "libro in corso", w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 2 },
   acqua: { title: "Acqua", desc: "bicchieri di oggi", w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 2 },
-  meteo: { title: "Meteo", desc: "oggi, in breve", w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 2 },
 }
 
 /** Blocchi sempre presenti, non rimovibili (ma spostabili). */
 export const FIXED_WIDGETS: readonly WidgetType[] = ["agenda", "mail"]
 
-/** Blocchi trascinabili dalla libreria. */
+/**
+ * Blocchi trascinabili dalla libreria. "meteo" (e "spotify", quando ci sarà)
+ * non ci sono: non sono blocchi della board, sono fissi in testata ai lati
+ * del saluto (dashboard-header.tsx) — non ha senso poterli rimuovere o
+ * spostare come gli altri.
+ */
 export const LIBRARY_WIDGETS: readonly WidgetType[] = [
   "diario",
   "pomodoro",
@@ -76,7 +79,6 @@ export const LIBRARY_WIDGETS: readonly WidgetType[] = [
   "obiettivi",
   "lettura",
   "acqua",
-  "meteo",
 ]
 
 /** Blocchi di libreria presenti sulla board al primo avvio. */
