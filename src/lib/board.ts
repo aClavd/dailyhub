@@ -84,6 +84,24 @@ export const LIBRARY_WIDGETS: readonly WidgetType[] = [
 /** Blocchi di libreria presenti sulla board al primo avvio. */
 export const DEFAULT_LAYOUT: WidgetType[] = ["diario", "pomodoro"]
 
+/** Colonne davvero usate dai blocchi presenti — vedi boardNaturalWidthRem. */
+export function boardUsedCols(layout: readonly WidgetPlacement[]): number {
+  return Math.max(1, ...layout.map((p) => p.x + p.w))
+}
+
+/**
+ * Larghezza "naturale" della board in rem (tutte le colonne a 15rem piene,
+ * gap inclusi) — quella che userebbe se ci stesse comoda. Condivisa da
+ * board.tsx (la griglia vera) e dashboard-header.tsx (Meteo/Spotify in
+ * testata, allineati agli stessi bordi): usando la stessa formula sui dati
+ * dello stesso useBoard(), i due combaciano sempre in pixel, senza dover
+ * misurare nulla via JS.
+ */
+export function boardNaturalWidthRem(layout: readonly WidgetPlacement[]): number {
+  const cols = boardUsedCols(layout)
+  return cols * 15 + (cols - 1)
+}
+
 /**
  * Prima posizione libera (bin-packing first-fit, riga per riga) per un
  * blocco w×h che non si sovrapponga a niente di già piazzato e non superi

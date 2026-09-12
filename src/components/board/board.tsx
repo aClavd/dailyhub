@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 
-import { DND_MIME, isLibraryWidget } from "@/lib/board"
+import { DND_MIME, boardNaturalWidthRem, boardUsedCols, isLibraryWidget } from "@/lib/board"
 import { cn } from "@/lib/utils"
 
 import { useBoard } from "./board-context"
@@ -25,18 +25,19 @@ export function Board({
 
   // Colonne davvero usate dai blocchi presenti, non un tetto massimo fisso:
   // con pochi blocchi la griglia resta stretta; crescendo si allarga fino a
-  // BOARD_COLS.
-  const usedCols = Math.max(1, ...layout.map((p) => p.x + p.w))
-  // Larghezza "naturale" (tutte le colonne a 15rem piene) — è quella che la
-  // board userebbe se ci stesse comoda. min(naturale, 100%) sotto è quello
-  // che tiene fede a "sempre un unico rettangolo": se la finestra è più
-  // stretta della larghezza naturale, le colonne si restringono tutte
-  // insieme (proporzionalmente, via minmax(8rem, 15rem) sotto) per
-  // continuare a stare dentro il rettangolo disponibile. Il minimo di 8rem
-  // è dove ci si ferma di restringersi — sotto diventerebbe illeggibile
-  // (orari/testo tagliati); da lì in giù subentra overflow-x-auto come
-  // rete di sicurezza, non lo scroll come prima via d'uscita.
-  const naturalWidth = `${usedCols * 15 + (usedCols - 1)}rem`
+  // BOARD_COLS. boardUsedCols/boardNaturalWidthRem sono condivise con
+  // dashboard-header.tsx, che le usa per allineare Meteo/Spotify agli stessi
+  // bordi di questa griglia.
+  const usedCols = boardUsedCols(layout)
+  // min(naturale, 100%) sotto è quello che tiene fede a "sempre un unico
+  // rettangolo": se la finestra è più stretta della larghezza naturale, le
+  // colonne si restringono tutte insieme (proporzionalmente, via
+  // minmax(8rem, 15rem) sotto) per continuare a stare dentro il rettangolo
+  // disponibile. Il minimo di 8rem è dove ci si ferma di restringersi —
+  // sotto diventerebbe illeggibile (orari/testo tagliati); da lì in giù
+  // subentra overflow-x-auto come rete di sicurezza, non lo scroll come
+  // prima via d'uscita.
+  const naturalWidth = `${boardNaturalWidthRem(layout)}rem`
 
   return (
     <div>
