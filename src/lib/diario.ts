@@ -15,6 +15,8 @@ export type DiarioState = {
   habits: Record<string, boolean>
   weight: number | null
   sleepHours: number | null
+  /** Sessioni di studio completate oggi — vedi widget Pomodoro. */
+  pomodoroSessions: number
 }
 
 export const DIARIO_EMPTY: DiarioState = {
@@ -25,6 +27,7 @@ export const DIARIO_EMPTY: DiarioState = {
   habits: {},
   weight: null,
   sleepHours: null,
+  pomodoroSessions: 0,
 }
 
 // Punto di partenza ispirato a un tracker reale: personalizzabile da qui in poi.

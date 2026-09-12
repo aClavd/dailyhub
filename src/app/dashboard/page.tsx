@@ -13,6 +13,7 @@ import { MailBody } from "@/components/dashboard/mail-card"
 import { MailSkeletonBody } from "@/components/dashboard/mail-skeleton"
 import { TopBar } from "@/components/dashboard/top-bar"
 import { DiarioWidget } from "@/components/widgets/diario-widget"
+import { PomodoroWidget } from "@/components/widgets/pomodoro-widget"
 import { chiaveGiorno } from "@/lib/datetime"
 import { getBoardLayout } from "@/lib/queries/board"
 import { getDiarioToday } from "@/lib/queries/diario"
@@ -52,6 +53,7 @@ export default async function DashboardPage() {
               </Suspense>
             }
             diarioSlot={<DiarioWidget initial={diarioInitial} dayNumber={dayNumber} />}
+            pomodoroSlot={<PomodoroWidget initial={diarioInitial.pomodoroSessions} />}
           />
         </div>
         <HistoryPanel />

@@ -13,10 +13,12 @@ export function Board({
   agendaSlot,
   mailSlot,
   diarioSlot,
+  pomodoroSlot,
 }: {
   agendaSlot: React.ReactNode
   mailSlot: React.ReactNode
   diarioSlot: React.ReactNode
+  pomodoroSlot: React.ReactNode
 }) {
   const { layout, addWidget } = useBoard()
   const [dragOver, setDragOver] = useState(false)
@@ -100,6 +102,13 @@ export function Board({
               return (
                 <WidgetShell key={type} type="diario">
                   {diarioSlot}
+                </WidgetShell>
+              )
+            }
+            if (type === "pomodoro") {
+              return (
+                <WidgetShell key={type} type="pomodoro">
+                  {pomodoroSlot}
                 </WidgetShell>
               )
             }

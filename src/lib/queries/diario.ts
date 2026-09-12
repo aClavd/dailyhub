@@ -12,6 +12,7 @@ function fromRow(row: {
   habits: unknown
   weight: number | null
   sleepHours: number | null
+  pomodoroSessions: number
 }): DiarioState {
   return {
     mood: (row.mood as DiarioState["mood"]) ?? null,
@@ -21,6 +22,7 @@ function fromRow(row: {
     habits: (row.habits as Record<string, boolean>) ?? {},
     weight: row.weight,
     sleepHours: row.sleepHours,
+    pomodoroSessions: row.pomodoroSessions,
   }
 }
 
