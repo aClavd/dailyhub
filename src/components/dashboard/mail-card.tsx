@@ -142,7 +142,7 @@ function ProviderNotices({
       )
     } else if (gmail.reason !== "unauthenticated") {
       notices.push(
-        <p key="gmail" className="text-ink-faint text-xs">
+        <p key="gmail" className="text-ink-faint text-xs" title={gmail.detail}>
           Gmail: non riesco a leggerla adesso.
         </p>,
       )
@@ -151,7 +151,14 @@ function ProviderNotices({
 
   if (!libero.ok && tab !== "Gmail") {
     notices.push(
-      <p key="libero" className="text-ink-faint text-xs">
+      <p
+        key="libero"
+        className="text-ink-faint text-xs"
+        // Il dettaglio tecnico (es. l'errore IMAP vero) sta nel title, al
+        // passaggio del mouse — non è un messaggio da mostrare sempre, ma
+        // utile per capire cosa non va senza dover guardare i log del server.
+        title={libero.reason === "api" ? libero.detail : undefined}
+      >
         {libero.reason === "not-configured"
           ? "Libero: non ancora configurata (docs/SETUP-LIBERO.md)."
           : "Libero: non riesco a leggerla adesso."}
