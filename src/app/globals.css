@@ -247,6 +247,7 @@
 @media (max-width: 639px) {
   .board-grid {
     grid-template-columns: 1fr !important;
+    width: 100% !important;
   }
   .board-cell {
     grid-column: 1 / -1 !important;

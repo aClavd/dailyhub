@@ -9,10 +9,6 @@ import { cn } from "@/lib/utils"
 import { useBoard } from "./board-context"
 import { GripIcon, ResizeCornerIcon } from "./widget-icon"
 
-/** Colonna 15rem + gap 1rem, riga 12rem + gap 1rem: passo di una cella, in px. */
-const CELL_W = 256
-const CELL_H = 208
-
 export function WidgetShell({
   type,
   fixed = false,
@@ -30,6 +26,7 @@ export function WidgetShell({
   const [dragOver, setDragOver] = useState(false)
   const [justResized, setJustResized] = useState(false)
   const prevSize = useRef({ w: committedPlacement?.w, h: committedPlacement?.h })
+  const sectionRef = useRef<HTMLElement | null>(null)
 
   // Breve "assestamento" quando la taglia definitiva cambia — sul blocco
   // attivo e su qualunque vicino a cui il resize ha tolto/dato spazio, non
@@ -65,6 +62,16 @@ export function WidgetShell({
     (edges: ResizeEdge[]) => (event: React.PointerEvent) => {
       event.preventDefault()
       event.stopPropagation()
+      const el = sectionRef.current
+      if (!el || !placement) return
+      const rect = el.getBoundingClientRect()
+      // Cella reale in questo momento, non un valore fisso: le colonne si
+      // restringono insieme quando la finestra è stretta (board.tsx), quindi
+      // quanti px vale una cella dipende dallo schermo/finestra attuale, non
+      // sempre 15rem. Misurarla dal blocco stesso (larghezza propria / w)
+      // tiene il trascinamento coerente col dito anche a colonne ristrette.
+      const cellW = rect.width / placement.w
+      const cellH = rect.height / placement.h
       const startX = event.clientX
       const startY = event.clientY
       const startLayout = committedLayout
@@ -80,7 +87,7 @@ export function WidgetShell({
           const horizontal = edge === "left" || edge === "right"
           const raw = horizontal ? ev.clientX - startX : ev.clientY - startY
           const sign = edge === "left" || edge === "top" ? -1 : 1
-          const deltaCells = Math.round((raw * sign) / (horizontal ? CELL_W : CELL_H))
+          const deltaCells = Math.round((raw * sign) / (horizontal ? cellW : cellH))
           next = resizeEdge(next, type, edge, deltaCells)
         }
         latest = next
@@ -94,13 +101,14 @@ export function WidgetShell({
       window.addEventListener("pointermove", onMove)
       window.addEventListener("pointerup", onUp, { once: true })
     },
-    [committedLayout, type, setPreview, commitLayout],
+    [committedLayout, placement, type, setPreview, commitLayout],
   )
 
   if (!placement) return null
 
   return (
     <section
+      ref={sectionRef}
       onDragOver={(event) => {
         if (!event.dataTransfer.types.includes(REORDER_MIME)) return
         event.preventDefault()
