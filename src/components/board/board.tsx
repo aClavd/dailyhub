@@ -73,7 +73,11 @@ export function Board({
             // sulle colonne + width qui sopra: la griglia è larga quanto le
             // serve se c'è posto, altrimenti tutte le colonne si stringono
             // insieme (fino a 8rem) per restare dentro lo spazio disponibile.
-            "board-grid grid auto-rows-[12rem] gap-4 rounded-xl transition-[outline-color] sm:mx-auto",
+            // relative: durante un resize il blocco trascinato esce dal
+            // flusso della griglia (position: absolute) per seguire il
+            // mouse pixel per pixel — deve ancorarsi a questo contenitore,
+            // non alla pagina (vedi widget-shell.tsx).
+            "board-grid relative grid auto-rows-[12rem] gap-4 rounded-xl transition-[outline-color] sm:mx-auto",
             dragOver && "outline-primary outline-2 outline-dashed outline-offset-8",
           )}
         >
