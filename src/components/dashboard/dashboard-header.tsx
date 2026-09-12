@@ -23,7 +23,7 @@ export function DashboardHeader({ firstName }: { firstName?: string }) {
           centrato qualunque sia la larghezza delle due card ai lati. Sotto
           sm: si impila, non c'è spazio per stare affiancati. */}
       <div className="mt-6 flex flex-col items-center gap-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
-        <div className={SIDE_CARD + " sm:justify-self-end"}>
+        <div className={SIDE_CARD + " sm:justify-self-start"}>
           <p className="text-ink-faint text-[0.62rem] font-bold tracking-[0.14em] uppercase">
             Meteo
           </p>
@@ -44,7 +44,7 @@ export function DashboardHeader({ firstName }: { firstName?: string }) {
 
         {/* Presto qui: serve prima il collegamento OAuth con Spotify (vedi
             docs/SETUP-SPOTIFY.md) — segnaposto onesto, non un widget finto. */}
-        <div className={SIDE_CARD + " sm:justify-self-start border-dashed"}>
+        <div className={SIDE_CARD + " sm:justify-self-end border-dashed"}>
           <p className="text-ink-faint text-[0.62rem] font-bold tracking-[0.14em] uppercase">
             Spotify
           </p>
