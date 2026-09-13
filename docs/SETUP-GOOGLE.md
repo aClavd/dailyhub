@@ -63,9 +63,21 @@ Poi in `.env.local`:
 ```
 AUTH_GOOGLE_ID=<il Client ID>
 AUTH_GOOGLE_SECRET=<il Client secret>
+AUTH_URL=http://127.0.0.1:3000
 ```
 
 `AUTH_SECRET` è già generato durante lo scaffold. Se manca: `npx auth secret`.
+
+**Perché `AUTH_URL` fisso**: senza questa riga, Auth.js prova a dedurre da solo
+l'indirizzo (`localhost` o `127.0.0.1`) leggendo l'header `Host` di ogni
+singola richiesta — e in dev, con entrambi validi sullo stesso server, può
+capitare che lo calcoli in modo diverso tra il momento in cui parte verso
+Google e il momento in cui torna indietro con il codice, con errore
+`redirect_uri_mismatch` **lato server** (schermata "server error", non
+l'errore che mostra direttamente Google). Fissarlo a un solo indirizzo
+elimina l'ambiguità alla radice. Da qui in avanti: **sempre `127.0.0.1:3000`
+in dev**, mai più `localhost:3000` — coerente anche con quanto richiesto da
+Spotify (docs/SETUP-SPOTIFY.md).
 
 ## 6. Prova
 
@@ -73,7 +85,7 @@ AUTH_GOOGLE_SECRET=<il Client secret>
 npm run dev
 ```
 
-<http://localhost:3000> → **Accedi con Google** → scegli l'account (quello aggiunto come utente di test) → accetta i permessi.
+<http://127.0.0.1:3000> → **Accedi con Google** → scegli l'account (quello aggiunto come utente di test) → accetta i permessi.
 Se atterri su `/dashboard` e vedi il tuo nome: **fine Fase 0.** ✅
 
 ---
@@ -84,6 +96,7 @@ Se atterri su `/dashboard` e vedi il tuo nome: **fine Fase 0.** ✅
 |---|---|
 | "Errore durante la creazione della configurazione OAuth / brand creato mentre apporti modifiche" | Bug UI della console. La config è comunque creata: **ricarica** `console.cloud.google.com/auth/overview` e continua dai tab Branding / Audience / Clients |
 | Schermata "Google non ha verificato questa app" al login | Normale per un'app in **Testing** con scope sensibili → **Avanzate** → **Vai a DailyHub (non sicuro)**. Se invece è `access_blocked`, la tua email non è tra gli **utenti di test** o stai usando un altro account |
-| `redirect_uri_mismatch` | L'URI nel client OAuth non è **identico** a `http://localhost:3000/api/auth/callback/google` |
+| `redirect_uri_mismatch` mostrato **da Google** (schermata sua, prima del consenso) | L'URI nel client OAuth non è **identico** a `http://127.0.0.1:3000/api/auth/callback/google` (o manca del tutto tra quelli autorizzati) |
+| "Server error" **dopo** aver dato il consenso (log server: `[auth][cause] ResponseBodyError` / `redirect_uri_mismatch`) | Manca `AUTH_URL` in `.env.local` — vedi punto 5 sopra |
 | Login ok ma nessun refresh token | Revoca l'accesso da <https://myaccount.google.com/permissions> e rifai il login |
 | Auth.js `Configuration` error | Mancano `AUTH_SECRET` o `AUTH_GOOGLE_*` in `.env.local` |

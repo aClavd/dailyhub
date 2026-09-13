@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: import.meta.dirname,
   },
+  // Dev su 127.0.0.1 (richiesto da Spotify, vedi docs/SETUP-SPOTIFY.md):
+  // senza questo Next blocca le risorse HMR come "cross-origin".
+  allowedDevOrigins: ["127.0.0.1"],
   images: {
     // Foto profilo Google (avatar utente).
     remotePatterns: [{ protocol: "https", hostname: "lh3.googleusercontent.com" }],
