@@ -18,7 +18,14 @@ const SIDE_CARD = "w-40 shrink-0 rounded-xl border border-border bg-card px-4 py
  * Componente a parte (non dentro dashboard-header.tsx) solo per poter usare
  * useBoard() qui, senza rendere client anche la data/il saluto sopra.
  */
-export function HeaderFlankingRow({ children }: { children: ReactNode }) {
+export function HeaderFlankingRow({
+  children,
+  spotifySlot,
+}: {
+  children: ReactNode
+  /** Server-rendered (dati Spotify), passato da dashboard-header.tsx/page.tsx. */
+  spotifySlot: ReactNode
+}) {
   const { layout } = useBoard()
   const naturalWidth = `${boardNaturalWidthRem(layout)}rem`
 
@@ -36,13 +43,11 @@ export function HeaderFlankingRow({ children }: { children: ReactNode }) {
 
         <div className="sm:justify-self-center">{children}</div>
 
-        {/* Presto qui: serve prima il collegamento OAuth con Spotify (vedi
-            docs/SETUP-SPOTIFY.md) — segnaposto onesto, non un widget finto. */}
-        <div className={SIDE_CARD + " sm:justify-self-end border-dashed"}>
+        <div className={SIDE_CARD + " sm:justify-self-end"}>
           <p className="text-ink-faint text-[0.62rem] font-bold tracking-[0.14em] uppercase">
             Spotify
           </p>
-          <p className="text-ink-faint mt-1.5 text-xs">Presto qui.</p>
+          <div className="mt-1.5">{spotifySlot}</div>
         </div>
       </div>
     </div>

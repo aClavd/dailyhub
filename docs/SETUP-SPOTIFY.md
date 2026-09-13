@@ -49,4 +49,10 @@ Le nuove app Spotify partono in modalità Development: funzionano solo per l'acc
 
 ---
 
-Quando hai fatto questi 4 passi, dimmelo e costruisco il widget.
+## 5. Collega il tuo account (widget già costruito)
+
+1. Riavvia `npm run dev`.
+2. Apri la dashboard da `http://127.0.0.1:3000` (vedi nota sopra).
+3. Nella card Spotify in testata (a destra del saluto), clic su **Connetti Spotify** — ti porta sulla pagina di consenso di Spotify, poi torni sulla dashboard con quello che stai ascoltando ora (o "Niente in ascolto ora" se in quel momento non hai nulla in riproduzione).
+
+Nota architetturale: Spotify è un **collegamento a parte**, non un modo per accedere a DailyHub — resta Google. Se la sessione Spotify scade te lo dice la card stessa con un link "Riconnetti", niente da configurare di nuovo su `.env.local`.

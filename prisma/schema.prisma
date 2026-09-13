@@ -54,3 +54,16 @@ model BoardLayout {
   habitList String[] @default([])
   updatedAt DateTime @updatedAt
 }
+
+/// Collegamento Spotify per il widget "in riproduzione ora" in testata —
+/// connessione a parte, non l'identità con cui si accede (quella resta
+/// Google): un utente può avere o non avere Spotify collegato. Niente
+/// adapter Auth.js coinvolto, gestita a mano (vedi src/lib/spotify.ts) come
+/// Libero, solo che qui è OAuth invece di credenziali statiche.
+model SpotifyConnection {
+  userId       String   @id
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  updatedAt    DateTime @updatedAt
+}

@@ -11,6 +11,7 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { HistoryPanel } from "@/components/dashboard/history-panel"
 import { MailBody } from "@/components/dashboard/mail-card"
 import { MailSkeletonBody } from "@/components/dashboard/mail-skeleton"
+import { SpotifyBody, SpotifySkeletonBody } from "@/components/dashboard/spotify-card"
 import { TopBar } from "@/components/dashboard/top-bar"
 import { DiarioWidget } from "@/components/widgets/diario-widget"
 import { PomodoroWidget } from "@/components/widgets/pomodoro-widget"
@@ -19,6 +20,7 @@ import { getBoardLayout } from "@/lib/queries/board"
 import { getDiarioToday } from "@/lib/queries/diario"
 import { getTodayEvents } from "@/lib/google/calendar"
 import { getMail } from "@/lib/mail"
+import { getSpotifyStatus } from "@/lib/queries/spotify"
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -39,7 +41,14 @@ export default async function DashboardPage() {
         <Rail />
         <div className="min-w-0 flex-1 px-4 pb-16 sm:px-6 lg:px-10 xl:px-14">
           <TopBar email={session.user.email} />
-          <DashboardHeader firstName={firstName} />
+          <DashboardHeader
+            firstName={firstName}
+            spotifySlot={
+              <Suspense fallback={<SpotifySkeletonBody />}>
+                <SpotifySection />
+              </Suspense>
+            }
+          />
 
           <Board
             agendaSlot={
@@ -70,4 +79,9 @@ async function AgendaSection() {
 async function MailSection() {
   const result = await getMail()
   return <MailBody result={result} />
+}
+
+async function SpotifySection() {
+  const status = await getSpotifyStatus()
+  return <SpotifyBody status={status} />
 }

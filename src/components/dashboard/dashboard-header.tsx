@@ -4,7 +4,13 @@ import { DailyQuote } from "./daily-quote"
 import { HeaderFlankingRow } from "./header-flanking-row"
 import { TodayFocus } from "./today-focus"
 
-export function DashboardHeader({ firstName }: { firstName?: string }) {
+export function DashboardHeader({
+  firstName,
+  spotifySlot,
+}: {
+  firstName?: string
+  spotifySlot: React.ReactNode
+}) {
   const now = new Date()
 
   return (
@@ -17,7 +23,7 @@ export function DashboardHeader({ firstName }: { firstName?: string }) {
           board qui sotto — la logica di larghezza vive in HeaderFlankingRow
           (client, per via di useBoard()), il saluto resta qui: niente
           bisogno di rendere client anche la data. */}
-      <HeaderFlankingRow>
+      <HeaderFlankingRow spotifySlot={spotifySlot}>
         <h1 className="font-heading text-3xl font-medium tracking-tight text-balance lowercase sm:text-4xl">
           {greeting(now)}
           {firstName ? `, ${firstName}` : ""}
