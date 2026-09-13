@@ -1,0 +1,25 @@
+diff --git a/node_modules/next-auth/lib/env.js b/node_modules/next-auth/lib/env.js
+index 8667291..2e53dc2 100644
+--- a/node_modules/next-auth/lib/env.js
++++ b/node_modules/next-auth/lib/env.js
+@@ -8,7 +8,19 @@ export function reqWithEnvURL(req) {
+         return req;
+     const { origin: envOrigin } = new URL(url);
+     const { href, origin } = req.nextUrl;
+-    return new NextRequest(href.replace(origin, envOrigin), req);
++    const newHref = href.replace(origin, envOrigin);
++    // DailyHub patch (patch-package, see patches/next-auth+*.patch): building
++    // this override with `new NextRequest(...)` gets silently discarded by
++    // Next.js 16's dev server, which rebinds a fresh NextRequest's `.url` to
++    // its own canonical dev origin regardless of the constructor argument.
++    // A plain, framework-agnostic `Request` is not subject to that rebind.
++    return new Request(newHref, {
++        method: req.method,
++        headers: req.headers,
++        body: req.body,
++        // @ts-expect-error undici requires duplex when a stream body is set
++        duplex: req.body ? "half" : undefined,
++    });
+ }
+ /**
+  * For backwards compatibility, `next-auth` checks for `NEXTAUTH_URL`

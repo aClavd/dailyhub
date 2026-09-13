@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "patch-package && prisma generate"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -32,6 +32,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "patch-package": "^8.0.1",
     "playwright-core": "^1.63.0",
     "prisma": "^7.10.0",
     "tailwindcss": "^4",
