@@ -11,7 +11,7 @@ Serve per il widget Spotify in testata (brano in riproduzione ora). Come Google,
 3. Compila:
    - **App name**: `DailyHub` (o quello che vuoi, è solo per te)
    - **App description**: qualcosa tipo "dashboard personale"
-   - **Redirect URI**: `http://localhost:3000/api/auth/callback/spotify` — esatto così, è quello che Auth.js si aspetta. Quando andrà online aggiungeremo anche l'URL vero (es. `https://dailyhub.vercel.app/api/auth/callback/spotify`).
+   - **Redirect URI**: `http://127.0.0.1:3000/api/auth/callback/spotify` — **non** `localhost` (Spotify lo rifiuta come "non sicuro": accetta solo HTTPS, con un'eccezione proprio per l'IP di loopback `127.0.0.1`, stesso computer/porta di `localhost` ma quello specifico indirizzo va bene anche in HTTP). Quando andrà online aggiungeremo anche l'URL vero (es. `https://dailyhub.vercel.app/api/auth/callback/spotify`, lì HTTPS quindi nessun problema).
    - **Which API/SDKs are you planning to use?**: spunta **Web API**.
 4. Accetta i termini, **Save**.
 
@@ -34,6 +34,14 @@ AUTH_SPOTIFY_SECRET=<client secret>
 - `user-read-playback-state` — se è in pausa o in riproduzione
 
 Sola lettura, nessuna scrittura: non potremo cambiare/skippare brani dalla dashboard, solo vedere cosa stai ascoltando (come per Calendar e Gmail).
+
+## Nota: per collegare Spotify apri la dashboard da 127.0.0.1, non da localhost
+
+Solo per il giro di login Spotify — apri `http://127.0.0.1:3000` invece di
+`http://localhost:3000` nel browser, altrimenti Spotify ti rimanda a un
+indirizzo diverso da quello con cui hai iniziato e i cookie di sessione non
+combaciano (login che sembra fallire senza un motivo chiaro). Per il resto
+del lavoro quotidiano va benissimo `localhost:3000` come sempre.
 
 ## Nota sulla modalità "Development"
 
