@@ -2,7 +2,8 @@ import "server-only"
 
 const AUTHORIZE_URL = "https://accounts.spotify.com/authorize"
 const TOKEN_URL = "https://accounts.spotify.com/api/token"
-const SCOPES = "user-read-currently-playing user-read-playback-state"
+const SCOPES =
+  "user-read-currently-playing user-read-playback-state user-modify-playback-state"
 
 /**
  * Origine affidabile della richiesta — apposta non `new URL(request.url)
@@ -93,6 +94,8 @@ export type SpotifyNowPlaying = {
   isPlaying: boolean
   track: string
   artist: string
+  /** URL della copertina album, taglia media (~300px). null se mancante. */
+  albumArt: string | null
 } | null
 
 /**
@@ -108,9 +111,52 @@ export async function fetchSpotifyNowPlaying(accessToken: string): Promise<Spoti
   if (!res.ok) throw new Error(`Spotify now-playing failed: HTTP ${res.status}`)
   const data = await res.json()
   if (!data?.item) return null
+  // Spotify manda le taglie 640/300/64 (dalla più grande alla più piccola):
+  // per una miniatura piccola in testata la "media" basta e avanza, niente
+  // bisogno di scaricare la 640.
+  const images = (data.item.album?.images ?? []) as { url: string }[]
+  const albumArt = images[1]?.url ?? images[0]?.url ?? null
   return {
     isPlaying: Boolean(data.is_playing),
     track: data.item.name as string,
     artist: (data.item.artists ?? []).map((a: { name: string }) => a.name).join(", "),
+    albumArt,
   }
 }
+
+export type SpotifyPlayerResult =
+  | { ok: true }
+  | { ok: false; reason: "no_device" | "forbidden" | "unknown" }
+
+/**
+ * Comandi di riproduzione (play/pausa/avanti/indietro) — richiedono lo
+ * scope user-modify-playback-state (in più rispetto ai due di sola
+ * lettura) e un dispositivo Spotify già attivo da qualche parte (telefono,
+ * desktop, web player...): Spotify inoltra il comando lì, non c'è
+ * riproduzione "nel browser" di DailyHub. Serve anche un account Premium —
+ * con un account gratuito questi endpoint rispondono 403 (`forbidden`),
+ * gestito senza sfasciare nulla, il pulsante semplicemente non ha effetto.
+ */
+async function spotifyPlayerCommand(
+  accessToken: string,
+  method: "PUT" | "POST",
+  action: string,
+): Promise<SpotifyPlayerResult> {
+  const res = await fetch(`https://api.spotify.com/v1/me/player/${action}`, {
+    method,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (res.status === 204) return { ok: true }
+  if (res.status === 404) return { ok: false, reason: "no_device" }
+  if (res.status === 403) return { ok: false, reason: "forbidden" }
+  return { ok: false, reason: "unknown" }
+}
+
+export const spotifyResume = (accessToken: string) =>
+  spotifyPlayerCommand(accessToken, "PUT", "play")
+export const spotifyPause = (accessToken: string) =>
+  spotifyPlayerCommand(accessToken, "PUT", "pause")
+export const spotifyNext = (accessToken: string) =>
+  spotifyPlayerCommand(accessToken, "POST", "next")
+export const spotifyPrevious = (accessToken: string) =>
+  spotifyPlayerCommand(accessToken, "POST", "previous")

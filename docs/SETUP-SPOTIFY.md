@@ -32,8 +32,11 @@ AUTH_SPOTIFY_SECRET=<client secret>
 
 - `user-read-currently-playing` — cosa stai ascoltando ora
 - `user-read-playback-state` — se è in pausa o in riproduzione
+- `user-modify-playback-state` — i pulsanti play/pausa/avanti/indietro nella card
 
-Sola lettura, nessuna scrittura: non potremo cambiare/skippare brani dalla dashboard, solo vedere cosa stai ascoltando (come per Calendar e Gmail).
+Con l'ultimo scope la card può anche **controllare** la riproduzione, non solo leggerla — invia i comandi al dispositivo Spotify già attivo (telefono, desktop, ecc.), non riproduce nulla dentro DailyHub. Richiede **Spotify Premium**: con un account gratuito l'API di controllo rifiuta i comandi (i pulsanti restano lì ma non fanno nulla, nessun errore visibile).
+
+**Se avevi già collegato Spotify prima di questo scope**: il token vecchio non ha il permesso nuovo, i pulsanti falliranno silenziosamente finché non riautorizzi — **Scollega** dalla card e **Connetti Spotify** di nuovo (una volta sola).
 
 ## Nota: per collegare Spotify apri la dashboard da 127.0.0.1, non da localhost
 
