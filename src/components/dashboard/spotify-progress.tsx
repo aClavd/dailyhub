@@ -2,13 +2,6 @@
 
 import { useEffect, useState } from "react"
 
-function formatTime(ms: number): string {
-  const totalSec = Math.max(0, Math.round(ms / 1000))
-  const minutes = Math.floor(totalSec / 60)
-  const seconds = totalSec % 60
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`
-}
-
 /**
  * Barra della traccia in ascolto. Niente polling: la posizione arriva una
  * volta (al caricamento o dopo un comando) e da lì si anima da sola verso
@@ -41,20 +34,14 @@ export function SpotifyProgress({
   }, [isPlaying, remainingMs])
 
   return (
-    <div className="mt-2.5">
-      <div className="bg-muted h-1 w-full overflow-hidden rounded-full">
-        <div
-          className="bg-primary h-full rounded-full"
-          style={{
-            width: `${pct}%`,
-            transition: isPlaying ? `width ${remainingMs}ms linear` : undefined,
-          }}
-        />
-      </div>
-      <div className="text-ink-faint mt-1 flex justify-between text-[0.6rem] tabular-nums">
-        <span>{formatTime(progressMs)}</span>
-        <span>{formatTime(durationMs)}</span>
-      </div>
+    <div className="bg-muted mt-1.5 h-1 w-full overflow-hidden rounded-full">
+      <div
+        className="bg-primary h-full rounded-full"
+        style={{
+          width: `${pct}%`,
+          transition: isPlaying ? `width ${remainingMs}ms linear` : undefined,
+        }}
+      />
     </div>
   )
 }

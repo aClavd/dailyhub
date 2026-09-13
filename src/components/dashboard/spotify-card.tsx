@@ -74,22 +74,24 @@ export function SpotifyBody({ status: initialStatus }: { status: SpotifyStatus }
         ) : (
           <div className="bg-muted size-11 shrink-0 rounded-lg" />
         )}
-        <div className="min-w-0">
+        {/* Testo + barra nella stessa colonna, accanto alla copertina —
+            un solo blocco orizzontale (come icona+valore nel Meteo),
+            non righe impilate una sotto l'altra su tutta la larghezza. */}
+        <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold">{track}</p>
           <p className="text-ink-faint mt-0.5 truncate text-[0.68rem]">{artist}</p>
+          {durationMs > 0 && (
+            <SpotifyProgress
+              key={`${track}-${progressMs}`}
+              progressMs={progressMs}
+              durationMs={durationMs}
+              isPlaying={isPlaying}
+            />
+          )}
         </div>
       </div>
 
-      {durationMs > 0 && (
-        <SpotifyProgress
-          key={`${track}-${progressMs}`}
-          progressMs={progressMs}
-          durationMs={durationMs}
-          isPlaying={isPlaying}
-        />
-      )}
-
-      <div className="mt-2.5 flex items-center justify-center gap-1.5">
+      <div className="mt-2 flex items-center justify-center gap-1.5">
         <SpotifyControlButton
           label="Traccia precedente"
           pending={isPending}

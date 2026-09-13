@@ -12,11 +12,12 @@ export async function disconnectSpotify() {
   await prisma.spotifyConnection.delete({ where: { userId: session.user.id } }).catch(() => {})
 }
 
-/** Piccola pausa dopo un salto traccia: Spotify impiega un istante a
- * riflettere il cambio sul dispositivo prima che "currently-playing"
- * mostri la nuova traccia — senza, la rilettura qui sotto vedrebbe ancora
- * quella vecchia. */
-async function settleAfterSkip() {
+/** Piccola pausa dopo un comando: Spotify impiega un istante a riflettere
+ * il cambio (traccia, play/pausa) sul dispositivo prima che
+ * "currently-playing" lo mostri — senza, la rilettura qui sotto vedrebbe
+ * ancora lo stato precedente. Vale per tutti e 4 i comandi, non solo per i
+ * salti traccia (era il bug: play/pausa rileggevano a delay zero). */
+async function settle() {
   await new Promise((resolve) => setTimeout(resolve, 400))
 }
 
@@ -35,12 +36,11 @@ async function settleAfterSkip() {
  */
 async function runPlayerCommand(
   command: (accessToken: string) => Promise<SpotifyPlayerResult>,
-  { settle = false }: { settle?: boolean } = {},
 ): Promise<SpotifyStatus> {
   const accessToken = await getValidSpotifyAccessToken()
   if (accessToken) {
     await command(accessToken)
-    if (settle) await settleAfterSkip()
+    await settle()
   }
   return getSpotifyStatus()
 }
@@ -54,9 +54,9 @@ export async function pauseSpotifyPlayback(): Promise<SpotifyStatus> {
 }
 
 export async function nextSpotifyTrack(): Promise<SpotifyStatus> {
-  return runPlayerCommand(spotifyNext, { settle: true })
+  return runPlayerCommand(spotifyNext)
 }
 
 export async function previousSpotifyTrack(): Promise<SpotifyStatus> {
-  return runPlayerCommand(spotifyPrevious, { settle: true })
+  return runPlayerCommand(spotifyPrevious)
 }
