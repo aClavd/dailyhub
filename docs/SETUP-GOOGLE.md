@@ -42,9 +42,11 @@ Tab **Clients** dentro Google Auth Platform (oppure **API e servizi → Credenzi
 3. Nome: `DailyHub web`.
 4. **URI di reindirizzamento autorizzati** → aggiungi:
    - `http://localhost:3000/api/auth/callback/google`
+   - `http://127.0.0.1:3000/api/auth/callback/google` — serve per collegare Spotify (docs/SETUP-SPOTIFY.md): Spotify non accetta `localhost` come redirect URI, solo l'IP di loopback esplicito, quindi quel passo va fatto aprendo la dashboard da `127.0.0.1` invece che da `localhost` — senza questa riga il login Google fallirebbe da quell'indirizzo (`redirect_uri_mismatch`).
    - _(dopo il deploy)_ `https://IL-TUO-DOMINIO.vercel.app/api/auth/callback/google`
 5. **Origini JavaScript autorizzate** → aggiungi:
    - `http://localhost:3000`
+   - `http://127.0.0.1:3000`
    - _(dopo il deploy)_ `https://IL-TUO-DOMINIO.vercel.app`
 6. **Crea**. Compare un popup con **Client ID** e **Client secret** (li ritrovi comunque cliccando sul client nella lista).
 

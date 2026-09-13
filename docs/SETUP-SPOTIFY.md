@@ -43,6 +43,15 @@ indirizzo diverso da quello con cui hai iniziato e i cookie di sessione non
 combaciano (login che sembra fallire senza un motivo chiaro). Per il resto
 del lavoro quotidiano va benissimo `localhost:3000` come sempre.
 
+**Prerequisito**: la prima volta che apri `127.0.0.1:3000` non sei ancora
+loggato lì (i cookie di `localhost` non valgono su un indirizzo diverso,
+anche se è lo stesso computer) — DailyHub ti chiederà di accedere di nuovo
+con Google, e se quell'indirizzo non è tra quelli autorizzati sul client
+OAuth Google, l'accesso viene rifiutato (`redirect_uri_mismatch`). Vedi
+`docs/SETUP-GOOGLE.md`, punto 4: `http://127.0.0.1:3000/api/auth/callback/
+google` deve essere tra gli URI di reindirizzamento autorizzati (aggiunto
+lì, va fatto una volta sola).
+
 ## Nota sulla modalità "Development"
 
 Le nuove app Spotify partono in modalità Development: funzionano solo per l'account con cui hai creato l'app (il tuo) più eventuali utenti aggiunti a mano in **Settings → User Management**. Per uso personale va benissimo così, non serve richiedere l'estensione a Spotify.
