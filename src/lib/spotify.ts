@@ -96,6 +96,8 @@ export type SpotifyNowPlaying = {
   artist: string
   /** URL della copertina album, taglia media (~300px). null se mancante. */
   albumArt: string | null
+  progressMs: number
+  durationMs: number
 } | null
 
 /**
@@ -121,6 +123,8 @@ export async function fetchSpotifyNowPlaying(accessToken: string): Promise<Spoti
     track: data.item.name as string,
     artist: (data.item.artists ?? []).map((a: { name: string }) => a.name).join(", "),
     albumArt,
+    progressMs: Number(data.progress_ms ?? 0),
+    durationMs: Number(data.item.duration_ms ?? 0),
   }
 }
 

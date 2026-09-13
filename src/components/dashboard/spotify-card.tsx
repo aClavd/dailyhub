@@ -10,6 +10,7 @@ import {
 import type { SpotifyStatus } from "@/lib/queries/spotify"
 
 import { SpotifyControlButton } from "./spotify-controls"
+import { SpotifyProgress } from "./spotify-progress"
 
 /** Contenuto della card Spotify in testata (la cornice la mette header-flanking-row.tsx). */
 export function SpotifyBody({ status }: { status: SpotifyStatus }) {
@@ -39,35 +40,48 @@ export function SpotifyBody({ status }: { status: SpotifyStatus }) {
     return <p className="text-ink-faint text-xs">Niente in ascolto ora.</p>
   }
 
-  const { track, artist, albumArt, isPlaying } = status.nowPlaying
+  const { track, artist, albumArt, isPlaying, progressMs, durationMs } = status.nowPlaying
 
   return (
     <div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         {albumArt ? (
           // eslint-disable-next-line @next/next/no-img-element -- miniatura piccola da dominio dinamico Spotify, next/image non aggiunge nulla qui
-          <img src={albumArt} alt="" className="size-9 shrink-0 rounded-md object-cover" />
+          <img
+            src={albumArt}
+            alt=""
+            className="size-11 shrink-0 rounded-lg object-cover shadow-sm"
+          />
         ) : (
-          <div className="bg-muted size-9 shrink-0 rounded-md" />
+          <div className="bg-muted size-11 shrink-0 rounded-lg" />
         )}
         <div className="min-w-0">
-          <p className="truncate text-xs font-medium">{track}</p>
+          <p className="truncate text-xs font-semibold">{track}</p>
           <p className="text-ink-faint mt-0.5 truncate text-[0.68rem]">{artist}</p>
         </div>
       </div>
 
-      <div className="mt-2 flex items-center justify-center gap-4">
+      {durationMs > 0 && (
+        <SpotifyProgress
+          key={`${track}-${progressMs}`}
+          progressMs={progressMs}
+          durationMs={durationMs}
+          isPlaying={isPlaying}
+        />
+      )}
+
+      <div className="mt-2.5 flex items-center justify-center gap-1.5">
         <form action={previousSpotifyTrack}>
           <SpotifyControlButton label="Traccia precedente">
             <SkipBack className="size-3.5" fill="currentColor" />
           </SpotifyControlButton>
         </form>
         <form action={isPlaying ? pauseSpotifyPlayback : resumeSpotifyPlayback}>
-          <SpotifyControlButton label={isPlaying ? "Pausa" : "Riproduci"}>
+          <SpotifyControlButton label={isPlaying ? "Pausa" : "Riproduci"} primary>
             {isPlaying ? (
-              <Pause className="size-4" fill="currentColor" />
+              <Pause className="size-3.5" fill="currentColor" />
             ) : (
-              <Play className="size-4" fill="currentColor" />
+              <Play className="ml-0.5 size-3.5" fill="currentColor" />
             )}
           </SpotifyControlButton>
         </form>
