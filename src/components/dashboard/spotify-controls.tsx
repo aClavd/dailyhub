@@ -1,30 +1,35 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useFormStatus } from "react-dom"
 
 import { cn } from "@/lib/utils"
 
-/** Pulsante di comando dentro un <form action={...}>: si attenua mentre il
- * comando è in volo (useFormStatus legge lo stato del form che lo contiene,
- * per questo deve essere un componente client a parte). `primary` è il
- * tasto centrale play/pausa, più grande e in evidenza; gli altri due sono
- * "ghost" con un cerchio al passaggio del mouse. */
+/** Pulsante di comando: click diretto (non più un <form>, vedi
+ * spotify-card.tsx) così l'aggiornamento della card usa il valore che
+ * torna dalla action stessa, non il refresh automatico di Next dopo un
+ * form — quello passa da una richiesta a parte che in dev può fallire per
+ * conto suo. `pending` arriva dalla useTransition del genitore. `primary`
+ * è il tasto centrale play/pausa, più grande e in evidenza; gli altri due
+ * sono "ghost" con un cerchio al passaggio del mouse. */
 export function SpotifyControlButton({
   children,
   label,
   primary = false,
+  pending = false,
+  onClick,
 }: {
   children: ReactNode
   label: string
   primary?: boolean
+  pending?: boolean
+  onClick: () => void
 }) {
-  const { pending } = useFormStatus()
   return (
     <button
-      type="submit"
+      type="button"
       aria-label={label}
       disabled={pending}
+      onClick={onClick}
       className={cn(
         "flex items-center justify-center rounded-full transition-colors disabled:opacity-40",
         primary

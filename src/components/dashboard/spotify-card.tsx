@@ -1,4 +1,7 @@
+"use client"
+
 import { Pause, Play, SkipBack, SkipForward } from "lucide-react"
+import { useState, useTransition } from "react"
 
 import {
   disconnectSpotify,
@@ -12,8 +15,24 @@ import type { SpotifyStatus } from "@/lib/queries/spotify"
 import { SpotifyControlButton } from "./spotify-controls"
 import { SpotifyProgress } from "./spotify-progress"
 
-/** Contenuto della card Spotify in testata (la cornice la mette header-flanking-row.tsx). */
-export function SpotifyBody({ status }: { status: SpotifyStatus }) {
+/**
+ * Contenuto della card Spotify in testata (la cornice la mette
+ * header-flanking-row.tsx). Client component: i comandi di riproduzione
+ * aggiornano lo stato con il valore che torna direttamente dalla Server
+ * Action, non affidandosi al refresh automatico di Next della pagina —
+ * vedi il commento su runPlayerCommand in lib/actions/spotify.ts per il
+ * perché.
+ */
+export function SpotifyBody({ status: initialStatus }: { status: SpotifyStatus }) {
+  const [status, setStatus] = useState(initialStatus)
+  const [isPending, startTransition] = useTransition()
+
+  function runCommand(action: () => Promise<SpotifyStatus>) {
+    startTransition(async () => {
+      setStatus(await action())
+    })
+  }
+
   if (!status.connected) {
     return (
       <a href="/api/spotify/connect" className="text-primary text-xs font-medium hover:underline">
@@ -71,25 +90,32 @@ export function SpotifyBody({ status }: { status: SpotifyStatus }) {
       )}
 
       <div className="mt-2.5 flex items-center justify-center gap-1.5">
-        <form action={previousSpotifyTrack}>
-          <SpotifyControlButton label="Traccia precedente">
-            <SkipBack className="size-3.5" fill="currentColor" />
-          </SpotifyControlButton>
-        </form>
-        <form action={isPlaying ? pauseSpotifyPlayback : resumeSpotifyPlayback}>
-          <SpotifyControlButton label={isPlaying ? "Pausa" : "Riproduci"} primary>
-            {isPlaying ? (
-              <Pause className="size-3.5" fill="currentColor" />
-            ) : (
-              <Play className="ml-0.5 size-3.5" fill="currentColor" />
-            )}
-          </SpotifyControlButton>
-        </form>
-        <form action={nextSpotifyTrack}>
-          <SpotifyControlButton label="Traccia successiva">
-            <SkipForward className="size-3.5" fill="currentColor" />
-          </SpotifyControlButton>
-        </form>
+        <SpotifyControlButton
+          label="Traccia precedente"
+          pending={isPending}
+          onClick={() => runCommand(previousSpotifyTrack)}
+        >
+          <SkipBack className="size-3.5" fill="currentColor" />
+        </SpotifyControlButton>
+        <SpotifyControlButton
+          label={isPlaying ? "Pausa" : "Riproduci"}
+          primary
+          pending={isPending}
+          onClick={() => runCommand(isPlaying ? pauseSpotifyPlayback : resumeSpotifyPlayback)}
+        >
+          {isPlaying ? (
+            <Pause className="size-3.5" fill="currentColor" />
+          ) : (
+            <Play className="ml-0.5 size-3.5" fill="currentColor" />
+          )}
+        </SpotifyControlButton>
+        <SpotifyControlButton
+          label="Traccia successiva"
+          pending={isPending}
+          onClick={() => runCommand(nextSpotifyTrack)}
+        >
+          <SkipForward className="size-3.5" fill="currentColor" />
+        </SpotifyControlButton>
       </div>
 
       <form action={disconnectSpotify} className="mt-1.5 text-center">
