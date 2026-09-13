@@ -4,6 +4,25 @@ const AUTHORIZE_URL = "https://accounts.spotify.com/authorize"
 const TOKEN_URL = "https://accounts.spotify.com/api/token"
 const SCOPES = "user-read-currently-playing user-read-playback-state"
 
+/**
+ * Origine affidabile della richiesta — apposta non `new URL(request.url)
+ * .origin`: in Next.js 16 dev (Turbopack) `request.url` in una route
+ * viene silenziosamente riscritto sull'indirizzo "canonico" del dev
+ * server (es. localhost) anche quando l'host reale della richiesta è
+ * diverso (es. 127.0.0.1, che è quello che Spotify richiede) — stesso bug
+ * dietro al redirect_uri_mismatch di Google risolto via patch a next-auth
+ * (vedi patches/). Qui non possiamo patchare Spotify, quindi si aggira
+ * alla radice: `AUTH_URL`, se impostata, fissa l'indirizzo esplicitamente
+ * (dev e produzione); altrimenti si ricava dagli header della richiesta,
+ * che restano affidabili anche quando `request.url` non lo è.
+ */
+export function requestOrigin(request: Request): string {
+  if (process.env.AUTH_URL) return new URL(process.env.AUTH_URL).origin
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host")
+  const proto = request.headers.get("x-forwarded-proto") ?? "http"
+  return `${proto}://${host}`
+}
+
 /** Stesso path registrato sul pannello Spotify (vedi docs/SETUP-SPOTIFY.md). */
 export function spotifyRedirectUri(origin: string): string {
   return `${origin}/api/auth/callback/spotify`

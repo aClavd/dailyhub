@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { exchangeSpotifyCode } from "@/lib/spotify"
+import { exchangeSpotifyCode, requestOrigin } from "@/lib/spotify"
 
 /**
  * Route statica allo stesso path che userebbe Auth.js (/api/auth/callback/
@@ -15,11 +15,12 @@ import { exchangeSpotifyCode } from "@/lib/spotify"
  * parte, non un modo per accedere — vedi src/lib/spotify.ts).
  */
 export async function GET(request: Request) {
+  const origin = requestOrigin(request)
   const url = new URL(request.url)
   const session = await auth()
-  const dashboardUrl = new URL("/dashboard", url.origin)
+  const dashboardUrl = new URL("/dashboard", origin)
 
-  if (!session?.user?.id) return NextResponse.redirect(new URL("/", url.origin))
+  if (!session?.user?.id) return NextResponse.redirect(new URL("/", origin))
 
   const error = url.searchParams.get("error")
   if (error) {
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const tokens = await exchangeSpotifyCode(code, url.origin)
+    const tokens = await exchangeSpotifyCode(code, origin)
     await prisma.spotifyConnection.upsert({
       where: { userId: session.user.id },
       update: {
