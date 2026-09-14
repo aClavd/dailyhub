@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 
 import { Button } from "@/components/ui/button"
+import { EmphasisReporter, type WidgetEmphasis } from "@/components/board/widget-shell"
 import { reconnectGoogle } from "@/lib/actions/auth"
 import { oraBreve, traQuanto } from "@/lib/datetime"
 import type { CalendarEvent, CalendarResult } from "@/lib/google/calendar"
@@ -8,10 +9,41 @@ import { cn } from "@/lib/utils"
 
 type RowState = "allday" | "now" | "next" | "upcoming" | "past"
 
+// Soglie della Fase 5.2 — "urgente" è la soglia che Claudio stesso ha
+// usato come esempio (un appuntamento tra 20 minuti); "attenzione" è
+// un'ora, un preavviso più morbido.
+const URGENT_MIN = 20
+const ATTENTION_MIN = 60
+
+/** Stesso calcolo di "prossimo evento"/"in corso" già usato per evidenziare
+ * la riga in AgendaList — qui in più decide il livello da segnalare alla
+ * WidgetShell (vedi widget-shell.tsx). */
+function agendaEmphasis(events: CalendarEvent[]): { level: WidgetEmphasis; label?: string } {
+  const now = new Date()
+  const timed = events.filter((e) => !e.allDay && e.start)
+
+  const running = timed.find((e) => {
+    const start = new Date(e.start as string)
+    const end = e.end ? new Date(e.end) : null
+    return start <= now && !!end && end > now
+  })
+  if (running) return { level: "urgente", label: "in corso" }
+
+  const next = timed.find((e) => new Date(e.start as string) > now)
+  if (!next) return { level: "none" }
+  const start = new Date(next.start as string)
+  const minutes = Math.round((start.getTime() - now.getTime()) / 60_000)
+  if (minutes <= URGENT_MIN) return { level: "urgente", label: traQuanto(start, now) }
+  if (minutes <= ATTENTION_MIN) return { level: "attenzione", label: traQuanto(start, now) }
+  return { level: "none" }
+}
+
 /** Contenuto del blocco Impegni (senza card: il guscio lo mette la board). */
 export function AgendaBody({ result }: { result: CalendarResult }) {
+  const emphasis = result.ok ? agendaEmphasis(result.events) : { level: "none" as const }
   return (
     <div>
+      <EmphasisReporter level={emphasis.level} label={emphasis.label} />
       <p className="text-ink-faint mb-2 font-mono text-[0.68rem] tracking-wide uppercase">
         {result.ok ? countLabel(result.events.length) : "—"}
       </p>

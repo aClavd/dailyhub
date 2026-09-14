@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import type { ReactNode } from "react"
 
+import { useReportEmphasis, type WidgetEmphasis } from "@/components/board/widget-shell"
 import { Button } from "@/components/ui/button"
 import { Segmented } from "@/components/widgets/_shared"
 import { reconnectGoogle } from "@/lib/actions/auth"
@@ -14,9 +15,29 @@ import { cn } from "@/lib/utils"
 type Tab = "Tutte" | "Gmail" | "Libero"
 const TABS: readonly Tab[] = ["Tutte", "Gmail", "Libero"]
 
+// Fase 5.2: nessuno dei due provider espone lo stato letta/non letta
+// (Gmail: format "metadata" senza leggere labelIds; Libero: fetch IMAP
+// senza richiedere i flags) — senza quel dato un livello "urgente"
+// sarebbe una soglia inventata, non una regola sensata. L'unico segnale
+// onesto con i dati che ci sono davvero: è arrivato qualcosa di recente.
+const RECENT_MAIL_MIN = 60
+
+function mailEmphasis(messages: readonly MailMessage[]): WidgetEmphasis {
+  const now = Date.now()
+  const hasRecent = messages.some((m) => {
+    if (!m.date) return false
+    const ageMin = (now - new Date(m.date).getTime()) / 60_000
+    return ageMin >= 0 && ageMin <= RECENT_MAIL_MIN
+  })
+  return hasRecent ? "attenzione" : "none"
+}
+
 /** Contenuto del blocco Mail (senza card: il guscio lo mette la board). */
 export function MailBody({ result }: { result: MailResult }) {
   const [tab, setTab] = useState<Tab>("Tutte")
+  // Sul totale, non sulla tab aperta: il segnale sulla shell riflette lo
+  // stato vero, indipendente da quale sezione stai guardando in quel momento.
+  useReportEmphasis(useMemo(() => mailEmphasis(result.messages), [result.messages]))
 
   const messages = useMemo(() => {
     if (tab === "Tutte") return result.messages

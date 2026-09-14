@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 
 import { resizeEdge, type ResizeEdge } from "@/lib/board-resize"
 import { REORDER_MIME, WIDGET_META, type WidgetType } from "@/lib/board"
@@ -12,13 +12,44 @@ import { GripIcon, ResizeCornerIcon, WidgetIcon } from "./widget-icon"
 type LiveRect = { left: number; top: number; width: number; height: number }
 
 /**
- * Livello di rilevanza da segnalare sul blocco — scaffold visivo INERTE
- * per la Fase 5.2 (regole vere di urgenza, funzioni `urgency()` per
- * widget). Per ora nessun chiamante passa altro che "none": nessun
- * widget sposta, ridimensiona o nasconde nulla in base a questo, solo il
- * colore della "spina" sul bordo sinistro cambia (vedi sotto).
+ * Livello di rilevanza da segnalare sul blocco — cambia solo il colore
+ * della "spina" sul bordo sinistro (vedi sotto): mai la posizione, la
+ * dimensione o la visibilità di un widget.
  */
 export type WidgetEmphasis = "none" | "attenzione" | "urgente"
+
+type EmphasisReport = { level: WidgetEmphasis; label?: string }
+
+/**
+ * Chi disegna la griglia (board.tsx) non ha visibilità sui dati di Agenda/
+ * Mail — arrivano come slot già renderizzati, risolti dentro il proprio
+ * Suspense (vedi Fase 5.2). Il contenuto di un widget, una volta risolto,
+ * "segnala in su" alla propria WidgetShell tramite questo contesto —
+ * pattern React standard (figlio → antenato via context + effect), non
+ * un canale nuovo inventato ad hoc. Il valore del contesto è il setter di
+ * useState: stabile per natura, nessun wrapper che ne romperebbe
+ * l'identità da un render all'altro.
+ */
+const EmphasisContext = createContext<((report: EmphasisReport) => void) | null>(null)
+
+/** Per un widget che è già un Client Component (es. Pomodoro): chiama il
+ * setter dentro un effect — un side-effect legittimo verso un antenato,
+ * non uno stato derivato nello stesso componente (quello sì vietato dal
+ * linter di questo progetto). */
+export function useReportEmphasis(level: WidgetEmphasis, label?: string) {
+  const report = useContext(EmphasisContext)
+  useEffect(() => {
+    report?.({ level, label })
+  }, [level, label, report])
+}
+
+/** Per un widget che resta un Server Component (Agenda/Mail): il livello
+ * si calcola lato server con dati già presenti, arriva qui come prop
+ * serializzabile, questo componente foglia lo segnala in su. */
+export function EmphasisReporter({ level, label }: EmphasisReport) {
+  useReportEmphasis(level, label)
+  return null
+}
 
 export function WidgetShell({
   type,
@@ -38,6 +69,11 @@ export function WidgetShell({
   const committedPlacement = committedLayout.find((p) => p.type === type)
   const [dragOver, setDragOver] = useState(false)
   const [justResized, setJustResized] = useState(false)
+  // Segnalato dal contenuto (una volta risolto) via EmphasisContext — la
+  // prop `emphasis` esterna, se mai passata, resta prioritaria.
+  const [contentEmphasis, setContentEmphasis] = useState<EmphasisReport>({ level: "none" })
+  const effectiveEmphasis = emphasis !== "none" ? emphasis : contentEmphasis.level
+  const emphasisLabel = emphasis !== "none" ? undefined : contentEmphasis.label
   // Non nullo solo mentre trascini un bordo: il blocco esce dal flusso della
   // griglia e segue il mouse pixel per pixel (vedi startResize). Il
   // "modello dati" sotto resta comunque a celle, invariato — è solo il
@@ -225,19 +261,20 @@ export function WidgetShell({
           justResized && "[animation:widget-settle_220ms_ease-out]",
         )}
       >
-        {/* "Spina" sul bordo sinistro — Fase 5.1: distingue i blocchi fissi
-            (Impegni/Mail, il nucleo sempre presente) dal resto della
-            libreria con lo stesso ocra già usato ovunque, nessun colore
-            nuovo. Quando emphasis non è "none" (Fase 5.2, non ancora
-            attivato da nessun chiamante) prende il sopravvento e si
-            rinforza — mai un cambio di posizione/dimensione, solo colore. */}
+        {/* "Spina" sul bordo sinistro — distingue i blocchi fissi (Impegni/
+            Mail, il nucleo sempre presente) dal resto della libreria con lo
+            stesso ocra già usato ovunque, nessun colore nuovo. Quando il
+            contenuto segnala una rilevanza reale (Fase 5.2 — evento
+            imminente, mail recente, sessione di studio attiva) prende il
+            sopravvento e si rinforza — mai un cambio di
+            posizione/dimensione, solo colore. */}
         <div
           aria-hidden
           className={cn(
             "pointer-events-none absolute inset-y-0 left-0 z-10 w-[3px] transition-colors",
-            emphasis === "urgente"
+            effectiveEmphasis === "urgente"
               ? "bg-destructive/80"
-              : emphasis === "attenzione"
+              : effectiveEmphasis === "attenzione"
                 ? "bg-primary/70"
                 : fixed
                   ? "bg-primary/25"
@@ -262,6 +299,16 @@ export function WidgetShell({
           <h3 className="font-heading min-w-0 flex-1 truncate text-sm font-medium">
             {meta.title}
           </h3>
+          {emphasisLabel && (
+            <span
+              className={cn(
+                "shrink-0 text-[0.6rem] font-semibold tracking-wide uppercase",
+                effectiveEmphasis === "urgente" ? "text-destructive" : "text-primary",
+              )}
+            >
+              {emphasisLabel}
+            </span>
+          )}
           {fixed ? (
             <span className="text-[0.6rem] font-medium tracking-wide text-ink-faint uppercase">
               fisso
@@ -277,7 +324,9 @@ export function WidgetShell({
             </button>
           )}
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+        <EmphasisContext.Provider value={setContentEmphasis}>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+        </EmphasisContext.Provider>
 
         {/* Maniglie di ridimensionamento: tutti e quattro i bordi, così si può
             afferrare il blocco da qualsiasi lato. Zona di presa larga (12px)

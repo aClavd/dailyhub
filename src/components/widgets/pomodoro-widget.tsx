@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react"
 
+import { useReportEmphasis } from "@/components/board/widget-shell"
 import { incrementPomodoroSession } from "@/lib/actions/diario"
 import { chiaveGiorno } from "@/lib/datetime"
 import { cn } from "@/lib/utils"
@@ -78,6 +79,11 @@ export function PomodoroWidget({ initial }: { initial: number }) {
     // tick, ogni secondo, invece che una volta sola all'avvio/al cambio fase.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, phase, sessioni])
+
+  // "attenzione", non "urgente": una sessione che scorre è uno stato
+  // calmo che acquisisce rilevanza, non qualcosa che richiede attenzione
+  // immediata — nessun livello più forte per il Pomodoro.
+  useReportEmphasis(phase === "focus" && running ? "attenzione" : "none")
 
   const mm = String(Math.floor(left / 60)).padStart(2, "0")
   const ss = String(left % 60).padStart(2, "0")
