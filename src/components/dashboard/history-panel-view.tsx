@@ -2,9 +2,13 @@
 
 import type { SVGProps } from "react"
 
+import { Dialog, DialogTrigger } from "@/components/ui/dialog"
 import type { DiarioState } from "@/lib/diario"
+import { moodDotClass } from "@/lib/diario"
 import { useLocalStorage } from "@/lib/use-local-storage"
 import { cn } from "@/lib/utils"
+
+import { HistoryExplorer } from "./history-explorer"
 
 export type HistoryDayData = {
   key: string
@@ -13,13 +17,6 @@ export type HistoryDayData = {
   dayNumber: number
   isToday: boolean
   entry?: DiarioState
-}
-
-function moodDotClass(mood?: DiarioState["mood"] | null) {
-  if (mood === "Difficile") return "bg-destructive"
-  if (mood === "Così così" || mood === "Neutro") return "bg-ink-faint"
-  if (mood === "Buono" || mood === "Ottimo") return "bg-good"
-  return "bg-border"
 }
 
 function HistoryIcon(props: SVGProps<SVGSVGElement>) {
@@ -40,12 +37,35 @@ function HistoryIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+function ExpandIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M9 3H4v5M15 3h5v5M15 21h5v-5M9 21H4v-5" />
+    </svg>
+  )
+}
+
 /**
  * Cronologia degli ultimi giorni — un pannello comprimibile sulla destra,
  * simmetrico al rail: aperto mostra la lista, chiuso una mini colonna
  * "calendario" (numero del giorno + pallino umore).
  */
-export function HistoryPanelView({ days }: { days: HistoryDayData[] }) {
+export function HistoryPanelView({
+  days,
+  todayKey,
+}: {
+  days: HistoryDayData[]
+  todayKey: string
+}) {
   const [collapsed, setCollapsed] = useLocalStorage<boolean>("dailyhub:history-collapsed", false)
 
   return (
@@ -65,6 +85,18 @@ export function HistoryPanelView({ days }: { days: HistoryDayData[] }) {
             <h3 className="font-heading text-sm font-medium">Cronologia</h3>
             <p className="text-ink-faint mt-0.5 text-[0.68rem]">Gli ultimi 7 giorni</p>
           </div>
+        )}
+        {!collapsed && (
+          <Dialog>
+            <DialogTrigger
+              aria-label="Apri calendario e ricerca"
+              title="Calendario e ricerca"
+              className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border transition-colors"
+            >
+              <ExpandIcon className="size-3.5" />
+            </DialogTrigger>
+            <HistoryExplorer todayKey={todayKey} />
+          </Dialog>
         )}
         <button
           type="button"

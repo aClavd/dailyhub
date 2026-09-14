@@ -29,5 +29,5 @@ export async function HistoryPanel() {
     entry: history[keys[i]],
   }))
 
-  return <HistoryPanelView days={days} />
+  return <HistoryPanelView days={days} todayKey={today} />
 }

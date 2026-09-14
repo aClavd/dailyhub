@@ -78,3 +78,45 @@ export async function getDiarioHistory(
   for (const row of rows) byDate[row.date] = fromRow(row)
   return byDate
 }
+
+export type DiarioSearchHit = { date: string; snippet: string }
+
+const SNIPPET_MAX = 140
+
+/**
+ * Cerca "quando ho scritto X" nel diario — solo in testo/obiettivo
+ * (`contains`, case-insensitive, nativo su Postgres, nessuna estensione
+ * richiesta). Non cerca dentro le abitudini (JSON, ricerca
+ * strutturalmente diversa, nomi pochi e prevedibili): ricerca onesta su
+ * quello che scrivi per davvero, non un'illusione di "cerca ovunque".
+ */
+export async function searchDiario(query: string, limit = 30): Promise<DiarioSearchHit[]> {
+  const q = query.trim()
+  if (!q) return []
+  const session = await auth()
+  if (!session?.user?.id) return []
+
+  const rows = await prisma.journalEntry.findMany({
+    where: {
+      userId: session.user.id,
+      OR: [
+        { testo: { contains: q, mode: "insensitive" } },
+        { obiettivo: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    orderBy: { date: "desc" },
+    take: limit,
+    select: { date: true, testo: true, obiettivo: true },
+  })
+
+  return rows.map((row) => {
+    // Mostra il campo che ha davvero fatto scattare il risultato, non
+    // sempre lo stesso — così si capisce perché quel giorno è comparso.
+    const matchedTesto = row.testo.toLowerCase().includes(q.toLowerCase())
+    const snippet = matchedTesto ? row.testo : row.obiettivo
+    return {
+      date: row.date,
+      snippet: snippet.length > SNIPPET_MAX ? `${snippet.slice(0, SNIPPET_MAX)}…` : snippet,
+    }
+  })
+}

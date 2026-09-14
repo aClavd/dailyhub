@@ -37,3 +37,12 @@ export const DEFAULT_HABITS: readonly string[] = [
   "Lettura 10 pag",
   "Journaling",
 ]
+
+/** Colore del pallino umore — condiviso tra il pannello Cronologia a 7
+ * giorni e la Cronologia estesa (history-explorer.tsx). */
+export function moodDotClass(mood?: Mood | null): string {
+  if (mood === "Difficile") return "bg-destructive"
+  if (mood === "Così così" || mood === "Neutro") return "bg-ink-faint"
+  if (mood === "Buono" || mood === "Ottimo") return "bg-good"
+  return "bg-border"
+}
