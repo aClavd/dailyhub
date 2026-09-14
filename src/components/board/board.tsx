@@ -2,7 +2,14 @@
 
 import { useState } from "react"
 
-import { DND_MIME, boardNaturalWidthRem, boardUsedCols, isLibraryWidget } from "@/lib/board"
+import {
+  CELL_MAX_REM,
+  CELL_MIN_REM,
+  DND_MIME,
+  boardNaturalWidthRem,
+  boardUsedCols,
+  isLibraryWidget,
+} from "@/lib/board"
 import { cn } from "@/lib/utils"
 
 import { useBoard } from "./board-context"
@@ -32,11 +39,11 @@ export function Board({
   // min(naturale, 100%) sotto è quello che tiene fede a "sempre un unico
   // rettangolo": se la finestra è più stretta della larghezza naturale, le
   // colonne si restringono tutte insieme (proporzionalmente, via
-  // minmax(8rem, 15rem) sotto) per continuare a stare dentro il rettangolo
-  // disponibile. Il minimo di 8rem è dove ci si ferma di restringersi —
-  // sotto diventerebbe illeggibile (orari/testo tagliati); da lì in giù
-  // subentra overflow-x-auto come rete di sicurezza, non lo scroll come
-  // prima via d'uscita.
+  // minmax(CELL_MIN_REM, CELL_MAX_REM) sotto) per continuare a stare dentro
+  // il rettangolo disponibile. CELL_MIN_REM è dove ci si ferma di
+  // restringersi — sotto diventerebbe illeggibile (orari/testo tagliati);
+  // da lì in giù subentra overflow-x-auto come rete di sicurezza, non lo
+  // scroll come prima via d'uscita.
   const naturalWidth = `${boardNaturalWidthRem(layout)}rem`
 
   return (
@@ -65,15 +72,15 @@ export function Board({
             if (isLibraryWidget(type)) addWidget(type)
           }}
           style={{
-            gridTemplateColumns: `repeat(${usedCols}, minmax(8rem, 15rem))`,
+            gridTemplateColumns: `repeat(${usedCols}, minmax(${CELL_MIN_REM}rem, ${CELL_MAX_REM}rem))`,
             width: `min(100%, ${naturalWidth})`,
           }}
           className={cn(
             // Griglia logica: ogni blocco ha una posizione/dimensione esplicita
             // (x/y/w/h in celle, vedi board-context.tsx) applicata come
             // grid-column/grid-row inline su ogni WidgetShell — non più un
-            // impacchettamento automatico del browser. minmax(8rem, 15rem)
-            // sulle colonne + width qui sopra: la griglia è larga quanto le
+            // impacchettamento automatico del browser. minmax(...) sulle
+            // colonne + width qui sopra: la griglia è larga quanto le
             // serve se c'è posto, altrimenti tutte le colonne si stringono
             // insieme (fino a 8rem) per restare dentro lo spazio disponibile.
             // relative: durante un resize il blocco trascinato esce dal

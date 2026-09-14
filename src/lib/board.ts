@@ -10,8 +10,21 @@ export type WidgetType =
   | "lettura"
   | "acqua"
 
-/** Larghezza della griglia logica della board, in celle (~15rem l'una). */
+/** Larghezza della griglia logica della board, in celle. */
 export const BOARD_COLS = 6
+
+/**
+ * Larghezza di una colonna, in rem — unica fonte di verità, usata sia qui
+ * (per calcolare la larghezza naturale della board) sia in board.tsx (per
+ * il `minmax()` del CSS Grid vero): prima erano due letterali duplicati
+ * che potevano disallinearsi. CELL_MAX è quella "piena" quando c'è spazio
+ * (Fase 5.1: alzata da 15 a 16.5, +10%, per usare meglio gli schermi
+ * larghi senza aggiungere colonne né allargare un widget più di un altro
+ * — cresce l'unità di misura comune, non le proporzioni scelte da
+ * Claudio). CELL_MIN resta la protezione su finestre strette, non tocca.
+ */
+export const CELL_MAX_REM = 16.5
+export const CELL_MIN_REM = 8
 
 /** Posizione e dimensione di un blocco sulla griglia logica, in celle (non px). */
 export type WidgetPlacement = {
@@ -90,16 +103,16 @@ export function boardUsedCols(layout: readonly WidgetPlacement[]): number {
 }
 
 /**
- * Larghezza "naturale" della board in rem (tutte le colonne a 15rem piene,
- * gap inclusi) — quella che userebbe se ci stesse comoda. Condivisa da
- * board.tsx (la griglia vera) e dashboard-header.tsx (Meteo/Spotify in
- * testata, allineati agli stessi bordi): usando la stessa formula sui dati
- * dello stesso useBoard(), i due combaciano sempre in pixel, senza dover
- * misurare nulla via JS.
+ * Larghezza "naturale" della board in rem (tutte le colonne a CELL_MAX_REM
+ * piene, gap di 1rem inclusi) — quella che userebbe se ci stesse comoda.
+ * Condivisa da board.tsx (la griglia vera) e header-flanking-row.tsx
+ * (Meteo/Spotify in testata, allineati agli stessi bordi): usando la
+ * stessa formula sui dati dello stesso useBoard(), i due combaciano sempre
+ * in pixel, senza dover misurare nulla via JS.
  */
 export function boardNaturalWidthRem(layout: readonly WidgetPlacement[]): number {
   const cols = boardUsedCols(layout)
-  return cols * 15 + (cols - 1)
+  return cols * CELL_MAX_REM + (cols - 1)
 }
 
 /**

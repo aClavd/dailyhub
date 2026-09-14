@@ -7,17 +7,28 @@ import { REORDER_MIME, WIDGET_META, type WidgetType } from "@/lib/board"
 import { cn } from "@/lib/utils"
 
 import { useBoard } from "./board-context"
-import { GripIcon, ResizeCornerIcon } from "./widget-icon"
+import { GripIcon, ResizeCornerIcon, WidgetIcon } from "./widget-icon"
 
 type LiveRect = { left: number; top: number; width: number; height: number }
+
+/**
+ * Livello di rilevanza da segnalare sul blocco — scaffold visivo INERTE
+ * per la Fase 5.2 (regole vere di urgenza, funzioni `urgency()` per
+ * widget). Per ora nessun chiamante passa altro che "none": nessun
+ * widget sposta, ridimensiona o nasconde nulla in base a questo, solo il
+ * colore della "spina" sul bordo sinistro cambia (vedi sotto).
+ */
+export type WidgetEmphasis = "none" | "attenzione" | "urgente"
 
 export function WidgetShell({
   type,
   fixed = false,
+  emphasis = "none",
   children,
 }: {
   type: WidgetType
   fixed?: boolean
+  emphasis?: WidgetEmphasis
   children: React.ReactNode
 }) {
   const { committedLayout, placementOf, setPreview, commitLayout, removeWidget, moveWidget } =
@@ -214,6 +225,25 @@ export function WidgetShell({
           justResized && "[animation:widget-settle_220ms_ease-out]",
         )}
       >
+        {/* "Spina" sul bordo sinistro — Fase 5.1: distingue i blocchi fissi
+            (Impegni/Mail, il nucleo sempre presente) dal resto della
+            libreria con lo stesso ocra già usato ovunque, nessun colore
+            nuovo. Quando emphasis non è "none" (Fase 5.2, non ancora
+            attivato da nessun chiamante) prende il sopravvento e si
+            rinforza — mai un cambio di posizione/dimensione, solo colore. */}
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-y-0 left-0 z-10 w-[3px] transition-colors",
+            emphasis === "urgente"
+              ? "bg-destructive/80"
+              : emphasis === "attenzione"
+                ? "bg-primary/70"
+                : fixed
+                  ? "bg-primary/25"
+                  : "bg-transparent",
+          )}
+        />
         <header className="flex shrink-0 items-center gap-1.5 border-b border-border px-2.5 py-2">
           <button
             type="button"
@@ -228,6 +258,7 @@ export function WidgetShell({
           >
             <GripIcon className="size-3.5" />
           </button>
+          <WidgetIcon type={type} className="text-ink-faint size-3.5 shrink-0" />
           <h3 className="font-heading min-w-0 flex-1 truncate text-sm font-medium">
             {meta.title}
           </h3>
