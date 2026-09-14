@@ -36,23 +36,50 @@ model JournalEntry {
   @@index([userId])
 }
 
-/// Layout della board componibile: griglia logica con posizione/dimensione
-/// esplicita per blocco (vedi src/lib/board.ts, WidgetPlacement).
+/// Preferenze dell'utente indipendenti da QUALE layout (SavedLayout, sotto)
+/// sta guardando — una riga sola per utente. `layout`/`order`/`sizes`
+/// restano solo come fonte per la migrazione automatica verso SavedLayout
+/// (Fase 5.4): non più scritti per i blocchi dopo la prima migrazione.
 model BoardLayout {
   userId    String   @id
-  /// @deprecated — sostituito da `layout`. Non più letto dal codice nuovo,
-  /// tenuto solo per la migrazione automatica delle board create prima.
+  /// @deprecated — non più letto dal codice nuovo, tenuto solo per la
+  /// migrazione automatica delle board create prima di `layout`.
   order     String[]
-  /// @deprecated — sostituito da `layout`.
+  /// @deprecated
   sizes     Json     @default("{}")
-  /// WidgetPlacement[] = { type, x, y, w, h } in celle logiche (non px).
+  /// @deprecated — sostituito da SavedLayout.layout. Resta finché serve da
+  /// sorgente per la migrazione automatica al primo accesso di un utente
+  /// senza ancora nessuna SavedLayout.
   layout    Json     @default("[]")
   railCollapsed Boolean @default(false)
   /// Nomi delle abitudini personalizzate, condivisi tra tutti i giorni del
   /// widget Diario (lo stato "fatta/non fatta" invece è per giorno, su
-  /// JournalEntry.habits).
+  /// JournalEntry.habits) — e tra tutti i SavedLayout: non ha senso che
+  /// cambino solo perché hai aperto un'altra disposizione dei blocchi.
   habitList String[] @default([])
   updatedAt DateTime @updatedAt
+}
+
+/// Un layout salvato e nominato (es. "Studio", "Lavoro", "Serata") — un
+/// utente può averne più d'uno, esattamente uno attivo alla volta
+/// (Fase 5.4). Solo la disposizione dei blocchi: railCollapsed/habitList
+/// restano su BoardLayout, condivisi tra tutti i layout dello stesso
+/// utente (vedi il commento lì).
+model SavedLayout {
+  id     String @id @default(cuid())
+  userId String
+  name   String
+  /// WidgetPlacement[] = { type, x, y, w, h } in celle logiche — stessa
+  /// forma di BoardLayout.layout.
+  layout Json @default("[]")
+  /// Esattamente una riga per utente è true — applicato in codice
+  /// (switchBoardLayout aggiorna tutte le righe dell'utente in una sola
+  /// transazione), non un vincolo del database.
+  isActive  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 /// Collegamento Spotify per il widget "in riproduzione ora" in testata —

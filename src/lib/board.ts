@@ -234,6 +234,17 @@ export const DEFAULT_BOARD_STATE: BoardState = {
   habitList: [...DEFAULT_HABITS],
 }
 
+/**
+ * BoardState + quale SavedLayout è attivo — quello che il client vede
+ * davvero (railCollapsed/habitList restano condivisi tra layout, solo
+ * `layout` cambia col nome scelto, Fase 5.4).
+ */
+export type ActiveBoardState = BoardState & { layoutId: string; layoutName: string }
+
+/** Un layout salvato, per lo switcher — senza il contenuto (pesante,
+ * serve solo quando lo attivi). */
+export type SavedLayoutSummary = { id: string; name: string; isActive: boolean }
+
 /** MIME per trascinare un blocco dalla libreria sulla board. */
 export const DND_MIME = "application/x-dailyhub-widget"
 /** MIME per trascinare un blocco già sulla board per riordinarlo. */

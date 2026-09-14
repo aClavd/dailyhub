@@ -16,7 +16,7 @@ import { TopBar } from "@/components/dashboard/top-bar"
 import { DiarioWidget } from "@/components/widgets/diario-widget"
 import { PomodoroWidget } from "@/components/widgets/pomodoro-widget"
 import { chiaveGiorno } from "@/lib/datetime"
-import { getBoardLayout } from "@/lib/queries/board"
+import { getActiveBoardLayout } from "@/lib/queries/board"
 import { getDiarioToday } from "@/lib/queries/diario"
 import { getTodayEvents } from "@/lib/google/calendar"
 import { getMail } from "@/lib/mail"
@@ -31,7 +31,7 @@ export default async function DashboardPage() {
   // Board e diario vengono dal DB: si leggono prima di disegnare la pagina,
   // sono veloci (query indicizzate) e servono per lo stato iniziale.
   const [boardInitial, { state: diarioInitial, dayNumber }] = await Promise.all([
-    getBoardLayout(),
+    getActiveBoardLayout(),
     getDiarioToday(chiaveGiorno()),
   ])
 

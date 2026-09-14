@@ -1,13 +1,23 @@
 "use client"
 
-import { createContext, useCallback, useContext, useMemo, useState, useTransition } from "react"
+import { createContext, useCallback, useContext, useMemo, useRef, useState, useTransition } from "react"
 
-import { saveBoardLayout } from "@/lib/actions/board"
+import {
+  createBoardLayout,
+  deleteBoardLayout,
+  fetchBoardLayouts,
+  renameBoardLayout,
+  saveBoardLayout,
+  switchBoardLayout,
+  type BoardLayoutActionResult,
+} from "@/lib/actions/board"
 import {
   FIXED_WIDGETS,
   WIDGET_META,
   findFreeSpot,
+  type ActiveBoardState,
   type BoardState,
+  type SavedLayoutSummary,
   type WidgetPlacement,
   type WidgetType,
 } from "@/lib/board"
@@ -45,6 +55,19 @@ type BoardApi = {
   habitList: string[]
   addHabit: (label: string) => void
   removeHabit: (label: string) => void
+
+  // Fase 5.4 — layout salvati con nome, uno attivo alla volta.
+  layoutId: string
+  layoutName: string
+  /** Elenco completo (senza contenuto) per lo switcher — null finché
+   * `loadLayouts` non è stato chiamato almeno una volta (si carica solo
+   * quando serve, non a ogni render della board). */
+  layouts: SavedLayoutSummary[] | null
+  loadLayouts: () => void
+  switchLayout: (id: string) => Promise<void>
+  createLayout: (name: string) => Promise<BoardLayoutActionResult>
+  renameLayout: (id: string, name: string) => Promise<{ ok: boolean; reason?: string }>
+  deleteLayout: (id: string) => Promise<{ ok: boolean; reason?: string }>
 }
 
 const BoardContext = createContext<BoardApi | null>(null)
@@ -71,7 +94,7 @@ export function BoardProvider({
   initial,
   children,
 }: {
-  initial: BoardState
+  initial: ActiveBoardState
   children: React.ReactNode
 }) {
   const [committedLayout, setCommittedLayout] = useState<WidgetPlacement[]>(() =>
@@ -80,13 +103,22 @@ export function BoardProvider({
   const [previewLayout, setPreviewLayout] = useState<WidgetPlacement[] | null>(null)
   const [railCollapsed, setRailCollapsed] = useState(initial.railCollapsed)
   const [habitList, setHabitList] = useState<string[]>(initial.habitList)
+  const [layoutId, setLayoutId] = useState(initial.layoutId)
+  const [layoutName, setLayoutName] = useState(initial.layoutName)
+  const [layouts, setLayouts] = useState<SavedLayoutSummary[] | null>(null)
   const [, startTransition] = useTransition()
+
+  // Letto da `persist` senza essere una dipendenza reattiva — cambia solo
+  // via switchLayout/createLayout/deleteLayout, mai durante una mutazione
+  // di board qualsiasi: un ref evita di dover ricreare `persist` (e quindi
+  // tutti i mutatori che ne dipendono) ogni volta che cambi layout.
+  const layoutIdRef = useRef(initial.layoutId)
 
   // Salva sul DB in background; lo stato locale è già aggiornato, quindi la
   // UI non aspetta il giro di rete.
   const persist = useCallback((patch: Partial<BoardState>) => {
     startTransition(() => {
-      void saveBoardLayout({
+      void saveBoardLayout(layoutIdRef.current, {
         layout: patch.layout ?? committedLayout,
         railCollapsed: patch.railCollapsed ?? railCollapsed,
         habitList: patch.habitList ?? habitList,
@@ -176,6 +208,70 @@ export function BoardProvider({
     [habitList, persist],
   )
 
+  // Applica uno ActiveBoardState fresco (dopo switch/crea/elimina) allo
+  // stato locale — un solo posto per non ripetere le stesse 6 righe in
+  // ognuna delle tre azioni sotto.
+  const applyActiveState = useCallback((state: ActiveBoardState) => {
+    layoutIdRef.current = state.layoutId
+    setLayoutId(state.layoutId)
+    setLayoutName(state.layoutName)
+    setCommittedLayout(sanitizeLayout(state.layout))
+    setPreviewLayout(null)
+    setRailCollapsed(state.railCollapsed)
+    setHabitList(state.habitList)
+  }, [])
+
+  const loadLayouts = useCallback(() => {
+    startTransition(async () => {
+      setLayouts(await fetchBoardLayouts())
+    })
+  }, [])
+
+  const switchLayout = useCallback(
+    async (id: string) => {
+      if (id === layoutIdRef.current) return
+      const state = await switchBoardLayout(id)
+      if (!state) return
+      applyActiveState(state)
+      setLayouts((prev) => prev?.map((l) => ({ ...l, isActive: l.id === state.layoutId })) ?? null)
+    },
+    [applyActiveState],
+  )
+
+  const createLayout = useCallback(
+    async (name: string) => {
+      const result = await createBoardLayout(name)
+      if (result.ok) {
+        applyActiveState(result.state)
+        setLayouts(null) // ricaricata al prossimo loadLayouts (switcher riaperto)
+      }
+      return result
+    },
+    [applyActiveState],
+  )
+
+  const renameLayout = useCallback(async (id: string, name: string) => {
+    const result = await renameBoardLayout(id, name)
+    if (result.ok) {
+      const trimmed = name.trim()
+      setLayouts((prev) => prev?.map((l) => (l.id === id ? { ...l, name: trimmed } : l)) ?? null)
+      if (id === layoutIdRef.current) setLayoutName(trimmed)
+    }
+    return result
+  }, [])
+
+  const deleteLayout = useCallback(
+    async (id: string) => {
+      const result = await deleteBoardLayout(id)
+      if (result.ok) {
+        setLayouts((prev) => prev?.filter((l) => l.id !== id) ?? null)
+        if (result.state) applyActiveState(result.state)
+      }
+      return result
+    },
+    [applyActiveState],
+  )
+
   const value = useMemo<BoardApi>(
     () => ({
       layout,
@@ -192,6 +288,14 @@ export function BoardProvider({
       habitList,
       addHabit,
       removeHabit,
+      layoutId,
+      layoutName,
+      layouts,
+      loadLayouts,
+      switchLayout,
+      createLayout,
+      renameLayout,
+      deleteLayout,
     }),
     [
       layout,
@@ -206,6 +310,14 @@ export function BoardProvider({
       habitList,
       addHabit,
       removeHabit,
+      layoutId,
+      layoutName,
+      layouts,
+      loadLayouts,
+      switchLayout,
+      createLayout,
+      renameLayout,
+      deleteLayout,
     ],
   )
 

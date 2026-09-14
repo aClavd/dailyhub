@@ -1,15 +1,54 @@
 "use client"
 
-import type { ReactNode } from "react"
+import type { ReactNode, SVGProps } from "react"
+import { useEffect } from "react"
 
+import { Dialog, DialogTrigger } from "@/components/ui/dialog"
+import { Select, SelectItem, SelectItemText, SelectPopup, SelectTrigger } from "@/components/ui/select"
 import { DND_MIME, WIDGET_META, FIXED_WIDGETS, LIBRARY_WIDGETS, type WidgetType } from "@/lib/board"
 import { cn } from "@/lib/utils"
 
 import { useBoard } from "./board-context"
+import { LayoutManager } from "./layout-manager"
 import { WidgetIcon } from "./widget-icon"
 
+function GearIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+    </svg>
+  )
+}
+
 export function Rail() {
-  const { hasWidget, addWidget, railCollapsed, toggleRail } = useBoard()
+  const {
+    hasWidget,
+    addWidget,
+    railCollapsed,
+    toggleRail,
+    layoutId,
+    layoutName,
+    layouts,
+    loadLayouts,
+    switchLayout,
+  } = useBoard()
+
+  // Precaricato appena la barra monta, non solo quando lo switcher si apre:
+  // così la tendina ha già l'elenco pronto al primo click, non un vuoto che
+  // si riempie un attimo dopo.
+  useEffect(() => {
+    loadLayouts()
+  }, [loadLayouts])
 
   return (
     <aside
@@ -40,6 +79,41 @@ export function Rail() {
           {railCollapsed ? "›" : "‹"}
         </button>
       </div>
+
+      {/* Layout salvati (Fase 5.4) — riga a parte sotto l'intestazione,
+          solo a barra espansa: switcher rapido + "gestisci" (rinomina/
+          elimina/crea) in un dialog a parte. */}
+      {!railCollapsed && (
+        <div className="border-border flex shrink-0 items-center gap-1.5 border-b px-3 py-2.5">
+          <Select
+            value={layoutId}
+            onValueChange={(value) => {
+              if (typeof value === "string") void switchLayout(value)
+            }}
+          >
+            <SelectTrigger className="min-w-0 flex-1">
+              <span className="min-w-0 flex-1 truncate text-left">{layoutName}</span>
+            </SelectTrigger>
+            <SelectPopup>
+              {(layouts ?? []).map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  <SelectItemText>{l.name}</SelectItemText>
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+          <Dialog>
+            <DialogTrigger
+              aria-label="Gestisci layout"
+              title="Gestisci layout"
+              className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border transition-colors"
+            >
+              <GearIcon className="size-3.5" />
+            </DialogTrigger>
+            <LayoutManager />
+          </Dialog>
+        </div>
+      )}
 
       {/* Stessa struttura a due gruppi in entrambi gli stati — cambia solo
           come si presenta ogni voce (icona+testo oppure icona sola) e la
