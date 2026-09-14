@@ -6,6 +6,7 @@ import { Board } from "@/components/board/board"
 import { BoardProvider } from "@/components/board/board-context"
 import { Rail } from "@/components/board/rail"
 import { AgendaBody } from "@/components/dashboard/agenda-card"
+import { AgendaNotifier } from "@/components/dashboard/agenda-notifier"
 import { AgendaSkeletonBody } from "@/components/dashboard/agenda-skeleton"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { HistoryPanel } from "@/components/dashboard/history-panel"
@@ -73,7 +74,12 @@ export default async function DashboardPage() {
 
 async function AgendaSection() {
   const result = await getTodayEvents()
-  return <AgendaBody result={result} />
+  return (
+    <>
+      <AgendaBody result={result} />
+      {result.ok && <AgendaNotifier events={result.events} todayKey={chiaveGiorno()} />}
+    </>
+  )
 }
 
 async function MailSection() {

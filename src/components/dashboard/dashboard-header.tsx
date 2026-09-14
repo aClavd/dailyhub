@@ -2,7 +2,6 @@ import { dataEstesa, greeting } from "@/lib/datetime"
 
 import { DailyQuote } from "./daily-quote"
 import { HeaderFlankingRow } from "./header-flanking-row"
-import { TodayFocus } from "./today-focus"
 
 export function DashboardHeader({
   firstName,
@@ -35,10 +34,6 @@ export function DashboardHeader({
           {dataEstesa(now)}
         </p>
       </HeaderFlankingRow>
-
-      <div className="mt-6">
-        <TodayFocus />
-      </div>
     </section>
   )
 }
