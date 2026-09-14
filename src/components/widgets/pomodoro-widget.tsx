@@ -1,5 +1,6 @@
 "use client"
 
+import { SkipForward } from "lucide-react"
 import { useEffect, useRef, useState, useTransition } from "react"
 
 import { useReportEmphasis } from "@/components/board/widget-shell"
@@ -56,6 +57,23 @@ function playChime(ctx: AudioContext) {
   }
 }
 
+/** Un "tick" secco e breve, come lo scatto di un cronometro fisico — allo
+ * stesso modo sintetizzato, nessun file audio. Suona all'avvio (non alla
+ * pausa), distinto dalla campanella morbida di fine blocco. */
+function playClick(ctx: AudioContext) {
+  const now = ctx.currentTime
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = "square"
+  osc.frequency.value = 1800
+  gain.gain.setValueAtTime(0.2, now)
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.start(now)
+  osc.stop(now + 0.06)
+}
+
 /**
  * Stile Pomofocus: 4 blocchi da 25 min con pausa breve (5 min) dopo i primi
  * 3, pausa lunga (15 min) dopo il 4°, poi si ricomincia. Il conteggio delle
@@ -78,6 +96,32 @@ export function PomodoroWidget({ initial }: { initial: number }) {
   const endAtRef = useRef<number | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
 
+  // Chiude il blocco corrente come se il countdown fosse arrivato a zero —
+  // condivisa tra lo scatto naturale del timer e il pulsante "salta"
+  // (Pomofocus la chiama così: salti alla fine, non annulli e basta), un
+  // solo punto che decide fase successiva/conteggio/suono invece di due
+  // copie della stessa logica.
+  function completePhase() {
+    setRunning(false)
+    endAtRef.current = null
+    try {
+      if (audioCtxRef.current) playChime(audioCtxRef.current)
+    } catch {
+      // niente audio, pazienza — non deve interrompere il cambio di fase
+    }
+    if (phase === "focus") {
+      const next = sessioni + 1
+      setSessioni(next)
+      startTransition(() => void incrementPomodoroSession(chiaveGiorno()))
+      const nextPhase: Phase = next % 4 === 0 ? "long" : "short"
+      setPhase(nextPhase)
+      setLeft(DURATIONS[nextPhase])
+    } else {
+      setPhase("focus")
+      setLeft(DURATIONS.focus)
+    }
+  }
+
   useEffect(() => {
     if (!running) {
       endAtRef.current = null
@@ -91,25 +135,7 @@ export function PomodoroWidget({ initial }: { initial: number }) {
       const remaining = Math.max(0, Math.round((endAt - Date.now()) / 1000))
       setLeft(remaining)
       if (remaining > 0) return
-
-      setRunning(false)
-      endAtRef.current = null
-      try {
-        if (audioCtxRef.current) playChime(audioCtxRef.current)
-      } catch {
-        // niente audio, pazienza — non deve interrompere il cambio di fase
-      }
-      if (phase === "focus") {
-        const next = sessioni + 1
-        setSessioni(next)
-        startTransition(() => void incrementPomodoroSession(chiaveGiorno()))
-        const nextPhase: Phase = next % 4 === 0 ? "long" : "short"
-        setPhase(nextPhase)
-        setLeft(DURATIONS[nextPhase])
-      } else {
-        setPhase("focus")
-        setLeft(DURATIONS.focus)
-      }
+      completePhase()
     }
 
     const id = setInterval(tick, 1000)
@@ -118,6 +144,9 @@ export function PomodoroWidget({ initial }: { initial: number }) {
     // "running" diventa true (quel render lo vede comunque, essendo running
     // già tra le dipendenze) — includerlo ricreerebbe l'intervallo a ogni
     // tick, ogni secondo, invece che una volta sola all'avvio/al cambio fase.
+    // completePhase intenzionalmente fuori: è una funzione normale
+    // ridefinita a ogni render, chiuderebbe comunque sullo stesso
+    // phase/sessioni già nelle dipendenze qui sotto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, phase, sessioni])
 
@@ -161,14 +190,28 @@ export function PomodoroWidget({ initial }: { initial: number }) {
             // L'AudioContext va creato durante un gesto reale dell'utente
             // (questo click) — crearlo dopo, dentro il tick del timer,
             // verrebbe bloccato dalle policy di autoplay dei browser.
-            if (!running && !audioCtxRef.current) {
-              audioCtxRef.current = new AudioContext()
+            if (!running) {
+              if (!audioCtxRef.current) audioCtxRef.current = new AudioContext()
+              try {
+                playClick(audioCtxRef.current)
+              } catch {
+                // niente audio, pazienza
+              }
             }
             setRunning((value) => !value)
           }}
           className="bg-brand-soft text-primary flex-1 rounded-md py-1.5 text-xs font-semibold"
         >
           {running ? "Pausa" : "Avvia"}
+        </button>
+        <button
+          type="button"
+          onClick={completePhase}
+          aria-label="Salta al blocco successivo"
+          title="Salta al blocco successivo"
+          className="border-border text-ink-soft hover:text-foreground grid shrink-0 place-items-center rounded-md border px-2.5"
+        >
+          <SkipForward className="size-3.5" fill="currentColor" />
         </button>
         <button
           type="button"
