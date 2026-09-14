@@ -29,6 +29,13 @@ export function Board({
 }) {
   const { layout, addWidget } = useBoard()
   const [dragOver, setDragOver] = useState(false)
+  // Impegni/Mail: lo slot arriva sempre da page.tsx (il fetch server-side
+  // gira comunque), ma va montato lato client SOLO in un posto — qui dentro
+  // la griglia se il blocco è sulla board, altrimenti nascosto più sotto
+  // (mai i due insieme) — così AgendaNotifier e il segnale "mail recente"
+  // continuano a funzionare anche col blocco tolto dalla board.
+  const hasAgenda = layout.some((p) => p.type === "agenda")
+  const hasMail = layout.some((p) => p.type === "mail")
 
   // Colonne davvero usate dai blocchi presenti, non un tetto massimo fisso:
   // con pochi blocchi la griglia resta stretta; crescendo si allarga fino a
@@ -94,14 +101,14 @@ export function Board({
           {layout.map(({ type }) => {
             if (type === "agenda") {
               return (
-                <WidgetShell key={type} type="agenda" fixed>
+                <WidgetShell key={type} type="agenda">
                   {agendaSlot}
                 </WidgetShell>
               )
             }
             if (type === "mail") {
               return (
-                <WidgetShell key={type} type="mail" fixed>
+                <WidgetShell key={type} type="mail">
                   {mailSlot}
                 </WidgetShell>
               )
@@ -128,6 +135,13 @@ export function Board({
           })}
         </div>
       </div>
+
+      {/* Impegni/Mail restano montati anche quando non sono sulla board —
+          altrimenti AgendaNotifier e il segnale "mail recente" nel rail
+          smetterebbero di funzionare col blocco tolto (vedi hasAgenda/
+          hasMail sopra). Zero spazio, zero impatto visivo. */}
+      {!hasAgenda && <div className="hidden">{agendaSlot}</div>}
+      {!hasMail && <div className="hidden">{mailSlot}</div>}
 
       {/* Non più un widget finto dentro la griglia: è una didascalia sotto —
           il feedback vero durante il trascinamento è il contorno tratteggiato

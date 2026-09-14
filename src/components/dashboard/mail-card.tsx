@@ -1,8 +1,9 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 
+import { useBoard } from "@/components/board/board-context"
 import { useReportEmphasis, type WidgetEmphasis } from "@/components/board/widget-shell"
 import { Button } from "@/components/ui/button"
 import { Segmented } from "@/components/widgets/_shared"
@@ -37,7 +38,21 @@ export function MailBody({ result }: { result: MailResult }) {
   const [tab, setTab] = useState<Tab>("Tutte")
   // Sul totale, non sulla tab aperta: il segnale sulla shell riflette lo
   // stato vero, indipendente da quale sezione stai guardando in quel momento.
-  useReportEmphasis(useMemo(() => mailEmphasis(result.messages), [result.messages]))
+  const emphasis = useMemo(() => mailEmphasis(result.messages), [result.messages])
+  useReportEmphasis(emphasis)
+
+  // Secondo canale, verso il board context invece che verso la shell che
+  // racchiude questo blocco: serve al pallino nel rail (rail.tsx), che deve
+  // sapere se è arrivato qualcosa di recente ANCHE quando il blocco non è
+  // sulla board (quindi non dentro nessuna WidgetShell in quel momento —
+  // vedi board.tsx, montaggio nascosto). useBoard() legge sempre dal
+  // BoardProvider di livello pagina, indipendente da dove questo componente
+  // è montato nel DOM.
+  const { setMailHasRecent } = useBoard()
+  const hasRecent = emphasis !== "none"
+  useEffect(() => {
+    setMailHasRecent(hasRecent)
+  }, [hasRecent, setMailHasRecent])
 
   const messages = useMemo(() => {
     if (tab === "Tutte") return result.messages

@@ -12,7 +12,6 @@ import {
   type BoardLayoutActionResult,
 } from "@/lib/actions/board"
 import {
-  FIXED_WIDGETS,
   WIDGET_META,
   findFreeSpot,
   type ActiveBoardState,
@@ -68,6 +67,12 @@ type BoardApi = {
   createLayout: (name: string) => Promise<BoardLayoutActionResult>
   renameLayout: (id: string, name: string) => Promise<{ ok: boolean; reason?: string }>
   deleteLayout: (id: string) => Promise<{ ok: boolean; reason?: string }>
+
+  /** Segnale live (non persistito): è arrivata mail recente — legge il rail
+   * per mostrare un pallino sulla voce "Mail" della libreria quando il
+   * blocco non è sulla board (mail-card.tsx lo popola). */
+  mailHasRecent: boolean
+  setMailHasRecent: (value: boolean) => void
 }
 
 const BoardContext = createContext<BoardApi | null>(null)
@@ -80,12 +85,6 @@ function sanitizeLayout(raw: WidgetPlacement[]): WidgetPlacement[] {
       seen.add(p.type)
       cleaned.push(p)
     }
-  }
-  const missingFixed = FIXED_WIDGETS.filter((type) => !seen.has(type))
-  for (const type of missingFixed) {
-    const meta = WIDGET_META[type]
-    const { x, y } = findFreeSpot(cleaned, meta.w, meta.h)
-    cleaned.push({ type, x, y, w: meta.w, h: meta.h })
   }
   return cleaned
 }
@@ -106,6 +105,7 @@ export function BoardProvider({
   const [layoutId, setLayoutId] = useState(initial.layoutId)
   const [layoutName, setLayoutName] = useState(initial.layoutName)
   const [layouts, setLayouts] = useState<SavedLayoutSummary[] | null>(null)
+  const [mailHasRecent, setMailHasRecent] = useState(false)
   const [, startTransition] = useTransition()
 
   // Letto da `persist` senza essere una dipendenza reattiva — cambia solo
@@ -139,7 +139,7 @@ export function BoardProvider({
 
   const addWidget = useCallback(
     (type: WidgetType) => {
-      if (FIXED_WIDGETS.includes(type) || committedLayout.some((p) => p.type === type)) return
+      if (committedLayout.some((p) => p.type === type)) return
       const meta = WIDGET_META[type]
       const { x, y } = findFreeSpot(committedLayout, meta.w, meta.h)
       setLayout([...committedLayout, { type, x, y, w: meta.w, h: meta.h }])
@@ -149,7 +149,6 @@ export function BoardProvider({
 
   const removeWidget = useCallback(
     (type: WidgetType) => {
-      if (FIXED_WIDGETS.includes(type)) return
       setLayout(committedLayout.filter((p) => p.type !== type))
     },
     [committedLayout, setLayout],
@@ -296,6 +295,8 @@ export function BoardProvider({
       createLayout,
       renameLayout,
       deleteLayout,
+      mailHasRecent,
+      setMailHasRecent,
     }),
     [
       layout,
@@ -318,6 +319,7 @@ export function BoardProvider({
       createLayout,
       renameLayout,
       deleteLayout,
+      mailHasRecent,
     ],
   )
 

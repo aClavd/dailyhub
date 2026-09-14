@@ -76,16 +76,16 @@ export const WIDGET_META: Record<WidgetType, WidgetMeta> = {
   acqua: { title: "Acqua", desc: "bicchieri di oggi", w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 2 },
 }
 
-/** Blocchi sempre presenti, non rimovibili (ma spostabili). */
-export const FIXED_WIDGETS: readonly WidgetType[] = ["agenda", "mail"]
-
 /**
- * Blocchi trascinabili dalla libreria. "meteo" (e "spotify", quando ci sarà)
- * non ci sono: non sono blocchi della board, sono fissi in testata ai lati
- * del saluto (dashboard-header.tsx) — non ha senso poterli rimuovere o
- * spostare come gli altri.
+ * Blocchi trascinabili dalla libreria — tutti, Impegni/Mail compresi (prima
+ * erano "fissi", non più: si possono togliere e rimettere come qualsiasi
+ * altro blocco). "meteo" (e "spotify") non ci sono: non sono blocchi della
+ * board, sono fissi in testata ai lati del saluto (dashboard-header.tsx) —
+ * non ha senso poterli rimuovere o spostare come gli altri.
  */
 export const LIBRARY_WIDGETS: readonly WidgetType[] = [
+  "agenda",
+  "mail",
   "diario",
   "pomodoro",
   "note",
@@ -181,7 +181,8 @@ function packInOrder(types: readonly WidgetType[]): WidgetPlacement[] {
 }
 
 export const DEFAULT_LAYOUT_PLACEMENT: WidgetPlacement[] = packInOrder([
-  ...FIXED_WIDGETS,
+  "agenda",
+  "mail",
   ...DEFAULT_LAYOUT,
 ])
 

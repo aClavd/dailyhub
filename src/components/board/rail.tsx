@@ -5,7 +5,7 @@ import { useEffect } from "react"
 
 import { Dialog, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectItem, SelectItemText, SelectPopup, SelectTrigger } from "@/components/ui/select"
-import { DND_MIME, WIDGET_META, FIXED_WIDGETS, LIBRARY_WIDGETS, type WidgetType } from "@/lib/board"
+import { DND_MIME, WIDGET_META, LIBRARY_WIDGETS, type WidgetType } from "@/lib/board"
 import { cn } from "@/lib/utils"
 
 import { useBoard } from "./board-context"
@@ -41,6 +41,7 @@ export function Rail() {
     layouts,
     loadLayouts,
     switchLayout,
+    mailHasRecent,
   } = useBoard()
 
   // Precaricato appena la barra monta, non solo quando lo switcher si apre:
@@ -125,12 +126,6 @@ export function Rail() {
           railCollapsed ? "gap-4 px-2" : "gap-5 px-2.5",
         )}
       >
-        <RailSection label="Sempre attivi" collapsed={railCollapsed}>
-          {FIXED_WIDGETS.map((type) => (
-            <RailItem key={type} type={type} collapsed={railCollapsed} fixed />
-          ))}
-        </RailSection>
-
         <RailSection label="Libreria — trascina o tocca" collapsed={railCollapsed}>
           {LIBRARY_WIDGETS.map((type) => (
             <RailItem
@@ -139,6 +134,7 @@ export function Rail() {
               collapsed={railCollapsed}
               added={hasWidget(type)}
               onAdd={() => addWidget(type)}
+              notice={type === "mail" && mailHasRecent && !hasWidget("mail")}
             />
           ))}
         </RailSection>
@@ -171,23 +167,33 @@ function RailSection({
 function RailItem({
   type,
   collapsed,
-  fixed = false,
   added = true,
   onAdd,
+  notice = false,
 }: {
   type: WidgetType
   collapsed: boolean
-  fixed?: boolean
   added?: boolean
   onAdd?: () => void
+  /** Pallino sull'icona — es. è arrivata mail recente mentre il blocco non
+   * è sulla board (mailHasRecent, board-context.tsx). */
+  notice?: boolean
 }) {
-  const draggable = !fixed && !added
+  const draggable = !added
   const meta = WIDGET_META[type]
   const icon = (
-    <WidgetIcon
-      type={type}
-      className={cn("text-primary shrink-0", collapsed ? "size-[18px]" : "size-4")}
-    />
+    <span className="relative shrink-0">
+      <WidgetIcon
+        type={type}
+        className={cn("text-primary", collapsed ? "size-[18px]" : "size-4")}
+      />
+      {notice && (
+        <span
+          aria-hidden
+          className="bg-primary absolute -top-0.5 -right-0.5 size-1.5 rounded-full"
+        />
+      )}
+    </span>
   )
   const onDragStart = draggable
     ? (event: React.DragEvent) => {
@@ -197,27 +203,12 @@ function RailItem({
       }
     : undefined
 
-  if (fixed) {
-    return (
-      <div
-        title={meta.title}
-        className={cn(
-          "border-border bg-card text-ink-soft flex items-center rounded-lg border",
-          collapsed ? "size-9 justify-center" : "w-full gap-2.5 px-2.5 py-2 text-xs",
-        )}
-      >
-        {icon}
-        {!collapsed && <span className="truncate">{meta.title}</span>}
-      </div>
-    )
-  }
-
   return (
     <button
       type="button"
       draggable={draggable}
       onDragStart={onDragStart}
-      title={meta.title}
+      title={notice ? `${meta.title} — è arrivato qualcosa di recente` : meta.title}
       aria-disabled={added}
       onClick={() => !added && onAdd?.()}
       className={cn(

@@ -53,12 +53,10 @@ export function EmphasisReporter({ level, label }: EmphasisReport) {
 
 export function WidgetShell({
   type,
-  fixed = false,
   emphasis = "none",
   children,
 }: {
   type: WidgetType
-  fixed?: boolean
   emphasis?: WidgetEmphasis
   children: React.ReactNode
 }) {
@@ -261,13 +259,10 @@ export function WidgetShell({
           justResized && "[animation:widget-settle_220ms_ease-out]",
         )}
       >
-        {/* "Spina" sul bordo sinistro — distingue i blocchi fissi (Impegni/
-            Mail, il nucleo sempre presente) dal resto della libreria con lo
-            stesso ocra già usato ovunque, nessun colore nuovo. Quando il
-            contenuto segnala una rilevanza reale (Fase 5.2 — evento
-            imminente, mail recente, sessione di studio attiva) prende il
-            sopravvento e si rinforza — mai un cambio di
-            posizione/dimensione, solo colore. */}
+        {/* "Spina" sul bordo sinistro — trasparente di default, si accende
+            solo quando il contenuto segnala una rilevanza reale (Fase 5.2 —
+            evento imminente, mail recente, sessione di studio attiva). Mai
+            un cambio di posizione/dimensione, solo colore. */}
         <div
           aria-hidden
           className={cn(
@@ -276,9 +271,7 @@ export function WidgetShell({
               ? "bg-destructive/80"
               : effectiveEmphasis === "attenzione"
                 ? "bg-primary/70"
-                : fixed
-                  ? "bg-primary/25"
-                  : "bg-transparent",
+                : "bg-transparent",
           )}
         />
         <header className="flex shrink-0 items-center gap-1.5 border-b border-border px-2.5 py-2">
@@ -309,20 +302,14 @@ export function WidgetShell({
               {emphasisLabel}
             </span>
           )}
-          {fixed ? (
-            <span className="text-[0.6rem] font-medium tracking-wide text-ink-faint uppercase">
-              fisso
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => removeWidget(type)}
-              aria-label={`Rimuovi ${meta.title}`}
-              className="text-ink-faint hover:bg-muted hover:text-foreground -mr-1 grid size-6 shrink-0 place-items-center rounded-md text-base leading-none"
-            >
-              &times;
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => removeWidget(type)}
+            aria-label={`Rimuovi ${meta.title}`}
+            className="text-ink-faint hover:bg-muted hover:text-foreground -mr-1 grid size-6 shrink-0 place-items-center rounded-md text-base leading-none"
+          >
+            &times;
+          </button>
         </header>
         <EmphasisContext.Provider value={setContentEmphasis}>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
