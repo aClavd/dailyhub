@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import {
   DEFAULT_BOARD_STATE,
   migrateLegacyLayout,
+  sanitizeLayout,
   type BoardState,
   type WidgetPlacement,
 } from "@/lib/board"
@@ -32,7 +33,7 @@ export async function getBoardLayout(): Promise<BoardState> {
       : migrateLegacyLayout(row.order, (row.sizes as Record<string, string>) ?? {})
 
   return {
-    layout: layout.length > 0 ? layout : DEFAULT_BOARD_STATE.layout,
+    layout: layout.length > 0 ? sanitizeLayout(layout) : DEFAULT_BOARD_STATE.layout,
     railCollapsed: row.railCollapsed,
     // A differenza del layout, una lista vuota qui è uno stato valido (l'utente
     // ha rimosso tutte le abitudini di proposito): nessun fallback ai default.

@@ -138,6 +138,37 @@ export function findFreeSpot(
   return { x: 0, y: maxY }
 }
 
+function placementsOverlap(a: WidgetPlacement, b: WidgetPlacement): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+}
+
+/**
+ * Ripara un layout eventualmente corrotto — coordinate negative o oltre
+ * BOARD_COLS, blocchi sovrapposti. Poteva succedere ridimensionando un
+ * bordo già sul margine della board (bug in board-resize.ts, corretto,
+ * ma può aver già scritto dati non validi su un layout salvato prima
+ * della correzione). Se è già tutto valido lo ritorna invariato senza
+ * toccare nulla; altrimenti lo ricostruisce da capo con lo stesso
+ * bin-packing usato per i layout legacy, mantenendo tipo e dimensione
+ * (clampata a min/max) di ogni blocco — si scartano solo le posizioni,
+ * si ripiazzano da zero nell'ordine in cui erano salvate.
+ */
+export function sanitizeLayout(layout: readonly WidgetPlacement[]): WidgetPlacement[] {
+  const isValid = (p: WidgetPlacement) => p.x >= 0 && p.y >= 0 && p.x + p.w <= BOARD_COLS
+  const hasOverlap = layout.some((a, i) => layout.some((b, j) => i < j && placementsOverlap(a, b)))
+  if (layout.every(isValid) && !hasOverlap) return layout as WidgetPlacement[]
+
+  const rebuilt: WidgetPlacement[] = []
+  for (const p of layout) {
+    const meta = WIDGET_META[p.type]
+    const w = Math.min(meta.maxW, Math.max(meta.minW, p.w))
+    const h = Math.min(meta.maxH, Math.max(meta.minH, p.h))
+    const { x, y } = findFreeSpot(rebuilt, w, h)
+    rebuilt.push({ type: p.type, x, y, w, h })
+  }
+  return rebuilt
+}
+
 /** Piazza una sequenza di blocchi in ordine, uno via via nel primo posto libero. */
 function packInOrder(types: readonly WidgetType[]): WidgetPlacement[] {
   const layout: WidgetPlacement[] = []

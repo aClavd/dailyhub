@@ -1,4 +1,4 @@
-import { WIDGET_META, type WidgetPlacement, type WidgetType } from "@/lib/board"
+import { BOARD_COLS, WIDGET_META, type WidgetPlacement, type WidgetType } from "@/lib/board"
 
 export type ResizeEdge = "left" | "right" | "top" | "bottom"
 
@@ -81,6 +81,19 @@ export function resizeEdge(
       ? (horizontal ? n.w - meta.minW : n.h - meta.minH)
       : (horizontal ? meta.maxW - n.w : meta.maxH - n.h)
     allowed = grow ? Math.min(allowed, room) : Math.max(allowed, -room)
+  }
+
+  // Il bordo della board stessa: se non c'è un vicino a fermarlo (es. il
+  // blocco è già sul bordo sinistro), crescere verso sinistra/alto non deve
+  // mai poter portare x/y sotto zero — mancava, ed è come un layout reale
+  // è finito con x negativo (grid-column con indice negativo si posiziona
+  // in un punto imprevedibile, sovrapponendosi ad altri blocchi). In
+  // verticale non c'è un tetto (la board cresce in righe liberamente),
+  // quindi "bottom" non ha bisogno dello stesso controllo.
+  if (grow) {
+    if (edge === "left") allowed = Math.min(allowed, active.x)
+    else if (edge === "top") allowed = Math.min(allowed, active.y)
+    else if (edge === "right") allowed = Math.min(allowed, BOARD_COLS - (active.x + active.w))
   }
 
   if (allowed === 0) return layout as WidgetPlacement[]
