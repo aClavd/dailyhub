@@ -21,6 +21,41 @@ const LABELS: Record<Phase, string> = {
   long: "Pausa lunga",
 }
 
+// Rosso in studio, blu in pausa — riusa colori già nella palette (destructive
+// e il blu di Libero mail), nessuna tinta nuova aggiunta al design system.
+const PHASE_TEXT: Record<Phase, string> = {
+  focus: "text-destructive",
+  short: "text-libero-fg",
+  long: "text-libero-fg",
+}
+const PHASE_BAR: Record<Phase, string> = {
+  focus: "bg-destructive",
+  short: "bg-libero-fg",
+  long: "bg-libero-fg",
+}
+
+/** Due note morbide in sequenza, sintetizzate via Web Audio — niente file
+ * audio da scaricare o servire. L'AudioContext va creato durante un gesto
+ * reale dell'utente (il click su Avvia, vedi sotto) per rispettare le
+ * policy di autoplay dei browser; qui viene solo riusato. */
+function playChime(ctx: AudioContext) {
+  const now = ctx.currentTime
+  for (const [i, freq] of [880, 1175].entries()) {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = "sine"
+    osc.frequency.value = freq
+    const start = now + i * 0.16
+    gain.gain.setValueAtTime(0, start)
+    gain.gain.linearRampToValueAtTime(0.25, start + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35)
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start(start)
+    osc.stop(start + 0.4)
+  }
+}
+
 /**
  * Stile Pomofocus: 4 blocchi da 25 min con pausa breve (5 min) dopo i primi
  * 3, pausa lunga (15 min) dopo il 4°, poi si ricomincia. Il conteggio delle
@@ -41,6 +76,7 @@ export function PomodoroWidget({ initial }: { initial: number }) {
   // volta dal timestamp assoluto il countdown resta corretto qualunque cosa
   // succeda in mezzo.
   const endAtRef = useRef<number | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
 
   useEffect(() => {
     if (!running) {
@@ -58,6 +94,11 @@ export function PomodoroWidget({ initial }: { initial: number }) {
 
       setRunning(false)
       endAtRef.current = null
+      try {
+        if (audioCtxRef.current) playChime(audioCtxRef.current)
+      } catch {
+        // niente audio, pazienza — non deve interrompere il cambio di fase
+      }
       if (phase === "focus") {
         const next = sessioni + 1
         setSessioni(next)
@@ -94,24 +135,37 @@ export function PomodoroWidget({ initial }: { initial: number }) {
       <p
         className={cn(
           "text-center text-[0.65rem] font-semibold tracking-wide uppercase",
-          phase === "focus" ? "text-ink-faint" : "text-primary",
+          PHASE_TEXT[phase],
         )}
       >
         {LABELS[phase]}
       </p>
-      <p className="text-center font-mono text-4xl font-medium tabular-nums">
+      <p
+        className={cn(
+          "text-center font-mono text-4xl font-medium tabular-nums transition-colors",
+          PHASE_TEXT[phase],
+        )}
+      >
         {mm}:{ss}
       </p>
       <div className="bg-muted mt-2 h-1 overflow-hidden rounded-full">
         <div
-          className="bg-primary h-full transition-[width] duration-300"
+          className={cn("h-full transition-[width,background-color] duration-300", PHASE_BAR[phase])}
           style={{ width: `${progress}%` }}
         />
       </div>
       <div className="mt-3 flex gap-2">
         <button
           type="button"
-          onClick={() => setRunning((value) => !value)}
+          onClick={() => {
+            // L'AudioContext va creato durante un gesto reale dell'utente
+            // (questo click) — crearlo dopo, dentro il tick del timer,
+            // verrebbe bloccato dalle policy di autoplay dei browser.
+            if (!running && !audioCtxRef.current) {
+              audioCtxRef.current = new AudioContext()
+            }
+            setRunning((value) => !value)
+          }}
           className="bg-brand-soft text-primary flex-1 rounded-md py-1.5 text-xs font-semibold"
         >
           {running ? "Pausa" : "Avvia"}
