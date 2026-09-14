@@ -9,10 +9,12 @@ import { AgendaBody } from "@/components/dashboard/agenda-card"
 import { AgendaNotifier } from "@/components/dashboard/agenda-notifier"
 import { AgendaSkeletonBody } from "@/components/dashboard/agenda-skeleton"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { DiarioReminder } from "@/components/dashboard/diario-reminder"
 import { HistoryPanel } from "@/components/dashboard/history-panel"
 import { MailBody } from "@/components/dashboard/mail-card"
 import { MailSkeletonBody } from "@/components/dashboard/mail-skeleton"
 import { SpotifyBody, SpotifySkeletonBody } from "@/components/dashboard/spotify-card"
+import { ToastProvider } from "@/components/dashboard/toast-context"
 import { TopBar } from "@/components/dashboard/top-bar"
 import { DiarioWidget } from "@/components/widgets/diario-widget"
 import { PomodoroWidget } from "@/components/widgets/pomodoro-widget"
@@ -37,38 +39,44 @@ export default async function DashboardPage() {
   ])
 
   return (
-    <BoardProvider initial={boardInitial}>
-      <div className="flex flex-1">
-        <Rail />
-        <div className="min-w-0 flex-1 px-4 pb-16 sm:px-6 lg:px-10 xl:px-14">
-          <TopBar email={session.user.email} />
-          <DashboardHeader
-            firstName={firstName}
-            spotifySlot={
-              <Suspense fallback={<SpotifySkeletonBody />}>
-                <SpotifySection />
-              </Suspense>
-            }
-          />
+    <ToastProvider>
+      <BoardProvider initial={boardInitial}>
+        <div className="flex flex-1">
+          <Rail />
+          <div className="min-w-0 flex-1 px-4 pb-16 sm:px-6 lg:px-10 xl:px-14">
+            <TopBar email={session.user.email} />
+            <DashboardHeader
+              firstName={firstName}
+              spotifySlot={
+                <Suspense fallback={<SpotifySkeletonBody />}>
+                  <SpotifySection />
+                </Suspense>
+              }
+            />
 
-          <Board
-            agendaSlot={
-              <Suspense fallback={<AgendaSkeletonBody />}>
-                <AgendaSection />
-              </Suspense>
-            }
-            mailSlot={
-              <Suspense fallback={<MailSkeletonBody />}>
-                <MailSection />
-              </Suspense>
-            }
-            diarioSlot={<DiarioWidget initial={diarioInitial} dayNumber={dayNumber} />}
-            pomodoroSlot={<PomodoroWidget initial={diarioInitial.pomodoroSessions} />}
-          />
+            <Board
+              agendaSlot={
+                <Suspense fallback={<AgendaSkeletonBody />}>
+                  <AgendaSection />
+                </Suspense>
+              }
+              mailSlot={
+                <Suspense fallback={<MailSkeletonBody />}>
+                  <MailSection />
+                </Suspense>
+              }
+              diarioSlot={<DiarioWidget initial={diarioInitial} dayNumber={dayNumber} />}
+              pomodoroSlot={<PomodoroWidget initial={diarioInitial.pomodoroSessions} />}
+            />
+            <DiarioReminder
+              hasWrittenToday={Boolean(diarioInitial.testo.trim())}
+              todayKey={chiaveGiorno()}
+            />
+          </div>
+          <HistoryPanel />
         </div>
-        <HistoryPanel />
-      </div>
-    </BoardProvider>
+      </BoardProvider>
+    </ToastProvider>
   )
 }
 
