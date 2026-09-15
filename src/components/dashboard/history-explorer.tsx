@@ -27,11 +27,13 @@ const GIORNI_BREVI = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
 
 /**
  * Cronologia estesa — mese/settimana, ricerca, riepilogo di un giorno.
- * Apribile dal pannello a 7 giorni (history-panel-view.tsx), stesso
+ * Apribile dalla sezione Cronologia nel rail (rail.tsx), stesso
  * `<Dialog>` (Base UI). Mostra solo diario/abitudini/peso/sonno/
- * pomodoro: è tutto quello che il DB ha — niente eventi di calendario
- * (non storicizzati) né Note/Obiettivi/Lettura/Acqua (ancora solo
- * localStorage, vedi audit), dichiarato apposta, non nascosto.
+ * pomodoro: è tutto quello che il DB storicizza per giorno — niente
+ * eventi di calendario (quelli sono nel blocco Calendario a parte, non
+ * hanno una "cronologia": si legge sempre il calendario vero) né
+ * Note/Lettura (contenuto continuo, non per-giorno), dichiarato
+ * apposta, non nascosto.
  */
 export function HistoryExplorer({ todayKey }: { todayKey: string }) {
   const [mode, setMode] = useState<Mode>("Mese")

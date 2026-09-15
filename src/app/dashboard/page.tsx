@@ -4,12 +4,11 @@ import { redirect } from "next/navigation"
 import { auth } from "@/auth"
 import { Board } from "@/components/board/board"
 import { BoardProvider } from "@/components/board/board-context"
-import { Rail } from "@/components/board/rail"
+import { Rail, type HistoryDayData } from "@/components/board/rail"
 import { AgendaLive } from "@/components/dashboard/agenda-card"
 import { AgendaSkeletonBody } from "@/components/dashboard/agenda-skeleton"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DiarioReminder } from "@/components/dashboard/diario-reminder"
-import { HistoryPanel } from "@/components/dashboard/history-panel"
 import { MailLive } from "@/components/dashboard/mail-card"
 import { MailSkeletonBody } from "@/components/dashboard/mail-skeleton"
 import { SpotifyBody, SpotifySkeletonBody } from "@/components/dashboard/spotify-card"
@@ -17,13 +16,42 @@ import { ToastProvider } from "@/components/dashboard/toast-context"
 import { TopBar } from "@/components/dashboard/top-bar"
 import { DiarioWidget } from "@/components/widgets/diario-widget"
 import { PomodoroWidget } from "@/components/widgets/pomodoro-widget"
-import { chiaveGiorno } from "@/lib/datetime"
+import { chiaveGiorno, dataBreve } from "@/lib/datetime"
 import { getActiveBoardLayout } from "@/lib/queries/board"
-import { getDiarioToday } from "@/lib/queries/diario"
+import { getDiarioHistory, getDiarioToday } from "@/lib/queries/diario"
 import { getTodayEvents } from "@/lib/google/calendar"
 import { getMail } from "@/lib/mail"
 import { listMailFilters } from "@/lib/queries/mail-filters"
 import { getSpotifyStatus } from "@/lib/queries/spotify"
+
+const HISTORY_DAYS = 7
+
+function daysAgo(n: number): Date {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d
+}
+
+/** Ultimi 7 giorni per la sezione Cronologia del rail — prima letti da un
+ * Server Component a parte (history-panel.tsx, eliminato: la Cronologia
+ * ora vive dentro Rail, non più in una colonna a sé sulla destra). Dati
+ * già "piatti" per il client, niente Date da ricostruire lì. */
+async function getHistoryDays(): Promise<{ days: HistoryDayData[]; todayKey: string }> {
+  const dates = Array.from({ length: HISTORY_DAYS }, (_, i) => daysAgo(i))
+  const keys = dates.map((d) => chiaveGiorno(d))
+  const history = await getDiarioHistory(keys)
+  const today = chiaveGiorno()
+
+  const days: HistoryDayData[] = dates.map((date, i) => ({
+    key: keys[i],
+    label: dataBreve(date),
+    dayNumber: date.getDate(),
+    isToday: keys[i] === today,
+    entry: history[keys[i]],
+  }))
+
+  return { days, todayKey: today }
+}
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -31,18 +59,21 @@ export default async function DashboardPage() {
 
   const firstName = session.user.name?.split(" ")[0]?.toLowerCase()
 
-  // Board e diario vengono dal DB: si leggono prima di disegnare la pagina,
-  // sono veloci (query indicizzate) e servono per lo stato iniziale.
-  const [boardInitial, { state: diarioInitial, dayNumber }] = await Promise.all([
-    getActiveBoardLayout(),
-    getDiarioToday(chiaveGiorno()),
-  ])
+  // Board, diario e cronologia vengono dal DB: si leggono prima di
+  // disegnare la pagina, sono veloci (query indicizzate) e servono per lo
+  // stato iniziale.
+  const [boardInitial, { state: diarioInitial, dayNumber }, { days: historyDays, todayKey }] =
+    await Promise.all([
+      getActiveBoardLayout(),
+      getDiarioToday(chiaveGiorno()),
+      getHistoryDays(),
+    ])
 
   return (
     <ToastProvider>
       <BoardProvider initial={boardInitial}>
         <div className="flex flex-1">
-          <Rail />
+          <Rail historyDays={historyDays} todayKey={todayKey} />
           <div className="min-w-0 flex-1 px-4 pb-16 sm:px-6 lg:px-10 xl:px-14">
             <TopBar email={session.user.email} />
             <DashboardHeader
@@ -65,15 +96,14 @@ export default async function DashboardPage() {
                   <MailSection />
                 </Suspense>
               }
-              diarioSlot={<DiarioWidget initial={diarioInitial} dayNumber={dayNumber} />}
+              diarioSlot={<DiarioWidget initial={diarioInitial} dayNumber={dayNumber} todayKey={todayKey} />}
               pomodoroSlot={<PomodoroWidget initial={diarioInitial.pomodoroSessions} />}
             />
             <DiarioReminder
               hasWrittenToday={Boolean(diarioInitial.testo.trim())}
-              todayKey={chiaveGiorno()}
+              todayKey={todayKey}
             />
           </div>
-          <HistoryPanel />
         </div>
       </BoardProvider>
     </ToastProvider>

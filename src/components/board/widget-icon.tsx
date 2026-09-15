@@ -10,10 +10,8 @@ const PATHS: Record<WidgetType, string> = {
   pomodoro: "M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 13V9M9 3h6",
   calendario: "M4 5h16a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 10h18M9 10v10M15 10v10",
   note: "M5 6h14M5 11h14M5 16h9",
-  obiettivi: "M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
   lettura:
     "M12 6c-2-1.4-5-1.9-8-1.4v12c3-.5 6 0 8 1.4 2-1.4 5-1.9 8-1.4v-12c-3-.5-6 0-8 1.4zM12 6v12",
-  acqua: "M12 3s6 6.4 6 10.4a6 6 0 0 1-12 0C6 9.4 12 3 12 3z",
 }
 
 export function WidgetIcon({

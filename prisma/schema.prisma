@@ -98,6 +98,25 @@ model MailFilter {
   @@index([userId])
 }
 
+/// Contenuto del blocco Note — una riga per utente, contenuto continuo
+/// senza scadenza (non è per giorno come JournalEntry). Prima era solo
+/// localStorage; passato al DB come tutto il resto.
+model NoteWidget {
+  userId    String   @id
+  text      String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
+/// Contenuto del blocco Lettura — un libro alla volta, una riga per
+/// utente. Stesso motivo di NoteWidget sopra.
+model LetturaWidget {
+  userId    String   @id
+  titolo    String   @default("")
+  pagina    Int      @default(0)
+  totale    Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
 /// Collegamento Spotify per il widget "in riproduzione ora" in testata —
 /// connessione a parte, non l'identità con cui si accede (quella resta
 /// Google): un utente può avere o non avere Spotify collegato. Niente

@@ -3,8 +3,9 @@
 import { useCallback, useRef, useState, useTransition } from "react"
 
 import { useBoard } from "@/components/board/board-context"
+import { fetchDiarioEntry } from "@/lib/actions/history"
 import { saveDiarioEntry } from "@/lib/actions/diario"
-import { dataBreve, chiaveGiorno } from "@/lib/datetime"
+import { addDays, chiaveGiorno, dataBreve, parseChiave } from "@/lib/datetime"
 import { MOODS, type DiarioState, type Mood } from "@/lib/diario"
 
 import { CheckRow, FieldLabel, Segmented, textareaClass } from "./_shared"
@@ -17,21 +18,40 @@ const SAVE_DELAY_MS = 600
  * impilate con un separatore leggero (border-top), niente card multiple —
  * visivamente resta un unico blocco, ma è scomposto in sotto-componenti
  * (DiaryHeader/JournalSection/HabitSection/QuickStats) qui sotto.
+ *
+ * `‹`/`›` in testata spostano quale giorno si sta modificando (mai il
+ * futuro): utile se un giorno te lo sei perso e vuoi scriverlo dopo.
+ * `saveDiarioEntry`/`fetchDiarioEntry` prendono già una data qualsiasi
+ * (non "oggi" fisso) — erano già pronte per questo, costruite così fin
+ * dalla Cronologia estesa.
  */
 export function DiarioWidget({
   initial,
   dayNumber,
+  todayKey,
 }: {
   initial: DiarioState
   dayNumber: number
+  todayKey: string
 }) {
+  const [editingDate, setEditingDate] = useState(todayKey)
   const [state, setState] = useState<DiarioState>(initial)
   const [, startTransition] = useTransition()
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Il salvataggio vero (debounced) — tenuto anche qui, non solo nel
+  // timer, per poterlo far scattare subito se si cambia giorno prima che
+  // i 600ms passino da soli (altrimenti l'ultima modifica andrebbe persa,
+  // mai salvata: bug reale a cui ho pensato scrivendo questo, non trovato
+  // dal vivo ma facile da immaginare — scrivi, cambi subito giorno).
+  const pendingRun = useRef<(() => void) | null>(null)
 
-  const persist = useCallback((next: DiarioState, immediate: boolean) => {
+  const persist = useCallback((next: DiarioState, date: string, immediate: boolean) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    const run = () => startTransition(() => void saveDiarioEntry(chiaveGiorno(), next))
+    const run = () => {
+      pendingRun.current = null
+      startTransition(() => void saveDiarioEntry(date, next))
+    }
+    pendingRun.current = run
     if (immediate) run()
     else saveTimer.current = setTimeout(run, SAVE_DELAY_MS)
   }, [])
@@ -39,12 +59,36 @@ export function DiarioWidget({
   const patch = (part: Partial<DiarioState>, immediate = false) => {
     const next = { ...state, ...part }
     setState(next)
-    persist(next, immediate)
+    persist(next, editingDate, immediate)
   }
+
+  function goTo(date: string) {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = null
+    }
+    pendingRun.current?.() // salva subito quello che c'era in sospeso, sulla data vecchia
+    setEditingDate(date)
+    if (date === todayKey) {
+      setState(initial) // già in mano da page.tsx, nessun giro di rete
+      return
+    }
+    startTransition(async () => {
+      setState(await fetchDiarioEntry(date))
+    })
+  }
+
+  const isToday = editingDate === todayKey
 
   return (
     <div className="flex flex-col gap-4">
-      <DiaryHeader dayNumber={dayNumber} />
+      <DiaryHeader
+        dayNumber={dayNumber}
+        editingDate={editingDate}
+        isToday={isToday}
+        onPrev={() => goTo(chiaveGiorno(addDays(parseChiave(editingDate), -1)))}
+        onNext={() => goTo(chiaveGiorno(addDays(parseChiave(editingDate), 1)))}
+      />
 
       <JournalSection testo={state.testo} onChange={(testo) => patch({ testo })} />
 
@@ -67,15 +111,42 @@ export function DiarioWidget({
   )
 }
 
-function DiaryHeader({ dayNumber }: { dayNumber: number }) {
+function DiaryHeader({
+  dayNumber,
+  editingDate,
+  isToday,
+  onPrev,
+  onNext,
+}: {
+  dayNumber: number
+  editingDate: string
+  isToday: boolean
+  onPrev: () => void
+  onNext: () => void
+}) {
   return (
-    <div className="flex items-baseline justify-between">
-      <span className="text-ink-faint font-mono text-[0.68rem] tracking-wide uppercase">
-        Giorno {dayNumber}
+    <div className="flex items-center justify-between gap-1">
+      <button
+        type="button"
+        onClick={onPrev}
+        aria-label="Giorno precedente"
+        className="text-ink-faint hover:text-foreground grid size-5 shrink-0 place-items-center rounded text-xs"
+      >
+        ‹
+      </button>
+      <span className="text-ink-faint min-w-0 flex-1 truncate text-center font-mono text-[0.68rem] tracking-wide uppercase">
+        {isToday ? `Giorno ${dayNumber} · oggi` : dataBreve(parseChiave(editingDate))}
       </span>
-      <span className="text-ink-faint font-mono text-[0.68rem] tracking-wide uppercase">
-        {dataBreve()}
-      </span>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={isToday}
+        aria-label="Torna a oggi"
+        title={isToday ? undefined : "Torna a oggi"}
+        className="text-ink-faint hover:text-foreground grid size-5 shrink-0 place-items-center rounded text-xs disabled:opacity-30"
+      >
+        ›
+      </button>
     </div>
   )
 }
@@ -225,4 +296,3 @@ function MiniStat({
     </div>
   )
 }
-

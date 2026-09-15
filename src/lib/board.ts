@@ -7,9 +7,7 @@ export type WidgetType =
   | "pomodoro"
   | "calendario"
   | "note"
-  | "obiettivi"
   | "lettura"
-  | "acqua"
 
 /** Larghezza della griglia logica della board, in celle. */
 export const BOARD_COLS = 6
@@ -75,13 +73,7 @@ export const WIDGET_META: Record<WidgetType, WidgetMeta> = {
     w: 3, h: 3, minW: 2, minH: 2, maxW: 6, maxH: 4,
   },
   note: { title: "Note rapide", desc: "un pensiero al volo", w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 2 },
-  obiettivi: {
-    title: "Obiettivi della settimana",
-    desc: "3 cose che contano",
-    w: 1, h: 2, minW: 1, minH: 1, maxW: 2, maxH: 3,
-  },
   lettura: { title: "Lettura", desc: "libro in corso", w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 2 },
-  acqua: { title: "Acqua", desc: "bicchieri di oggi", w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 2 },
 }
 
 /**
@@ -98,9 +90,7 @@ export const LIBRARY_WIDGETS: readonly WidgetType[] = [
   "pomodoro",
   "calendario",
   "note",
-  "obiettivi",
   "lettura",
-  "acqua",
 ]
 
 /** Blocchi di libreria presenti sulla board al primo avvio. */

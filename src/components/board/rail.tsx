@@ -5,12 +5,24 @@ import { useEffect } from "react"
 
 import { Dialog, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectItem, SelectItemText, SelectPopup, SelectTrigger } from "@/components/ui/select"
+import { HistoryExplorer } from "@/components/dashboard/history-explorer"
 import { DND_MIME, WIDGET_META, LIBRARY_WIDGETS, type WidgetType } from "@/lib/board"
+import type { DiarioState } from "@/lib/diario"
+import { daySummary, moodDotClass } from "@/lib/diario"
 import { cn } from "@/lib/utils"
 
 import { useBoard } from "./board-context"
 import { LayoutManager } from "./layout-manager"
 import { WidgetIcon } from "./widget-icon"
+
+export type HistoryDayData = {
+  key: string
+  /** Es. "mer 10". */
+  label: string
+  dayNumber: number
+  isToday: boolean
+  entry?: DiarioState
+}
 
 function GearIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -30,7 +42,34 @@ function GearIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
-export function Rail() {
+function ExpandIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M9 3H4v5M15 3h5v5M15 21h5v-5M9 21H4v-5" />
+    </svg>
+  )
+}
+
+export function Rail({
+  historyDays,
+  todayKey,
+}: {
+  /** Ultimi 7 giorni, per la sezione Cronologia sotto la Libreria — letti
+   * server-side in page.tsx (getDiarioHistory), stesso dato che prima
+   * alimentava il pannello a parte sulla destra (history-panel.tsx,
+   * eliminato: la Cronologia vive qui adesso). */
+  historyDays: HistoryDayData[]
+  todayKey: string
+}) {
   const {
     hasWidget,
     addWidget,
@@ -138,6 +177,63 @@ export function Rail() {
             />
           ))}
         </RailSection>
+
+        {/* Cronologia — prima un pannello a parte sulla destra
+            (history-panel-view.tsx, eliminato), ora qui sotto la Libreria:
+            stesso rail, un solo interruttore comprimi/espandi per tutto
+            (railCollapsed sopra) invece di due indipendenti. A rail
+            compresso si nasconde del tutto come le voci della Libreria —
+            niente vista mini-calendario a 52px, ci si affollavano due
+            sezioni diverse; basta espandere il rail per vederla. */}
+        {!railCollapsed && (
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
+                Cronologia — ultimi 7 giorni
+              </p>
+              <Dialog>
+                <DialogTrigger
+                  aria-label="Apri calendario e ricerca"
+                  title="Calendario e ricerca"
+                  className="text-ink-faint hover:bg-muted hover:text-foreground grid size-6 shrink-0 place-items-center rounded-md transition-colors"
+                >
+                  <ExpandIcon className="size-3.5" />
+                </DialogTrigger>
+                <HistoryExplorer todayKey={todayKey} />
+              </Dialog>
+            </div>
+            <div className="divide-border flex flex-col divide-y">
+              {historyDays.map((day) => {
+                const summary = daySummary(day.entry)
+                return (
+                  <div key={day.key} className="py-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn("size-1.5 shrink-0 rounded-full", moodDotClass(day.entry?.mood))}
+                      />
+                      <span className="font-mono text-[0.65rem] tracking-wide text-ink-soft uppercase">
+                        {day.label}
+                      </span>
+                      {day.isToday && (
+                        <span className="text-primary ml-auto text-[0.58rem] font-semibold tracking-wide uppercase">
+                          oggi
+                        </span>
+                      )}
+                    </div>
+                    <p
+                      className={cn(
+                        "mt-1 truncate text-[0.7rem]",
+                        summary ? "text-ink-soft" : "text-ink-faint italic",
+                      )}
+                    >
+                      {summary || "Nessuna voce"}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   )
