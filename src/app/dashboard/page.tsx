@@ -22,6 +22,7 @@ import { getActiveBoardLayout } from "@/lib/queries/board"
 import { getDiarioToday } from "@/lib/queries/diario"
 import { getTodayEvents } from "@/lib/google/calendar"
 import { getMail } from "@/lib/mail"
+import { listMailFilters } from "@/lib/queries/mail-filters"
 import { getSpotifyStatus } from "@/lib/queries/spotify"
 
 export default async function DashboardPage() {
@@ -85,8 +86,8 @@ async function AgendaSection() {
 }
 
 async function MailSection() {
-  const result = await getMail()
-  return <MailLive initial={result} />
+  const [result, filters] = await Promise.all([getMail(), listMailFilters()])
+  return <MailLive initial={result} initialFilters={filters} />
 }
 
 async function SpotifySection() {

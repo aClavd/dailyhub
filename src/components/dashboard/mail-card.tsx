@@ -1,17 +1,23 @@
 "use client"
 
+import { Filter } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 
 import { useBoard } from "@/components/board/board-context"
 import { useReportEmphasis, type WidgetEmphasis } from "@/components/board/widget-shell"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogTrigger } from "@/components/ui/dialog"
 import { Segmented } from "@/components/widgets/_shared"
 import { reconnectGoogle } from "@/lib/actions/auth"
 import { refreshMail } from "@/lib/actions/mail"
 import type { MailMessage, MailProvider, MailResult, ProviderStatus } from "@/lib/mail"
+import type { MailFilterSummary } from "@/lib/queries/mail-filters"
 import { usePolling } from "@/lib/use-polling"
 import { cn } from "@/lib/utils"
+
+import { MailFilterDialog } from "./mail-filter-dialog"
+import { MailNotifier } from "./mail-notifier"
 
 // Stesso intervallo/stesso motivo di agenda-card.tsx: abbastanza vicino al
 // tempo reale, enorme margine sulle quote gratuite di Gmail.
@@ -19,15 +25,33 @@ const REFRESH_MS = 90_000
 
 /** Possiede lo stato della posta — parte da `initial` (letto una volta da
  * page.tsx) e lo aggiorna da solo col polling, senza bisogno di ricaricare
- * la pagina per vedere una mail appena arrivata. MailBody resta puramente
- * presentazionale: il pallino mail nel rail (mailHasRecent, sotto) segue
- * già `result` per props, quindi si aggiorna da sé senza altro lavoro. */
-export function MailLive({ initial }: { initial: MailResult }) {
+ * la pagina per vedere una mail appena arrivata. Possiede anche le regole
+ * "mail importante" (`initialFilters`, lette da page.tsx insieme a
+ * `initial`: DEVONO esserci fin dal primo render, non solo quando si apre
+ * il dialog di gestione — altrimenti l'avviso in sottofondo non
+ * scatterebbe mai finché non apri il dialog almeno una volta). Rende sia
+ * MailBody (presentazionale) sia MailNotifier sullo STESSO `result`/
+ * `filters`, non due letture indipendenti — altrimenti una mail arrivata
+ * via polling non farebbe scattare l'avviso finché non si ricarica la
+ * pagina, o una regola appena aggiunta non si applicherebbe subito. */
+export function MailLive({
+  initial,
+  initialFilters,
+}: {
+  initial: MailResult
+  initialFilters: MailFilterSummary[]
+}) {
   const [result, setResult] = useState(initial)
+  const [filters, setFilters] = useState(initialFilters)
   usePolling(() => {
     void refreshMail().then(setResult)
   }, REFRESH_MS)
-  return <MailBody result={result} />
+  return (
+    <>
+      <MailBody result={result} filters={filters} onFiltersChange={setFilters} />
+      <MailNotifier messages={result.messages} filters={filters} />
+    </>
+  )
 }
 
 // Segmented usa il valore stesso come etichetta del bottone (nessuna
@@ -53,7 +77,15 @@ function mailEmphasis(messages: readonly MailMessage[]): WidgetEmphasis {
 }
 
 /** Contenuto del blocco Mail (senza card: il guscio lo mette la board). */
-export function MailBody({ result }: { result: MailResult }) {
+export function MailBody({
+  result,
+  filters,
+  onFiltersChange,
+}: {
+  result: MailResult
+  filters: MailFilterSummary[]
+  onFiltersChange: (filters: MailFilterSummary[]) => void
+}) {
   const [tab, setTab] = useState<Tab>("Tutte")
   // Sul totale, non sulla tab aperta: il segnale sulla shell riflette lo
   // stato vero, indipendente da quale sezione stai guardando in quel momento.
@@ -82,9 +114,26 @@ export function MailBody({ result }: { result: MailResult }) {
     <div>
       <Segmented label="Casella" options={TABS} value={tab} onChange={setTab} />
 
-      <p className="text-ink-faint mt-3 mb-2 font-mono text-[0.68rem] tracking-wide uppercase">
-        {countLabel(messages.length)}
-      </p>
+      <div className="mt-3 mb-2 flex items-center justify-between gap-2">
+        <p className="text-ink-faint font-mono text-[0.68rem] tracking-wide uppercase">
+          {countLabel(messages.length)}
+        </p>
+        <Dialog>
+          <DialogTrigger
+            aria-label="Mail importanti — gestisci regole"
+            title="Mail importanti"
+            className={cn(
+              "grid size-6 shrink-0 place-items-center rounded-md transition-colors",
+              filters.length > 0
+                ? "text-primary hover:bg-brand-soft"
+                : "text-ink-faint hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <Filter className="size-3.5" />
+          </DialogTrigger>
+          <MailFilterDialog filters={filters} onChange={onFiltersChange} />
+        </Dialog>
+      </div>
       {messages.length > 0 ? (
         <MailList messages={messages} />
       ) : (

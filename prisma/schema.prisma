@@ -82,6 +82,22 @@ model SavedLayout {
   @@index([userId])
 }
 
+/// Regola per segnalare la posta importante (sotto-stringa, case-
+/// insensitive, confrontata con mittente E oggetto) — un match su una
+/// mail non ancora notificata fa comparire un avviso (toast-context.tsx).
+/// Le regole le decide l'utente stesso: a differenza di mailEmphasis
+/// (Fase 5.2, "è recente"), qui non c'è nessuna soglia arbitraria da
+/// inventare, è lui a dire cosa conta.
+model MailFilter {
+  id        String   @id @default(cuid())
+  userId    String
+  pattern   String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, pattern])
+  @@index([userId])
+}
+
 /// Collegamento Spotify per il widget "in riproduzione ora" in testata —
 /// connessione a parte, non l'identità con cui si accede (quella resta
 /// Google): un utente può avere o non avere Spotify collegato. Niente
