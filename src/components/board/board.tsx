@@ -6,6 +6,7 @@ import {
   CELL_MAX_REM,
   CELL_MIN_REM,
   DND_MIME,
+  boardDisplayWidthRem,
   boardNaturalWidthRem,
   boardUsedCols,
   isLibraryWidget,
@@ -59,13 +60,13 @@ export function Board({
   // scroll come prima via d'uscita.
   const naturalWidth = `${boardNaturalWidthRem(layout)}rem`
   // Zona di rilascio (il box tratteggiato durante il trascinamento, sotto)
-  // almeno larga quanto 3 colonne piene — senza questo minimo, con una
-  // board vuota o quasi il box si stringeva alla larghezza naturale (anche
-  // solo 1 colonna) mentre i gestori del drop restavano su tutto il
-  // contenitore esterno: risultato, un riquadro enorme e vuoto invece di
-  // uno proporzionato. Con più blocchi (naturalWidth già oltre 3 colonne)
-  // non cambia niente: resta la larghezza naturale di sempre.
-  const dropZoneWidth = `${Math.max(boardNaturalWidthRem(layout), 3 * CELL_MAX_REM + 2)}rem`
+  // — boardDisplayWidthRem (lib/board.ts) ha già il minimo di 3 colonne:
+  // senza, con una board vuota o quasi il box si stringeva alla larghezza
+  // naturale (anche solo 1 colonna) mentre i gestori del drop restavano su
+  // tutto il contenitore esterno, un riquadro enorme e vuoto invece di uno
+  // proporzionato. Stessa funzione usata da header-flanking-row.tsx, così
+  // la board e la riga Meteo/saluto/Spotify restano sempre allineate.
+  const dropZoneWidth = `${boardDisplayWidthRem(layout)}rem`
 
   return (
     <div>

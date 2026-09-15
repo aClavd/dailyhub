@@ -4,7 +4,7 @@ import type { ReactNode } from "react"
 
 import { useBoard } from "@/components/board/board-context"
 import { MeteoWidget } from "@/components/widgets/meteo-widget"
-import { boardNaturalWidthRem } from "@/lib/board"
+import { boardDisplayWidthRem } from "@/lib/board"
 
 /** Stessa cornice della card "Frase del giorno", per stare bene affiancata al saluto. */
 const SIDE_CARD = "w-40 shrink-0 rounded-xl border border-border bg-card px-4 py-3 text-left"
@@ -13,17 +13,19 @@ const SIDE_CARD = "w-40 shrink-0 rounded-xl border border-border bg-card px-4 py
  * Meteo a sinistra, saluto (children) centrato, Spotify a destra — allineati
  * agli stessi bordi della board qui sotto, non ai bordi della finestra:
  * larghezza calcolata con la stessa formula di board.tsx
- * (boardNaturalWidthRem), sugli stessi dati di useBoard() — nessuna misura
- * via JS, i due combaciano sempre perché partono dallo stesso numero.
+ * (boardDisplayWidthRem, col minimo di 3 colonne per non schiacciarsi con
+ * pochi blocchi — vedi il commento lì), sugli stessi dati di useBoard() —
+ * nessuna misura via JS, i due restano sempre allineati, anche quando
+ * entra in gioco il minimo (prima usavano formule diverse: board.tsx aveva
+ * già il minimo, qui c'era solo un fit-content "di emergenza" — risultato,
+ * con un solo blocco sulla board Meteo/saluto/Spotify restavano schiacciati
+ * l'uno sull'altro invece di restare ariosi come col resto della board).
  * Componente a parte (non dentro dashboard-header.tsx) solo per poter usare
  * useBoard() qui, senza rendere client anche la data/il saluto sopra.
  *
- * minWidth: fit-content è la rete di sicurezza per quando la board ha pochi
- * o zero blocchi (ora possibile: Impegni/Mail non sono più fissi) — senza,
- * la riga si stringeva alla larghezza "naturale" della board (anche solo
- * 1 colonna) pur dovendo contenere Meteo+saluto+Spotify, che schiacciavano
- * e si accavallavano. Non cambia nulla quando la board è già abbastanza
- * larga di suo (il caso normale): min-width vince solo se supera width.
+ * minWidth: fit-content resta come ultima rete di sicurezza — per un
+ * saluto/nome insolitamente lungo che superasse pure il minimo di 3
+ * colonne, non deve mai tagliarsi. Nel caso normale non ha effetto.
  */
 export function HeaderFlankingRow({
   children,
@@ -34,12 +36,12 @@ export function HeaderFlankingRow({
   spotifySlot: ReactNode
 }) {
   const { layout } = useBoard()
-  const naturalWidth = `${boardNaturalWidthRem(layout)}rem`
+  const displayWidth = `${boardDisplayWidthRem(layout)}rem`
 
   return (
     <div
       className="mx-auto mt-6"
-      style={{ width: `min(100%, ${naturalWidth})`, minWidth: "fit-content" }}
+      style={{ width: `min(100%, ${displayWidth})`, minWidth: "fit-content" }}
     >
       <div className="flex flex-col items-center gap-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">
         <div className={SIDE_CARD + " sm:justify-self-start"}>

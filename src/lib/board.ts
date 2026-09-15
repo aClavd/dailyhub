@@ -116,6 +116,19 @@ export function boardNaturalWidthRem(layout: readonly WidgetPlacement[]): number
 }
 
 /**
+ * Come boardNaturalWidthRem, ma con un minimo di rispetto (3 colonne
+ * piene) — con 1 blocco solo (o board vuota) la larghezza naturale può
+ * essere molto stretta, e sia la zona di trascinamento (board.tsx) sia la
+ * riga Meteo/saluto/Spotify (header-flanking-row.tsx) diventavano
+ * schiacciate/appiccicate invece di restare ariose. Usando la stessa
+ * funzione in entrambi i posti restano sempre allineate — anche quando
+ * il minimo entra in gioco, non solo quando la board è già larga di suo.
+ */
+export function boardDisplayWidthRem(layout: readonly WidgetPlacement[]): number {
+  return Math.max(boardNaturalWidthRem(layout), 3 * CELL_MAX_REM + 2)
+}
+
+/**
  * Prima posizione libera (bin-packing first-fit, riga per riga) per un
  * blocco w×h che non si sovrapponga a niente di già piazzato e non superi
  * BOARD_COLS in larghezza.
