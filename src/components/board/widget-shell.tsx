@@ -312,7 +312,14 @@ export function WidgetShell({
           </button>
         </header>
         <EmphasisContext.Provider value={setContentEmphasis}>
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+          {/* @container: ogni blocco si può ridimensionare (maniglie sotto),
+              quindi il suo contenuto deve reagire alla PROPRIA larghezza,
+              non a quella della finestra — una container query, non un
+              media query. Serve qui, un solo posto condiviso da tutti i
+              widget, non ripetuto in ognuno (usato per ora solo da
+              diario-widget.tsx/QuickStats, che a blocco ristretto andava
+              in pezzi: segnalato da Claudio, "kg e h... si fukka tutto"). */}
+          <div className="@container min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
         </EmphasisContext.Provider>
 
         {/* Maniglie di ridimensionamento: tutti e quattro i bordi, così si può

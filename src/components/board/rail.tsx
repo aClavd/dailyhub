@@ -42,7 +42,13 @@ function GearIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
-function ExpandIcon(props: SVGProps<SVGSVGElement>) {
+/** Orologio con freccia all'indietro — icona standard per "cronologia".
+ * Prima era ExpandIcon (angoli che si allargano, tipico simbolo di
+ * "schermo intero"): da compressa restava solo l'icona, senza l'etichetta
+ * di testo accanto, e da sola non diceva "cronologia" a nessuno —
+ * segnalato da Claudio ("fammi capire che quel quadrato rappresenta la
+ * cronologia"). */
+function HistoryIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -54,7 +60,9 @@ function ExpandIcon(props: SVGProps<SVGSVGElement>) {
       aria-hidden="true"
       {...props}
     >
-      <path d="M9 3H4v5M15 3h5v5M15 21h5v-5M9 21H4v-5" />
+      <path d="M3 12a9 9 0 1 0 2.6-6.3" />
+      <path d="M3 4.5V9h4.5" />
+      <path d="M12 7v5l3.5 2" />
     </svg>
   )
 }
@@ -94,7 +102,12 @@ export function Rail({
     <aside
       className={cn(
         "hidden shrink-0 flex-col border-r border-border bg-card transition-[width] duration-150 lg:sticky lg:top-0 lg:flex lg:h-screen",
-        railCollapsed ? "w-[52px]" : "w-60",
+        // 52px → 64px (Fase successiva): a 52px le icone della Libreria
+        // erano già al massimo consentito dalla larghezza (size-9 = 36px,
+        // niente margine), sensibilmente più piccole delle righe da
+        // espansa — Claudio ha chiesto di avvicinare le due misure. Qui
+        // qualche px in più, sotto icone più grandi (size-11).
+        railCollapsed ? "w-16" : "w-60",
       )}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-3.5">
@@ -127,11 +140,15 @@ export function Rail({
           riga resta sempre, cambia solo la forma del trigger: testo per
           esteso da espansa, un pallino con l'iniziale del nome da
           compressa (stesso <Select>, quindi cliccarlo apre la stessa
-          tendina e cambia davvero layout — non è un'icona finta). */}
+          tendina e cambia davvero layout — non è un'icona finta).
+          "Gestisci layout" (rinomina/crea/elimina) invece resta solo da
+          espansa — da compressa non ha senso indipendente dal pallino
+          (Claudio: "l'ingranaggio... non ha senso, levalo"); basta
+          espandere per rinominare o crearne uno nuovo. */}
       <div
         className={cn(
           "border-border flex shrink-0 border-b",
-          railCollapsed ? "flex-col items-center gap-1.5 px-2 py-2.5" : "items-center gap-1.5 px-3 py-2.5",
+          railCollapsed ? "justify-center px-2 py-2.5" : "items-center gap-1.5 px-3 py-2.5",
         )}
       >
         <Select
@@ -143,7 +160,7 @@ export function Rail({
           <SelectTrigger
             className={
               railCollapsed
-                ? "bg-brand-soft text-primary size-7 shrink-0 justify-center rounded-full border-0 p-0 text-[0.68rem] font-semibold"
+                ? "bg-brand-soft text-primary size-8 shrink-0 justify-center rounded-full border-0 p-0 text-xs font-semibold"
                 : "min-w-0 flex-1"
             }
             showIcon={!railCollapsed}
@@ -164,16 +181,18 @@ export function Rail({
             ))}
           </SelectPopup>
         </Select>
-        <Dialog>
-          <DialogTrigger
-            aria-label="Gestisci layout"
-            title="Gestisci layout"
-            className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border transition-colors"
-          >
-            <GearIcon className="size-3.5" />
-          </DialogTrigger>
-          <LayoutManager />
-        </Dialog>
+        {!railCollapsed && (
+          <Dialog>
+            <DialogTrigger
+              aria-label="Gestisci layout"
+              title="Gestisci layout"
+              className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border transition-colors"
+            >
+              <GearIcon className="size-3.5" />
+            </DialogTrigger>
+            <LayoutManager />
+          </Dialog>
+        )}
       </div>
 
       {/* Stessa struttura a due gruppi in entrambi gli stati — cambia solo
@@ -238,7 +257,7 @@ export function Rail({
                 title="Calendario e ricerca"
                 className="text-ink-faint hover:bg-muted hover:text-foreground grid size-6 shrink-0 place-items-center rounded-md transition-colors"
               >
-                <ExpandIcon className="size-3.5" />
+                <HistoryIcon className="size-3.5" />
               </DialogTrigger>
               <HistoryExplorer todayKey={todayKey} />
             </Dialog>
@@ -321,7 +340,7 @@ function RailSection({
           {label}
         </p>
       )}
-      <div className="flex flex-col items-center gap-1.5">{children}</div>
+      <div className={cn("flex flex-col items-center", collapsed ? "gap-2" : "gap-1.5")}>{children}</div>
     </div>
   )
 }
@@ -348,7 +367,7 @@ function RailItem({
     <span className="relative shrink-0">
       <WidgetIcon
         type={type}
-        className={cn("text-primary", collapsed ? "size-[18px]" : "size-4")}
+        className={cn("text-primary", collapsed ? "size-5" : "size-4")}
       />
       {notice && (
         <span
@@ -387,7 +406,12 @@ function RailItem({
       onClick={() => !added && onAdd?.()}
       className={cn(
         "border-border bg-card hover:border-ink-faint hover:bg-muted flex items-center rounded-lg border transition-colors",
-        collapsed ? "size-9 justify-center" : "w-full gap-2.5 px-2.5 py-2 text-left",
+        // size-9 (36px) era già al massimo consentito dalla vecchia barra
+        // da 52px (niente margine attorno) — con la barra allargata a
+        // 64px, size-11 (44px) ci sta comoda e si avvicina di più
+        // all'altezza reale di una riga da espansa (icona + titolo +
+        // descrizione, ~54px). Vedi commento sopra su <aside>.
+        collapsed ? "size-11 justify-center" : "w-full gap-2.5 px-2.5 py-2 text-left",
         added && "cursor-default opacity-45 hover:border-border hover:bg-card",
         // "pointer", non "grab": si può anche solo cliccare/toccare per
         // aggiungere (onClick sopra) — il trascinamento è un'alternativa,

@@ -266,7 +266,14 @@ function QuickStats({
         value={mood}
         onChange={onMood}
       />
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      {/* grid-cols-2 fisso rompeva tutto a blocco ristretto (il Diario si
+          può ridimensionare fino a 1 cella, ~sotto i 130px): "PESO"/
+          "SONNO" affiancate non ci stavano, input e unità si accavallavano
+          — segnalato da Claudio ("kg e h... si fukka tutto"). auto-fit +
+          minmax: due colonne quando c'è spazio, una sola (a piena
+          larghezza, sempre leggibile) quando non ce n'è — nessuna soglia
+          a mano da indovinare, si adatta di continuo. */}
+      <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-3">
         <MiniStat label="Peso" unit="kg" step={0.1} value={weight} onChange={onWeight} />
         <MiniStat label="Sonno" unit="h" step={0.5} value={sleepHours} onChange={onSleep} />
       </div>
@@ -288,7 +295,7 @@ function MiniStat({
   onChange: (value: number | null) => void
 }) {
   return (
-    <div className="border-border rounded-lg border px-2.5 py-2">
+    <div className="border-border min-w-0 rounded-lg border px-2.5 py-2">
       <span className="text-ink-faint block text-[0.62rem] tracking-wide uppercase">
         {label}
       </span>
@@ -317,12 +324,15 @@ function MiniStat({
           // l'aspetto grafico di un campo senza valore — è il punto che
           // Claudio ha segnalato non essere chiaro dalla sola UI.
           placeholder="non lo so"
-          // w-14 (56px) andava bene per "—" ma tagliava "non lo so" a metà
-          // ("non lo") — trovato guardando lo screenshot di verifica, non
-          // segnalato da Claudio. w-20 ci sta comoda in font mono.
-          className="font-mono w-20 border-0 bg-transparent p-0 text-lg font-medium tabular-nums outline-none placeholder:text-ink-faint placeholder:text-[0.7rem] placeholder:tracking-tight"
+          // Era w-20 (80px) fisso: a card ristretta (blocco ridimensionato
+          // piccolo) l'input non si adattava e "non lo so" + l'unità
+          // uscivano dalla card — la stessa causa di fondo del bug
+          // "kg/h... si fukka tutto" segnalato da Claudio, non solo la
+          // griglia sopra. min-w-0 flex-1: prende lo spazio che c'è nella
+          // riga, si restringe quando serve invece di sforare.
+          className="font-mono min-w-0 flex-1 border-0 bg-transparent p-0 text-lg font-medium tabular-nums outline-none placeholder:text-ink-faint placeholder:text-[0.7rem] placeholder:tracking-tight"
         />
-        <span className="text-ink-faint text-xs">{unit}</span>
+        <span className="text-ink-faint shrink-0 text-xs">{unit}</span>
       </div>
     </div>
   )
