@@ -189,11 +189,21 @@ export function NewEventForm({
       </div>
 
       <div className="border-border flex shrink-0 justify-end gap-2 border-t px-5 py-3.5">
-        <DialogClose
+        {/* Bottone normale con onClick={onClose}, non <DialogClose>: quello
+            chiude sempre il <Dialog> esterno via Base UI — per il "+" di
+            Impegni coincide con "chiudi tutto" (giusto lì), ma nel widget
+            Calendario onClose torna solo alla vista del giorno senza
+            chiudere il dialog intero (bug reale, trovato dal vivo: con
+            DialogClose "Annulla" chiudeva tutto invece di tornare
+            indietro). La × in alto resta un vero DialogClose — quella
+            deve sempre chiudere tutto, in entrambi i casi. */}
+        <button
+          type="button"
+          onClick={onClose}
           className="border-border text-ink-soft hover:text-foreground rounded-md border px-3 py-1.5 text-xs"
         >
           Annulla
-        </DialogClose>
+        </button>
         <button
           type="button"
           onClick={submit}

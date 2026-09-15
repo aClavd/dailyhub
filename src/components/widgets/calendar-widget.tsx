@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { Dialog } from "@/components/ui/dialog"
+import { Dialog, DialogClose, DialogPopup, DialogTitle } from "@/components/ui/dialog"
 import { reconnectGoogle } from "@/lib/actions/auth"
 import { fetchMonthEvents } from "@/lib/actions/calendar"
-import { addMonths, chiaveGiorno, meseAnno, monthGrid, parseChiave } from "@/lib/datetime"
+import { addMonths, chiaveGiorno, dataEstesa, meseAnno, monthGrid, oraBreve, parseChiave } from "@/lib/datetime"
 import type { CalendarEvent, CalendarResult } from "@/lib/google/calendar"
 import { cn } from "@/lib/utils"
 
@@ -39,6 +39,15 @@ export function CalendarWidget() {
   const [cursor, setCursor] = useState(parseChiave(todayKey))
   const [result, setResult] = useState<CalendarResult | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  // Cliccare un giorno mostra prima cosa c'è già (anche se non c'è niente),
+  // non subito il modulo per aggiungerne uno — "aggiungi" è un passo in
+  // più deliberato da lì, non la reazione di default a un click.
+  const [addingNew, setAddingNew] = useState(false)
+
+  function closeDialog() {
+    setSelectedDay(null)
+    setAddingNew(false)
+  }
 
   // Niente reset a "sto caricando" al cambio mese: tiene il mese
   // precedente a schermo finché non arriva quello nuovo, invece di uno
@@ -69,6 +78,15 @@ export function CalendarWidget() {
   function refresh() {
     void fetchMonthEvents(cursorKey).then(setResult)
   }
+
+  // Impegni del giorno selezionato, in ordine di orario — filtrati dagli
+  // stessi eventi già scaricati per il mese, nessuna chiamata in più.
+  const eventsForSelectedDay = useMemo(() => {
+    if (!selectedDay || !result?.ok) return []
+    return result.events
+      .filter((e) => dayKeyOf(e) === selectedDay)
+      .sort((a, b) => (a.start ?? "").localeCompare(b.start ?? ""))
+  }, [selectedDay, result])
 
   const days = monthGrid(cursor)
   const currentMonth = cursor.getMonth()
@@ -125,7 +143,10 @@ export function CalendarWidget() {
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setSelectedDay(key)}
+                  onClick={() => {
+                    setSelectedDay(key)
+                    setAddingNew(false)
+                  }}
                   className={cn(
                     "hover:bg-muted flex flex-col items-center gap-0.5 rounded-md py-1 text-[0.68rem] transition-colors",
                     !inMonth && "text-ink-faint opacity-40",
@@ -150,17 +171,90 @@ export function CalendarWidget() {
         </>
       )}
 
-      {/* Nessun trigger visibile: la cella del giorno stessa apre il
-          modulo, precompilato per quel giorno (NewEventForm, initialDate). */}
-      <Dialog open={selectedDay !== null} onOpenChange={(next) => !next && setSelectedDay(null)}>
-        <NewEventForm
-          open={selectedDay !== null}
-          initialDate={selectedDay ? parseChiave(selectedDay) : undefined}
-          onCreated={refresh}
-          onClose={() => setSelectedDay(null)}
-        />
+      {/* Nessun trigger visibile: la cella del giorno stessa apre il dialog
+          — prima gli impegni già presenti (DayEvents), "+ Nuovo impegno"
+          da lì passa al modulo (NewEventForm, precompilato su quel
+          giorno). Annulla nel modulo torna all'elenco, non chiude tutto —
+          la × in alto invece chiude sempre, in entrambe le viste. */}
+      <Dialog open={selectedDay !== null} onOpenChange={(next) => !next && closeDialog()}>
+        {addingNew ? (
+          <NewEventForm
+            open={addingNew}
+            initialDate={selectedDay ? parseChiave(selectedDay) : undefined}
+            onCreated={refresh}
+            onClose={() => setAddingNew(false)}
+          />
+        ) : (
+          selectedDay && (
+            <DayEventsPopup
+              day={selectedDay}
+              events={eventsForSelectedDay}
+              onAddNew={() => setAddingNew(true)}
+            />
+          )
+        )}
       </Dialog>
     </div>
+  )
+}
+
+function DayEventsPopup({
+  day,
+  events,
+  onAddNew,
+}: {
+  day: string
+  events: CalendarEvent[]
+  onAddNew: () => void
+}) {
+  return (
+    <DialogPopup className="max-w-md">
+      <div className="border-border flex shrink-0 items-center justify-between border-b px-5 py-3.5">
+        <DialogTitle className="capitalize">{dataEstesa(parseChiave(day))}</DialogTitle>
+        <DialogClose
+          aria-label="Chiudi"
+          className="text-ink-faint hover:bg-muted hover:text-foreground grid size-7 shrink-0 place-items-center rounded-md text-base leading-none"
+        >
+          &times;
+        </DialogClose>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        {events.length === 0 ? (
+          <p className="text-ink-faint py-6 text-center text-sm">Nessun impegno questo giorno.</p>
+        ) : (
+          <div className="-mx-2">
+            {events.map((e) => (
+              <div
+                key={e.id}
+                className="border-border grid grid-cols-[3.25rem_1fr] gap-3 border-t px-2 py-2.5 text-sm first:border-t-0"
+              >
+                <div className="text-ink-soft pt-0.5 text-right font-mono text-xs tabular-nums">
+                  {e.allDay || !e.start ? "—" : oraBreve(e.start)}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium">{e.title}</p>
+                  {e.location && <p className="text-ink-soft mt-0.5 text-xs">{e.location}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="border-border flex shrink-0 justify-end gap-2 border-t px-5 py-3.5">
+        <DialogClose className="border-border text-ink-soft hover:text-foreground rounded-md border px-3 py-1.5 text-xs">
+          Chiudi
+        </DialogClose>
+        <button
+          type="button"
+          onClick={onAddNew}
+          className="bg-brand-soft text-primary rounded-md px-3 py-1.5 text-xs font-semibold"
+        >
+          + Nuovo impegno
+        </button>
+      </div>
+    </DialogPopup>
   )
 }
 
