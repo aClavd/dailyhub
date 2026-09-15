@@ -181,6 +181,7 @@ function RailItem({
 }) {
   const draggable = !added
   const meta = WIDGET_META[type]
+  const { setIsDraggingWidget } = useBoard()
   const icon = (
     <span className="relative shrink-0">
       <WidgetIcon
@@ -200,14 +201,20 @@ function RailItem({
         event.dataTransfer.setData(DND_MIME, type)
         event.dataTransfer.setData("text/plain", type)
         event.dataTransfer.effectAllowed = "copy"
+        setIsDraggingWidget(true)
       }
     : undefined
+  // dragend scatta sempre, sia che il rilascio sia riuscito sia che sia
+  // stato annullato (Escape, rilasciato fuori da qualunque zona valida) —
+  // l'evento giusto per spegnere l'indicatore in ogni caso.
+  const onDragEnd = draggable ? () => setIsDraggingWidget(false) : undefined
 
   return (
     <button
       type="button"
       draggable={draggable}
       onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       title={notice ? `${meta.title} — è arrivato qualcosa di recente` : meta.title}
       aria-disabled={added}
       onClick={() => !added && onAdd?.()}
@@ -215,7 +222,10 @@ function RailItem({
         "border-border bg-card hover:border-ink-faint hover:bg-muted flex items-center rounded-lg border transition-colors",
         collapsed ? "size-9 justify-center" : "w-full gap-2.5 px-2.5 py-2 text-left",
         added && "cursor-default opacity-45 hover:border-border hover:bg-card",
-        !added && "cursor-grab active:cursor-grabbing",
+        // "pointer", non "grab": si può anche solo cliccare/toccare per
+        // aggiungere (onClick sopra) — il trascinamento è un'alternativa,
+        // non l'unico modo, più affidabile su trackpad.
+        !added && "cursor-pointer active:cursor-grabbing",
       )}
     >
       {icon}

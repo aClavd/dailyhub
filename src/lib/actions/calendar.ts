@@ -26,3 +26,10 @@ export async function createCalendarEvent(
   const today = await getTodayEvents()
   return { ok: true, today }
 }
+
+/** Sola lettura esposta come Server Action perché serve a un Client
+ * Component (AgendaLive, per il polling) — stesso schema di
+ * fetchBoardLayouts() in actions/board.ts. */
+export async function refreshAgenda(): Promise<CalendarResult> {
+  return getTodayEvents()
+}

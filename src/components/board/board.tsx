@@ -27,7 +27,13 @@ export function Board({
   diarioSlot: React.ReactNode
   pomodoroSlot: React.ReactNode
 }) {
-  const { layout, addWidget } = useBoard()
+  const { layout, addWidget, isDraggingWidget } = useBoard()
+  // dragOver: il cursore è ESATTAMENTE sopra la zona in questo momento (dà
+  // il riempimento pieno, il feedback "forte"). isDraggingWidget (dal
+  // context, acceso da rail.tsx al dragstart) è vero per tutta la durata
+  // del trascinamento, indipendentemente da dove si trova il cursore — dà
+  // il contorno tratteggiato "qui puoi rilasciare", visibile fin da subito
+  // invece di scoprirlo solo passandoci sopra per caso.
   const [dragOver, setDragOver] = useState(false)
   // Impegni/Mail: lo slot arriva sempre da page.tsx (il fetch server-side
   // gira comunque), ma va montato lato client SOLO in un posto — qui dentro
@@ -55,29 +61,41 @@ export function Board({
 
   return (
     <div>
-      {/* overflow-x-auto resta come rete di sicurezza (es. troppi blocchi
-          già al loro minimo perché nessuno può restringersi oltre) — nel
-          caso normale le colonne si restringono prima di arrivarci. */}
-      <div className="overflow-x-auto">
-        <div
-          onDragOver={(event) => {
-            if (!event.dataTransfer.types.includes(DND_MIME)) return
-            event.preventDefault()
-            event.dataTransfer.dropEffect = "copy"
-            setDragOver(true)
-          }}
-          onDragLeave={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-              setDragOver(false)
-            }
-          }}
-          onDrop={(event) => {
-            if (!event.dataTransfer.types.includes(DND_MIME)) return
-            event.preventDefault()
+      {/* I gestori del drop stanno qui, sul contenitore ESTERNO (larghezza
+          piena), non sulla griglia stretta sotto — quella è larga solo
+          quanto i blocchi già presenti (naturalWidth), spesso molto meno
+          dello spazio visivamente disponibile: rilasciare "vicino" alla
+          griglia ma fuori da quel riquadro stretto oggi non faceva niente.
+          Qui invece tutta l'area conta, il blocco va comunque nel primo
+          posto libero (findFreeSpot, invariato). overflow-x-auto resta
+          anche come rete di sicurezza per quando le colonne sono già al
+          minimo e non c'è altro modo di stare nello spazio disponibile. */}
+      <div
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes(DND_MIME)) return
+          event.preventDefault()
+          event.dataTransfer.dropEffect = "copy"
+          setDragOver(true)
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node)) {
             setDragOver(false)
-            const type = event.dataTransfer.getData(DND_MIME)
-            if (isLibraryWidget(type)) addWidget(type)
-          }}
+          }
+        }}
+        onDrop={(event) => {
+          if (!event.dataTransfer.types.includes(DND_MIME)) return
+          event.preventDefault()
+          setDragOver(false)
+          const type = event.dataTransfer.getData(DND_MIME)
+          if (isLibraryWidget(type)) addWidget(type)
+        }}
+        className={cn(
+          "overflow-x-auto rounded-xl p-2 transition-colors",
+          isDraggingWidget && "outline-primary outline-2 outline-dashed outline-offset-[-6px]",
+          dragOver && "bg-brand-soft/60",
+        )}
+      >
+        <div
           style={{
             gridTemplateColumns: `repeat(${usedCols}, minmax(${CELL_MIN_REM}rem, ${CELL_MAX_REM}rem))`,
             width: `min(100%, ${naturalWidth})`,
@@ -94,8 +112,7 @@ export function Board({
             // flusso della griglia (position: absolute) per seguire il
             // mouse pixel per pixel — deve ancorarsi a questo contenitore,
             // non alla pagina (vedi widget-shell.tsx).
-            "board-grid relative grid auto-rows-[12rem] gap-4 rounded-xl transition-[outline-color] sm:mx-auto",
-            dragOver && "outline-primary outline-2 outline-dashed outline-offset-8",
+            "board-grid relative grid auto-rows-[12rem] gap-4 sm:mx-auto",
           )}
         >
           {layout.map(({ type }) => {
@@ -145,7 +162,8 @@ export function Board({
 
       {/* Non più un widget finto dentro la griglia: è una didascalia sotto —
           il feedback vero durante il trascinamento è il contorno tratteggiato
-          sulla griglia stessa (dragOver, sopra). */}
+          su tutta l'area sopra (isDraggingWidget), acceso già dal momento in
+          cui si solleva il blocco dal rail, non solo passandoci sopra. */}
       <p className="text-ink-faint mt-4 text-center text-[0.7rem]">
         Aggiungi altri blocchi trascinandoli dalla libreria a sinistra, o toccali.
       </p>

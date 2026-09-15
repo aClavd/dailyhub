@@ -8,8 +8,27 @@ import { useReportEmphasis, type WidgetEmphasis } from "@/components/board/widge
 import { Button } from "@/components/ui/button"
 import { Segmented } from "@/components/widgets/_shared"
 import { reconnectGoogle } from "@/lib/actions/auth"
+import { refreshMail } from "@/lib/actions/mail"
 import type { MailMessage, MailProvider, MailResult, ProviderStatus } from "@/lib/mail"
+import { usePolling } from "@/lib/use-polling"
 import { cn } from "@/lib/utils"
+
+// Stesso intervallo/stesso motivo di agenda-card.tsx: abbastanza vicino al
+// tempo reale, enorme margine sulle quote gratuite di Gmail.
+const REFRESH_MS = 90_000
+
+/** Possiede lo stato della posta — parte da `initial` (letto una volta da
+ * page.tsx) e lo aggiorna da solo col polling, senza bisogno di ricaricare
+ * la pagina per vedere una mail appena arrivata. MailBody resta puramente
+ * presentazionale: il pallino mail nel rail (mailHasRecent, sotto) segue
+ * già `result` per props, quindi si aggiorna da sé senza altro lavoro. */
+export function MailLive({ initial }: { initial: MailResult }) {
+  const [result, setResult] = useState(initial)
+  usePolling(() => {
+    void refreshMail().then(setResult)
+  }, REFRESH_MS)
+  return <MailBody result={result} />
+}
 
 // Segmented usa il valore stesso come etichetta del bottone (nessuna
 // mappa a parte): i valori sono già le scritte che vuoi vedere.

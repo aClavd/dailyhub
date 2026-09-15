@@ -6,11 +6,20 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { EmphasisReporter, type WidgetEmphasis } from "@/components/board/widget-shell"
 import { reconnectGoogle } from "@/lib/actions/auth"
+import { refreshAgenda } from "@/lib/actions/calendar"
 import { oraBreve, traQuanto } from "@/lib/datetime"
 import type { CalendarEvent, CalendarResult } from "@/lib/google/calendar"
+import { usePolling } from "@/lib/use-polling"
 import { cn } from "@/lib/utils"
 
+import { AgendaNotifier } from "./agenda-notifier"
 import { NewEventDialog } from "./new-event-dialog"
+
+// Ogni 90s: abbastanza vicino al tempo reale da sembrare "live" senza
+// bisogno di ricaricare, con enorme margine sulle quote gratuite di
+// Google Calendar (pensate per ben più di una chiamata ogni 90s a
+// persona) — vedi anche mail-card.tsx (stesso intervallo, stesso motivo).
+const REFRESH_MS = 90_000
 
 type RowState = "allday" | "now" | "next" | "upcoming" | "past"
 
@@ -44,29 +53,51 @@ function agendaEmphasis(events: CalendarEvent[]): { level: WidgetEmphasis; label
 }
 
 /**
- * Contenuto del blocco Impegni (senza card: il guscio lo mette la board).
- * Stato locale inizializzato dal `result` arrivato dal server (invariato,
- * ancora Suspense-streamed da page.tsx) — stesso schema già usato da
- * MailBody in mail-card.tsx: dopo una creazione riuscita da NewEventDialog
- * lo stato si aggiorna subito con la lista fresca ritornata dall'azione,
- * senza aspettare un giro di refresh della pagina.
+ * Possiede lo stato degli impegni di oggi — parte da `initial` (letto una
+ * volta da page.tsx, server-side) e lo tiene aggiornato da due fonti: il
+ * polling (ogni REFRESH_MS, usePolling) e la creazione di un nuovo impegno
+ * da NewEventDialog. Rende sia AgendaBody sia AgendaNotifier sullo STESSO
+ * stato, non due letture indipendenti: altrimenti un impegno arrivato via
+ * polling non farebbe scattare l'avviso di AgendaNotifier finché non si
+ * ricarica la pagina — i due andrebbero fuori sincrono.
  */
-export function AgendaBody({ result }: { result: CalendarResult }) {
-  const [state, setState] = useState(result)
-  const emphasis = state.ok ? agendaEmphasis(state.events) : { level: "none" as const }
+export function AgendaLive({ initial, todayKey }: { initial: CalendarResult; todayKey: string }) {
+  const [result, setResult] = useState(initial)
+  usePolling(() => {
+    void refreshAgenda().then(setResult)
+  }, REFRESH_MS)
+
+  return (
+    <>
+      <AgendaBody result={result} onCreated={setResult} />
+      {result.ok && <AgendaNotifier events={result.events} todayKey={todayKey} />}
+    </>
+  )
+}
+
+/** Contenuto del blocco Impegni (senza card: il guscio lo mette la
+ * board) — puramente presentazionale, lo stato vive in AgendaLive sopra. */
+export function AgendaBody({
+  result,
+  onCreated,
+}: {
+  result: CalendarResult
+  onCreated: (result: CalendarResult) => void
+}) {
+  const emphasis = result.ok ? agendaEmphasis(result.events) : { level: "none" as const }
   return (
     <div>
       <EmphasisReporter level={emphasis.level} label={emphasis.label} />
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-ink-faint font-mono text-[0.68rem] tracking-wide uppercase">
-          {state.ok ? countLabel(state.events.length) : "—"}
+          {result.ok ? countLabel(result.events.length) : "—"}
         </p>
-        <NewEventDialog onCreated={setState} />
+        <NewEventDialog onCreated={onCreated} />
       </div>
-      {state.ok ? (
-        <AgendaList events={state.events} />
+      {result.ok ? (
+        <AgendaList events={result.events} />
       ) : (
-        <AgendaError reason={state.reason} />
+        <AgendaError reason={result.reason} />
       )}
     </div>
   )

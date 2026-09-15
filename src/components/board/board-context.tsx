@@ -73,6 +73,12 @@ type BoardApi = {
    * blocco non è sulla board (mail-card.tsx lo popola). */
   mailHasRecent: boolean
   setMailHasRecent: (value: boolean) => void
+
+  /** Vero mentre si trascina un blocco dalla Libreria (acceso da rail.tsx
+   * al dragstart, spento al dragend) — board.tsx lo legge per mostrare
+   * subito la zona di rilascio, non solo quando il cursore ci passa sopra. */
+  isDraggingWidget: boolean
+  setIsDraggingWidget: (value: boolean) => void
 }
 
 const BoardContext = createContext<BoardApi | null>(null)
@@ -106,6 +112,7 @@ export function BoardProvider({
   const [layoutName, setLayoutName] = useState(initial.layoutName)
   const [layouts, setLayouts] = useState<SavedLayoutSummary[] | null>(null)
   const [mailHasRecent, setMailHasRecent] = useState(false)
+  const [isDraggingWidget, setIsDraggingWidget] = useState(false)
   const [, startTransition] = useTransition()
 
   // Letto da `persist` senza essere una dipendenza reattiva — cambia solo
@@ -297,6 +304,8 @@ export function BoardProvider({
       deleteLayout,
       mailHasRecent,
       setMailHasRecent,
+      isDraggingWidget,
+      setIsDraggingWidget,
     }),
     [
       layout,
@@ -320,6 +329,7 @@ export function BoardProvider({
       renameLayout,
       deleteLayout,
       mailHasRecent,
+      isDraggingWidget,
     ],
   )
 

@@ -5,13 +5,12 @@ import { auth } from "@/auth"
 import { Board } from "@/components/board/board"
 import { BoardProvider } from "@/components/board/board-context"
 import { Rail } from "@/components/board/rail"
-import { AgendaBody } from "@/components/dashboard/agenda-card"
-import { AgendaNotifier } from "@/components/dashboard/agenda-notifier"
+import { AgendaLive } from "@/components/dashboard/agenda-card"
 import { AgendaSkeletonBody } from "@/components/dashboard/agenda-skeleton"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DiarioReminder } from "@/components/dashboard/diario-reminder"
 import { HistoryPanel } from "@/components/dashboard/history-panel"
-import { MailBody } from "@/components/dashboard/mail-card"
+import { MailLive } from "@/components/dashboard/mail-card"
 import { MailSkeletonBody } from "@/components/dashboard/mail-skeleton"
 import { SpotifyBody, SpotifySkeletonBody } from "@/components/dashboard/spotify-card"
 import { ToastProvider } from "@/components/dashboard/toast-context"
@@ -82,17 +81,12 @@ export default async function DashboardPage() {
 
 async function AgendaSection() {
   const result = await getTodayEvents()
-  return (
-    <>
-      <AgendaBody result={result} />
-      {result.ok && <AgendaNotifier events={result.events} todayKey={chiaveGiorno()} />}
-    </>
-  )
+  return <AgendaLive initial={result} todayKey={chiaveGiorno()} />
 }
 
 async function MailSection() {
   const result = await getMail()
-  return <MailBody result={result} />
+  return <MailLive initial={result} />
 }
 
 async function SpotifySection() {
