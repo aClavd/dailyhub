@@ -64,6 +64,15 @@ export function chiaveGiorno(date = new Date()): string {
   return `${y}-${m}-${d}`
 }
 
+/** "YYYY-MM-DDTHH:mm" nell'ora locale — il formato richiesto da
+ * <input type="datetime-local">. Non toISOString: quello converte in UTC,
+ * qui serve l'ora di parete così com'è, riusa chiaveGiorno per la data. */
+export function datetimeLocalValue(date: Date): string {
+  const h = String(date.getHours()).padStart(2, "0")
+  const min = String(date.getMinutes()).padStart(2, "0")
+  return `${chiaveGiorno(date)}T${h}:${min}`
+}
+
 /** Chiave settimana ISO, es. "2026-W37". */
 export function chiaveSettimana(date = new Date()): string {
   const d = new Date(

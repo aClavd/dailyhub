@@ -1,6 +1,6 @@
 # Setup Google Cloud + OAuth — DailyHub
 
-Obiettivo: ottenere `AUTH_GOOGLE_ID` e `AUTH_GOOGLE_SECRET` da mettere in `.env.local`, con gli scope in **sola lettura** per Calendar e Gmail.
+Obiettivo: ottenere `AUTH_GOOGLE_ID` e `AUTH_GOOGLE_SECRET` da mettere in `.env.local`. Gmail resta in sola lettura; Calendar è in lettura **e scrittura** (si possono creare impegni dalla dashboard).
 
 Tempo: ~10 minuti. Serve un account Google (va bene quello personale).
 
@@ -87,6 +87,20 @@ npm run dev
 
 <http://127.0.0.1:3000> → **Accedi con Google** → scegli l'account (quello aggiunto come utente di test) → accetta i permessi.
 Se atterri su `/dashboard` e vedi il tuo nome: **fine Fase 0.** ✅
+
+## Scope Calendar: lettura e scrittura (`calendar.events`)
+
+Il blocco Impegni può anche **creare** eventi (il "+" in testata), non solo
+leggerli — serve lo scope `calendar.events` invece del vecchio
+`calendar.readonly`.
+
+**Se avevi già collegato Google prima di questa fase**: il token vecchio
+non ha il permesso di scrittura — creare un impegno fallirà con "sessione
+scaduta o manca il permesso". Basta un click su **Riconnetti Google**
+(compare da solo in quel caso, dentro il blocco Impegni o Mail): DailyHub
+richiede sempre un nuovo consenso a ogni login (`prompt: consent`), quindi
+un solo giro basta a concedere il permesso nuovo — non serve toccare
+`.env.local` né la console Google.
 
 ---
 

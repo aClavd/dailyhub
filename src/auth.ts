@@ -4,15 +4,25 @@ import Google from "next-auth/providers/google"
 /**
  * Scope OAuth richiesti a Google:
  * - openid / email / profile → identità di base
- * - calendar.readonly        → lettura eventi (blocco Impegni)
- * - gmail.readonly           → lettura mail (blocco Mail)
- * Tutto in sola lettura: nessuna scrittura su Calendar/Gmail in questa fase.
+ * - calendar.events          → lettura E scrittura eventi (blocco Impegni,
+ *   compresa la creazione di nuovi impegni dalla dashboard) — non il
+ *   generico "calendar" (darebbe accesso anche a impostazioni/elenco
+ *   calendari, non ci serve)
+ * - gmail.readonly           → lettura mail (blocco Mail), resta di sola
+ *   lettura: nessuna scrittura prevista lì
+ *
+ * Chi aveva già collegato Google prima di calendar.events deve riconnettersi
+ * una volta (vedi docs/SETUP-GOOGLE.md) — ma il bottone "Riconnetti Google"
+ * già esistente basta da solo: prompt:"consent" qui sotto è fisso su ogni
+ * accesso, quindi rifare il login concede subito il nuovo scope senza
+ * bisogno di parametri diversi (a differenza di Spotify, che non forza un
+ * nuovo consenso automatico).
  */
 const GOOGLE_SCOPES = [
   "openid",
   "email",
   "profile",
-  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/calendar.events",
   "https://www.googleapis.com/auth/gmail.readonly",
 ].join(" ")
 

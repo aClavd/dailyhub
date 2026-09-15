@@ -94,3 +94,62 @@ export async function getTodayEvents(): Promise<CalendarResult> {
 
   return { ok: true, events }
 }
+
+export type CreateEventInput = {
+  title: string
+  /** "YYYY-MM-DDTHH:mm:00", senza offset — è l'ora così come l'ha scritta
+   * chi compila il form. Google la interpreta lui usando `timeZone`, niente
+   * conversione a Date qui: il server che esegue questa funzione potrebbe
+   * girare in un fuso diverso da quello di chi ha aperto il form. */
+  startLocal: string
+  endLocal: string
+  timeZone: string
+  location?: string
+}
+
+export type CreateEventResult =
+  | { ok: true; event: CalendarEvent }
+  | { ok: false; reason: "unauthenticated" | "token" | "api"; detail?: string }
+
+/** Crea un evento sul calendario primario. Stessa convenzione di errori di
+ * getTodayEvents() sopra — riusa `normalize()`: la risposta di Google a una
+ * creazione ha la stessa forma di un evento in lista. */
+export async function createEvent(input: CreateEventInput): Promise<CreateEventResult> {
+  const session = await auth()
+  if (!session?.user) return { ok: false, reason: "unauthenticated" }
+  if (session.error || !session.accessToken) {
+    return { ok: false, reason: "token", detail: session.error }
+  }
+
+  let res: Response
+  try {
+    res = await fetch(
+      "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          summary: input.title,
+          location: input.location || undefined,
+          start: { dateTime: input.startLocal, timeZone: input.timeZone },
+          end: { dateTime: input.endLocal, timeZone: input.timeZone },
+        }),
+      },
+    )
+  } catch (err) {
+    return { ok: false, reason: "api", detail: String(err) }
+  }
+
+  // 401 (token scaduto) e 403 (permesso mancante — il caso di chi non si è
+  // ancora riconnesso dopo il passaggio a calendar.events) portano entrambi
+  // a "token": in agenda-card.tsx quel reason mostra "Riconnetti Google",
+  // che risolve entrambi i casi allo stesso modo (un nuovo login).
+  if (res.status === 401 || res.status === 403) return { ok: false, reason: "token" }
+  if (!res.ok) return { ok: false, reason: "api", detail: `HTTP ${res.status}` }
+
+  const raw = (await res.json()) as GoogleEvent
+  return { ok: true, event: normalize(raw) }
+}

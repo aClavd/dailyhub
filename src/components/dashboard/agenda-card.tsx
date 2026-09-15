@@ -1,4 +1,7 @@
+"use client"
+
 import type { ReactNode } from "react"
+import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { EmphasisReporter, type WidgetEmphasis } from "@/components/board/widget-shell"
@@ -6,6 +9,8 @@ import { reconnectGoogle } from "@/lib/actions/auth"
 import { oraBreve, traQuanto } from "@/lib/datetime"
 import type { CalendarEvent, CalendarResult } from "@/lib/google/calendar"
 import { cn } from "@/lib/utils"
+
+import { NewEventDialog } from "./new-event-dialog"
 
 type RowState = "allday" | "now" | "next" | "upcoming" | "past"
 
@@ -38,19 +43,30 @@ function agendaEmphasis(events: CalendarEvent[]): { level: WidgetEmphasis; label
   return { level: "none" }
 }
 
-/** Contenuto del blocco Impegni (senza card: il guscio lo mette la board). */
+/**
+ * Contenuto del blocco Impegni (senza card: il guscio lo mette la board).
+ * Stato locale inizializzato dal `result` arrivato dal server (invariato,
+ * ancora Suspense-streamed da page.tsx) — stesso schema già usato da
+ * MailBody in mail-card.tsx: dopo una creazione riuscita da NewEventDialog
+ * lo stato si aggiorna subito con la lista fresca ritornata dall'azione,
+ * senza aspettare un giro di refresh della pagina.
+ */
 export function AgendaBody({ result }: { result: CalendarResult }) {
-  const emphasis = result.ok ? agendaEmphasis(result.events) : { level: "none" as const }
+  const [state, setState] = useState(result)
+  const emphasis = state.ok ? agendaEmphasis(state.events) : { level: "none" as const }
   return (
     <div>
       <EmphasisReporter level={emphasis.level} label={emphasis.label} />
-      <p className="text-ink-faint mb-2 font-mono text-[0.68rem] tracking-wide uppercase">
-        {result.ok ? countLabel(result.events.length) : "—"}
-      </p>
-      {result.ok ? (
-        <AgendaList events={result.events} />
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-ink-faint font-mono text-[0.68rem] tracking-wide uppercase">
+          {state.ok ? countLabel(state.events.length) : "—"}
+        </p>
+        <NewEventDialog onCreated={setState} />
+      </div>
+      {state.ok ? (
+        <AgendaList events={state.events} />
       ) : (
-        <AgendaError reason={result.reason} />
+        <AgendaError reason={state.reason} />
       )}
     </div>
   )
