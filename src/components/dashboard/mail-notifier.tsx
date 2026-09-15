@@ -2,22 +2,12 @@
 
 import { useEffect } from "react"
 
+import { matchingFilter } from "@/lib/mail-filter-match"
 import type { MailMessage } from "@/lib/mail"
 import type { MailFilterSummary } from "@/lib/queries/mail-filters"
 import { useLocalStorage } from "@/lib/use-local-storage"
 
 import { useToast } from "./toast-context"
-
-/** Una regola combacia se il suo testo (case-insensitive) compare nel
- * mittente O nell'oggetto — una sola regola vale per entrambi i campi,
- * niente "campo" da scegliere ogni volta (mail-filter-dialog.tsx). */
-function matchingFilter(
-  message: MailMessage,
-  filters: readonly MailFilterSummary[],
-): MailFilterSummary | null {
-  const haystack = `${message.from} ${message.subject}`.toLowerCase()
-  return filters.find((f) => haystack.includes(f.pattern.toLowerCase())) ?? null
-}
 
 /**
  * Avviso quando arriva una mail che combacia con una regola "importante"

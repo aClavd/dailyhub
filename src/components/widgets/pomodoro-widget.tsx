@@ -10,7 +10,10 @@ import { cn } from "@/lib/utils"
 
 type Phase = "focus" | "short" | "long"
 
-const DURATIONS: Record<Phase, number> = {
+// Esportate (Right Sidebar, Fase B): il Focus del pannello destro deriva
+// "minuti di studio oggi" da sessioni × durata di un blocco — stessa fonte
+// di verità, non un 25 ridigitato altrove.
+export const DURATIONS: Record<Phase, number> = {
   focus: 25 * 60,
   short: 5 * 60,
   long: 15 * 60,

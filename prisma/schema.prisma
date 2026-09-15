@@ -52,6 +52,11 @@ model BoardLayout {
   /// senza ancora nessuna SavedLayout.
   layout    Json     @default("[]")
   railCollapsed Boolean @default(false)
+  /// Comprimi/espandi del pannello destro (Right Sidebar / Personal
+  /// Attention Center) — stesso schema di railCollapsed sopra, campo a
+  /// parte perché sono due barre indipendenti (si può tenere una
+  /// compressa e l'altra no).
+  rightPanelCollapsed Boolean @default(false)
   /// Nomi delle abitudini personalizzate, condivisi tra tutti i giorni del
   /// widget Diario (lo stato "fatta/non fatta" invece è per giorno, su
   /// JournalEntry.habits) — e tra tutti i SavedLayout: non ha senso che

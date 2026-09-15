@@ -7,9 +7,12 @@ import { useLocalStorage } from "@/lib/use-local-storage"
 import { useToast } from "./toast-context"
 
 // Confermato con Claudio: le 20:00, non prima — usa il Diario a fine giornata.
-const REMINDER_HOUR = 20
+// Esportata (Right Sidebar, Fase B): il Daily Brief del pannello destro
+// segue la stessa soglia per la propria riga "diario", non una seconda
+// ridigitata lì.
+export const REMINDER_HOUR = 20
 // Ogni 5 minuti basta: non serve la precisione al minuto di un countdown.
-const CHECK_EVERY_MS = 5 * 60_000
+export const CHECK_EVERY_MS = 5 * 60_000
 
 /**
  * Promemoria per scrivere nel Diario — solo se non hai ancora scritto

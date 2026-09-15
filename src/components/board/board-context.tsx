@@ -50,6 +50,10 @@ type BoardApi = {
   commitLayout: (next: WidgetPlacement[]) => void
   railCollapsed: boolean
   toggleRail: () => void
+  /** Comprimi/espandi del pannello destro (Right Sidebar) — indipendente
+   * dal rail sinistro sopra, stesso schema. */
+  rightPanelCollapsed: boolean
+  toggleRightPanel: () => void
   /** Nomi delle abitudini del widget Diario — condivisi tra tutti i giorni. */
   habitList: string[]
   addHabit: (label: string) => void
@@ -107,6 +111,7 @@ export function BoardProvider({
   )
   const [previewLayout, setPreviewLayout] = useState<WidgetPlacement[] | null>(null)
   const [railCollapsed, setRailCollapsed] = useState(initial.railCollapsed)
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(initial.rightPanelCollapsed)
   const [habitList, setHabitList] = useState<string[]>(initial.habitList)
   const [layoutId, setLayoutId] = useState(initial.layoutId)
   const [layoutName, setLayoutName] = useState(initial.layoutName)
@@ -128,11 +133,13 @@ export function BoardProvider({
       void saveBoardLayout(layoutIdRef.current, {
         layout: patch.layout ?? committedLayout,
         railCollapsed: patch.railCollapsed ?? railCollapsed,
+        rightPanelCollapsed: patch.rightPanelCollapsed ?? rightPanelCollapsed,
         habitList: patch.habitList ?? habitList,
       })
     })
-    // committedLayout/railCollapsed/habitList intenzionalmente fuori dalle
-    // dipendenze: ogni chiamante passa già il valore aggiornato nel patch.
+    // committedLayout/railCollapsed/rightPanelCollapsed/habitList
+    // intenzionalmente fuori dalle dipendenze: ogni chiamante passa già il
+    // valore aggiornato nel patch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -195,6 +202,12 @@ export function BoardProvider({
     persist({ railCollapsed: next })
   }, [railCollapsed, persist])
 
+  const toggleRightPanel = useCallback(() => {
+    const next = !rightPanelCollapsed
+    setRightPanelCollapsed(next)
+    persist({ rightPanelCollapsed: next })
+  }, [rightPanelCollapsed, persist])
+
   const addHabit = useCallback(
     (label: string) => {
       if (habitList.includes(label)) return
@@ -224,6 +237,7 @@ export function BoardProvider({
     setCommittedLayout(sanitizeLayout(state.layout))
     setPreviewLayout(null)
     setRailCollapsed(state.railCollapsed)
+    setRightPanelCollapsed(state.rightPanelCollapsed)
     setHabitList(state.habitList)
   }, [])
 
@@ -291,6 +305,8 @@ export function BoardProvider({
       commitLayout,
       railCollapsed,
       toggleRail,
+      rightPanelCollapsed,
+      toggleRightPanel,
       habitList,
       addHabit,
       removeHabit,
@@ -317,6 +333,8 @@ export function BoardProvider({
       commitLayout,
       railCollapsed,
       toggleRail,
+      rightPanelCollapsed,
+      toggleRightPanel,
       habitList,
       addHabit,
       removeHabit,

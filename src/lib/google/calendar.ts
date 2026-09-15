@@ -1,5 +1,7 @@
 import "server-only"
 
+import { cache } from "react"
+
 import { auth } from "@/auth"
 import { fineGiornata, inizioGiornata, monthGrid, parseChiave } from "@/lib/datetime"
 
@@ -99,10 +101,17 @@ async function fetchEvents(timeMin: Date, timeMax: Date): Promise<CalendarResult
   return { ok: true, events }
 }
 
-/** Eventi del calendario primario per la giornata corrente. */
-export async function getTodayEvents(): Promise<CalendarResult> {
+/** Eventi del calendario primario per la giornata corrente. Avvolta in
+ * `cache()` (Right Sidebar, Fase B): sia AgendaSection (page.tsx) sia il
+ * Daily Brief del pannello destro la chiamano nella stessa richiesta —
+ * senza cache() sarebbero due fetch reali verso Google Calendar per lo
+ * stesso identico risultato. `cache()` di React deduplica per la durata
+ * di UNA richiesta (non tra richieste diverse: ogni caricamento pagina
+ * resta comunque fresco) — diverso da `cache: "no-store"` su fetchEvents
+ * sopra, che riguarda invece l'HTTP verso Google, non questo. */
+export const getTodayEvents = cache(async (): Promise<CalendarResult> => {
   return fetchEvents(inizioGiornata(), fineGiornata())
-}
+})
 
 /** Eventi del calendario primario per le 6 settimane mostrate dalla
  * griglia mese del widget Calendario (monthGrid, lib/datetime.ts) — non un

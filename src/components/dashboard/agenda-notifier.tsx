@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 
+import { URGENT_MIN } from "@/lib/agenda-signal"
 import { traQuanto } from "@/lib/datetime"
 import type { CalendarEvent } from "@/lib/google/calendar"
 import { useLocalStorage } from "@/lib/use-local-storage"
@@ -9,9 +10,9 @@ import { useLocalStorage } from "@/lib/use-local-storage"
 import { useToast } from "./toast-context"
 
 // Stessa soglia già decisa in Fase 5.2 per la spina rossa di Impegni
-// (agenda-card.tsx, URGENT_MIN) — un solo concetto di "imminente" in
-// tutta l'app, non un secondo numero inventato qui.
-const NOTIFY_MIN = 20
+// (lib/agenda-signal.ts) — un solo concetto di "imminente" in tutta l'app,
+// importato invece di un secondo numero ridigitato qui.
+const NOTIFY_MIN = URGENT_MIN
 const CHECK_EVERY_MS = 30_000
 
 /**

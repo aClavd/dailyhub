@@ -30,13 +30,18 @@ export async function saveBoardLayout(layoutId: string, state: BoardState) {
     }),
     prisma.boardLayout.upsert({
       where: { userId },
-      update: { railCollapsed: state.railCollapsed, habitList: state.habitList },
+      update: {
+        railCollapsed: state.railCollapsed,
+        rightPanelCollapsed: state.rightPanelCollapsed,
+        habitList: state.habitList,
+      },
       // order/sizes non si scrivono più — restano solo per compatibilità con
       // le righe create prima della griglia logica (colonne non-null in DB).
       create: {
         userId,
         order: [],
         railCollapsed: state.railCollapsed,
+        rightPanelCollapsed: state.rightPanelCollapsed,
         habitList: state.habitList,
       },
     }),
@@ -65,6 +70,7 @@ export async function switchBoardLayout(layoutId: string): Promise<ActiveBoardSt
   return {
     layout: target.layout as ActiveBoardState["layout"],
     railCollapsed: prefs?.railCollapsed ?? false,
+    rightPanelCollapsed: prefs?.rightPanelCollapsed ?? false,
     habitList: prefs?.habitList ?? [],
     layoutId: target.id,
     layoutName: target.name,
@@ -105,6 +111,7 @@ export async function createBoardLayout(rawName: string): Promise<BoardLayoutAct
       state: {
         layout: created.layout as ActiveBoardState["layout"],
         railCollapsed: prefs?.railCollapsed ?? false,
+        rightPanelCollapsed: prefs?.rightPanelCollapsed ?? false,
         habitList: prefs?.habitList ?? [],
         layoutId: created.id,
         layoutName: created.name,
@@ -167,6 +174,7 @@ export async function deleteBoardLayout(
     freshState = {
       layout: next.layout as ActiveBoardState["layout"],
       railCollapsed: prefs?.railCollapsed ?? false,
+      rightPanelCollapsed: prefs?.rightPanelCollapsed ?? false,
       habitList: prefs?.habitList ?? [],
       layoutId: next.id,
       layoutName: next.name,

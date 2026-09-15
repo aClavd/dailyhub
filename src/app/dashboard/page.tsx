@@ -11,6 +11,7 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DiarioReminder } from "@/components/dashboard/diario-reminder"
 import { MailLive } from "@/components/dashboard/mail-card"
 import { MailSkeletonBody } from "@/components/dashboard/mail-skeleton"
+import { RightPanel } from "@/components/dashboard/right-panel"
 import { SpotifyBody, SpotifySkeletonBody } from "@/components/dashboard/spotify-card"
 import { ToastProvider } from "@/components/dashboard/toast-context"
 import { TopBar } from "@/components/dashboard/top-bar"
@@ -59,15 +60,28 @@ export default async function DashboardPage() {
 
   const firstName = session.user.name?.split(" ")[0]?.toLowerCase()
 
-  // Board, diario e cronologia vengono dal DB: si leggono prima di
-  // disegnare la pagina, sono veloci (query indicizzate) e servono per lo
-  // stato iniziale.
-  const [boardInitial, { state: diarioInitial, dayNumber }, { days: historyDays, todayKey }] =
-    await Promise.all([
-      getActiveBoardLayout(),
-      getDiarioToday(chiaveGiorno()),
-      getHistoryDays(),
-    ])
+  // Board, diario, cronologia, impegni, mail e filtri: si leggono tutti
+  // prima di disegnare la pagina, in parallelo. Impegni/mail servono sia ai
+  // rispettivi widget (AgendaSection/MailSection sotto, via Suspense) sia
+  // al pannello destro (RightPanel, Daily Brief) — getTodayEvents/getMail
+  // sono avvolte in cache() (lib/google/calendar.ts, lib/mail.ts) apposta:
+  // letture identiche nella stessa richiesta si deduplicano da sole, non
+  // raddoppiano le chiamate reali a Google Calendar/Gmail.
+  const [
+    boardInitial,
+    { state: diarioInitial, dayNumber },
+    { days: historyDays, todayKey },
+    eventsInitial,
+    mailInitial,
+    mailFilters,
+  ] = await Promise.all([
+    getActiveBoardLayout(),
+    getDiarioToday(chiaveGiorno()),
+    getHistoryDays(),
+    getTodayEvents(),
+    getMail(),
+    listMailFilters(),
+  ])
 
   return (
     <ToastProvider>
@@ -104,6 +118,13 @@ export default async function DashboardPage() {
               todayKey={todayKey}
             />
           </div>
+          <RightPanel
+            initialEvents={eventsInitial}
+            initialMail={mailInitial}
+            filters={mailFilters}
+            diarioInitial={diarioInitial}
+            todayKey={todayKey}
+          />
         </div>
       </BoardProvider>
     </ToastProvider>

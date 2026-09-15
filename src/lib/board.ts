@@ -238,12 +238,16 @@ export function migrateLegacyLayout(
 export type BoardState = {
   layout: WidgetPlacement[]
   railCollapsed: boolean
+  /** Comprimi/espandi del pannello destro (Right Sidebar) — indipendente
+   * dal rail sinistro, stesso schema. */
+  rightPanelCollapsed: boolean
   habitList: string[]
 }
 
 export const DEFAULT_BOARD_STATE: BoardState = {
   layout: DEFAULT_LAYOUT_PLACEMENT,
   railCollapsed: false,
+  rightPanelCollapsed: false,
   habitList: [...DEFAULT_HABITS],
 }
 

@@ -1,5 +1,7 @@
 import "server-only"
 
+import { cache } from "react"
+
 import { getGmailMessages } from "@/lib/google/gmail"
 import { getLiberoMessages } from "@/lib/libero-mail"
 
@@ -38,8 +40,13 @@ export type MailResult = {
  * PRD §8, Fase 3 — "interfaccia comune ai due provider"). Il campo
  * `provider` su ogni messaggio permette alla UI di offrire le 3 sezioni
  * (tutte / solo Gmail / solo Libero) senza richieste separate.
+ *
+ * Avvolta in `cache()` (Right Sidebar, Fase B) — stesso motivo di
+ * getTodayEvents() in lib/google/calendar.ts: sia MailSection (page.tsx)
+ * sia il Daily Brief del pannello destro la chiamano nella stessa
+ * richiesta, deduplicata invece di due giri reali verso Gmail/Libero.
  */
-export async function getMail(): Promise<MailResult> {
+export const getMail = cache(async (): Promise<MailResult> => {
   const [gmail, libero] = await Promise.all([getGmailMessages(), getLiberoMessages()])
 
   const messages: MailMessage[] = [
@@ -56,4 +63,4 @@ export async function getMail(): Promise<MailResult> {
     gmail: gmail.ok ? { ok: true } : { ok: false, reason: gmail.reason, detail: gmail.detail },
     libero: libero.ok ? { ok: true } : { ok: false, reason: libero.reason, detail: libero.detail },
   }
-}
+})

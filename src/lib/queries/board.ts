@@ -56,6 +56,7 @@ export async function getActiveBoardLayout(): Promise<ActiveBoardState> {
   return {
     layout: sanitizeLayout(active.layout as WidgetPlacement[]),
     railCollapsed: prefs?.railCollapsed ?? false,
+    rightPanelCollapsed: prefs?.rightPanelCollapsed ?? false,
     // A differenza del layout, una lista vuota qui è uno stato valido (l'utente
     // ha rimosso tutte le abitudini di proposito): nessun fallback ai default.
     habitList: prefs?.habitList ?? [...DEFAULT_BOARD_STATE.habitList],
