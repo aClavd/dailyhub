@@ -133,11 +133,15 @@ export function CalendarWidget() {
                   )}
                 >
                   <span>{d.getDate()}</span>
+                  {/* bg-primary sempre (non condizionato a isToday) e
+                      size-1.5 come il pallino umore della Cronologia —
+                      con bg-ink-faint (pensato per testo attenuato, non
+                      per un indicatore) a size-1 (4px) il puntino c'era
+                      ma era praticamente invisibile: bug reale, trovato
+                      da Claudio (nessun impegno visibile su nessun
+                      giorno pur avendone uno registrato). */}
                   <span
-                    className={cn(
-                      "size-1 rounded-full",
-                      count > 0 ? (isToday ? "bg-primary" : "bg-ink-faint") : "bg-transparent",
-                    )}
+                    className={cn("size-1.5 rounded-full", count > 0 ? "bg-primary" : "bg-transparent")}
                   />
                 </button>
               )
