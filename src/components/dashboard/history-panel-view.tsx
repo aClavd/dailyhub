@@ -4,7 +4,7 @@ import type { SVGProps } from "react"
 
 import { Dialog, DialogTrigger } from "@/components/ui/dialog"
 import type { DiarioState } from "@/lib/diario"
-import { moodDotClass } from "@/lib/diario"
+import { daySummary, moodDotClass } from "@/lib/diario"
 import { useLocalStorage } from "@/lib/use-local-storage"
 import { cn } from "@/lib/utils"
 
@@ -117,7 +117,7 @@ export function HistoryPanelView({
           {days.map((day) => (
             <div
               key={day.key}
-              title={`${day.label} — ${day.entry?.obiettivo || day.entry?.testo || "nessuna voce"}`}
+              title={`${day.label} — ${daySummary(day.entry) || "nessuna voce"}`}
               className={cn(
                 "flex w-full flex-col items-center gap-1 rounded-md py-1.5",
                 day.isToday && "bg-brand-soft",
@@ -138,7 +138,7 @@ export function HistoryPanelView({
       ) : (
         <div className="flex min-h-0 flex-1 flex-col divide-y divide-border overflow-y-auto px-4">
           {days.map((day) => {
-            const summary = day.entry?.obiettivo || day.entry?.testo
+            const summary = daySummary(day.entry)
             return (
               <div key={day.key} className="py-2.5">
                 <div className="flex items-center gap-2">

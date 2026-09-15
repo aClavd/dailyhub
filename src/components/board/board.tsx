@@ -27,7 +27,7 @@ export function Board({
   diarioSlot: React.ReactNode
   pomodoroSlot: React.ReactNode
 }) {
-  const { layout, addWidget, isDraggingWidget } = useBoard()
+  const { layout, addWidget, isDraggingWidget, setIsDraggingWidget } = useBoard()
   // dragOver: il cursore è ESATTAMENTE sopra la zona in questo momento (dà
   // il riempimento pieno, il feedback "forte"). isDraggingWidget (dal
   // context, acceso da rail.tsx al dragstart) è vero per tutta la durata
@@ -58,18 +58,26 @@ export function Board({
   // da lì in giù subentra overflow-x-auto come rete di sicurezza, non lo
   // scroll come prima via d'uscita.
   const naturalWidth = `${boardNaturalWidthRem(layout)}rem`
+  // Zona di rilascio (il box tratteggiato durante il trascinamento, sotto)
+  // almeno larga quanto 3 colonne piene — senza questo minimo, con una
+  // board vuota o quasi il box si stringeva alla larghezza naturale (anche
+  // solo 1 colonna) mentre i gestori del drop restavano su tutto il
+  // contenitore esterno: risultato, un riquadro enorme e vuoto invece di
+  // uno proporzionato. Con più blocchi (naturalWidth già oltre 3 colonne)
+  // non cambia niente: resta la larghezza naturale di sempre.
+  const dropZoneWidth = `${Math.max(boardNaturalWidthRem(layout), 3 * CELL_MAX_REM + 2)}rem`
 
   return (
     <div>
-      {/* I gestori del drop stanno qui, sul contenitore ESTERNO (larghezza
-          piena), non sulla griglia stretta sotto — quella è larga solo
-          quanto i blocchi già presenti (naturalWidth), spesso molto meno
-          dello spazio visivamente disponibile: rilasciare "vicino" alla
-          griglia ma fuori da quel riquadro stretto oggi non faceva niente.
-          Qui invece tutta l'area conta, il blocco va comunque nel primo
-          posto libero (findFreeSpot, invariato). overflow-x-auto resta
-          anche come rete di sicurezza per quando le colonne sono già al
-          minimo e non c'è altro modo di stare nello spazio disponibile. */}
+      {/* I gestori del drop stanno qui, sul contenitore ESTERNO (largo
+          dropZoneWidth, sopra — almeno 3 colonne, non la sola naturalWidth
+          della griglia sotto), non sulla griglia stretta — quella con pochi
+          blocchi può essere molto più piccola dello spazio visivamente
+          disponibile: rilasciare "vicino" alla griglia ma fuori da quel
+          riquadro stretto oggi non faceva niente. Qui invece tutta l'area
+          del box tratteggiato conta, il blocco va comunque nel primo posto
+          libero (findFreeSpot, invariato). overflow-x-auto resta anche come
+          rete di sicurezza per quando le colonne sono già al minimo. */}
       <div
         onDragOver={(event) => {
           if (!event.dataTransfer.types.includes(DND_MIME)) return
@@ -86,11 +94,21 @@ export function Board({
           if (!event.dataTransfer.types.includes(DND_MIME)) return
           event.preventDefault()
           setDragOver(false)
+          // Non aspetta il dragend sul rail (rete di sicurezza in più, non
+          // l'unico posto che spegne l'indicatore — vedi rail.tsx): un
+          // rilascio riuscito è già di per sé la fine del trascinamento.
+          setIsDraggingWidget(false)
           const type = event.dataTransfer.getData(DND_MIME)
           if (isLibraryWidget(type)) addWidget(type)
         }}
+        style={{ width: `min(100%, ${dropZoneWidth})` }}
         className={cn(
-          "overflow-x-auto rounded-xl p-2 transition-colors",
+          // min-h-48 (12rem, la stessa unità di auto-rows sulla griglia
+          // sotto): con la board vuota o quasi la griglia non ha righe,
+          // quindi zero altezza — senza questo minimo il box tratteggiato
+          // sarebbe una striscia di ~16px, difficile perfino da vedere.
+          // Con più blocchi (già oltre 12rem) non cambia niente.
+          "min-h-48 overflow-x-auto rounded-xl p-2 transition-colors sm:mx-auto",
           isDraggingWidget && "outline-primary outline-2 outline-dashed outline-offset-[-6px]",
           dragOver && "bg-brand-soft/60",
         )}

@@ -206,8 +206,13 @@ function RailItem({
     : undefined
   // dragend scatta sempre, sia che il rilascio sia riuscito sia che sia
   // stato annullato (Escape, rilasciato fuori da qualunque zona valida) —
-  // l'evento giusto per spegnere l'indicatore in ogni caso.
-  const onDragEnd = draggable ? () => setIsDraggingWidget(false) : undefined
+  // l'evento giusto per spegnere l'indicatore in ogni caso. Va tenuto
+  // SEMPRE attaccato, non solo quando `draggable` (bug reale: un drop
+  // riuscito fa scattare addWidget, che rende `added` vero e quindi
+  // `draggable` falso PRIMA che l'evento nativo dragend arrivi sullo
+  // stesso elemento — con l'handler staccato in quel momento, dragend non
+  // spegneva più niente e il bordo restava acceso per sempre).
+  const onDragEnd = () => setIsDraggingWidget(false)
 
   return (
     <button

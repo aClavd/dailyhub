@@ -16,7 +16,7 @@ import {
   parseChiave,
   weekDates,
 } from "@/lib/datetime"
-import { moodDotClass, type DiarioState } from "@/lib/diario"
+import { daySummary, moodDotClass, type DiarioState } from "@/lib/diario"
 import type { DiarioSearchHit } from "@/lib/queries/diario"
 import { cn } from "@/lib/utils"
 
@@ -286,7 +286,7 @@ function WeekList({
       {days.map((d) => {
         const key = chiaveGiorno(d)
         const entry = entries[key]
-        const summary = entry?.obiettivo || entry?.testo
+        const summary = daySummary(entry)
         return (
           <button
             key={key}

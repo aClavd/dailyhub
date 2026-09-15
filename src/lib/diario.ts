@@ -46,3 +46,20 @@ export function moodDotClass(mood?: Mood | null): string {
   if (mood === "Buono" || mood === "Ottimo") return "bg-good"
   return "bg-border"
 }
+
+/**
+ * Riga di riepilogo per un giorno in Cronologia (pannello a 7 giorni e
+ * Cronologia estesa) — testo/obiettivo hanno la priorità (è quello scritto
+ * a mano), ma un giorno con sessioni Pomodoro registrate e nessuna riga di
+ * diario non è "nessuna voce": c'è comunque qualcosa da mostrare. null solo
+ * se non è stato registrato davvero niente quel giorno.
+ */
+export function daySummary(entry?: DiarioState): string | null {
+  if (!entry) return null
+  if (entry.obiettivo) return entry.obiettivo
+  if (entry.testo) return entry.testo
+  if (entry.pomodoroSessions > 0) {
+    return `${entry.pomodoroSessions} ${entry.pomodoroSessions === 1 ? "pomodoro" : "pomodori"}`
+  }
+  return null
+}
