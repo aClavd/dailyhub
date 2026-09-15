@@ -50,6 +50,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.access_token = account.access_token
         token.refresh_token = account.refresh_token ?? token.refresh_token
         token.expires_at = account.expires_at
+        // Bug reale trovato in produzione: senza questa riga, `token.sub`
+        // NON è il sub di Google — senza adapter Prisma, Auth.js non ha
+        // nessuna riga "User" persistente da cui recuperare un id stabile,
+        // quindi ne genera uno CASUALE a ogni nuovo login (un accesso
+        // scaduto, "Riconnetti Google", un cookie cancellato...). Risultato
+        // osservato per davvero: 4 id utente diversi in due giorni, ognuno
+        // trattato come un utente nuovo — layout salvati e cronologia che
+        // "sparivano" cambiando login, non un bug di logica altrove.
+        // account.providerAccountId È il sub vero di Google (stabile per lo
+        // stesso account Google + questo client OAuth, per sempre) — va
+        // fissato qui esplicitamente.
+        token.sub = account.providerAccountId
         delete token.error
         return token
       }
@@ -96,8 +108,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       session.accessToken = token.access_token
       session.error = token.error
-      // token.sub è il Google `sub` (id stabile dell'account): lo usiamo
-      // come chiave per le righe del DB, senza bisogno dell'adapter Prisma.
+      // token.sub è il Google `sub` (id stabile dell'account), fissato
+      // esplicitamente nel callback jwt sopra — lo usiamo come chiave per
+      // le righe del DB, senza bisogno dell'adapter Prisma.
       if (token.sub) session.user.id = token.sub
       return session
     },
