@@ -186,10 +186,22 @@ export function Rail({
             pallino umore, come faceva già il vecchio pannello quando era
             lui a comprimersi) invece di sparire del tutto — segnalato da
             Claudio: senza, a rail compresso non restava alcun segnale che
-            la Cronologia esistesse. */}
-        <div className={cn(railCollapsed && "border-border border-t pt-4")}>
+            la Cronologia esistesse.
+
+            Stesso "min-h-0 flex-1" del contenitore scrollabile qui sopra,
+            ma applicato a questo blocco: prima Libreria+Cronologia insieme
+            occupavano solo lo spazio del loro contenuto, quindi da chiusa
+            (icone e pallini, poco contenuto) restava un vuoto morto sotto
+            l'ultimo giorno fino all'avatar in fondo, mentre da aperta
+            (testo per esteso) il contenuto sfora ed è più lungo di uno
+            schermo — le due viste sembravano scollegate. Ora la Cronologia
+            si prende sempre lo spazio che resta sotto la Libreria: da
+            aperta non cambia nulla (il contenuto sfora comunque, si scrolla
+            come prima), da chiusa i giorni si centrano in quello spazio
+            invece di restare incollati in alto con il vuoto sotto. */}
+        <div className={cn("flex min-h-0 flex-1 flex-col", railCollapsed && "border-border border-t pt-4")}>
           {!railCollapsed && (
-            <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
               <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
                 Cronologia — ultimi 7 giorni
               </p>
@@ -207,7 +219,7 @@ export function Rail({
           )}
 
           {railCollapsed ? (
-            <div className="flex flex-col items-center gap-1.5">
+            <div className="flex flex-1 flex-col items-center justify-center gap-2">
               {historyDays.map((day) => (
                 <div
                   key={day.key}

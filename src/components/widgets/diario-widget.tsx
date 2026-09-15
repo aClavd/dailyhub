@@ -297,10 +297,20 @@ function MiniStat({
           type="number"
           inputMode="decimal"
           step={step}
+          min={0}
           value={value ?? ""}
           onChange={(event) => {
             const raw = event.target.value
-            onChange(raw === "" ? null : Number(raw))
+            if (raw === "") {
+              onChange(null)
+              return
+            }
+            const parsed = Number(raw)
+            // Peso/sonno negativi non hanno senso — `min={0}` sull'input
+            // blocca solo le frecce su/giù, non ciò che si digita a mano
+            // (un "-" tastiera passa comunque). Scartato qui: un valore
+            // negativo diventa 0 invece di essere salvato così com'è.
+            onChange(Number.isNaN(parsed) ? null : Math.max(0, parsed))
           }}
           // "non lo so", non "—": dice chiaramente che lasciarlo vuoto è
           // una scelta valida (non hai controllato quel giorno), non solo
