@@ -120,40 +120,61 @@ export function Rail({
         </button>
       </div>
 
-      {/* Layout salvati (Fase 5.4) — riga a parte sotto l'intestazione,
-          solo a barra espansa: switcher rapido + "gestisci" (rinomina/
-          elimina/crea) in un dialog a parte. */}
-      {!railCollapsed && (
-        <div className="border-border flex shrink-0 items-center gap-1.5 border-b px-3 py-2.5">
-          <Select
-            value={layoutId}
-            onValueChange={(value) => {
-              if (typeof value === "string") void switchLayout(value)
-            }}
+      {/* Layout salvati (Fase 5.4) — prima riga a parte visibile solo a
+          barra espansa, quindi a barra compressa non c'era alcun modo di
+          vedere quale layout fosse attivo né di cambiarlo: segnalato da
+          Claudio ("un pallino... per il layout... collegato"). Ora la
+          riga resta sempre, cambia solo la forma del trigger: testo per
+          esteso da espansa, un pallino con l'iniziale del nome da
+          compressa (stesso <Select>, quindi cliccarlo apre la stessa
+          tendina e cambia davvero layout — non è un'icona finta). */}
+      <div
+        className={cn(
+          "border-border flex shrink-0 border-b",
+          railCollapsed ? "flex-col items-center gap-1.5 px-2 py-2.5" : "items-center gap-1.5 px-3 py-2.5",
+        )}
+      >
+        <Select
+          value={layoutId}
+          onValueChange={(value) => {
+            if (typeof value === "string") void switchLayout(value)
+          }}
+        >
+          <SelectTrigger
+            className={
+              railCollapsed
+                ? "bg-brand-soft text-primary size-7 shrink-0 justify-center rounded-full border-0 p-0 text-[0.68rem] font-semibold"
+                : "min-w-0 flex-1"
+            }
+            showIcon={!railCollapsed}
+            aria-label={railCollapsed ? `Layout attivo: ${layoutName} — cambia` : undefined}
+            title={railCollapsed ? layoutName : undefined}
           >
-            <SelectTrigger className="min-w-0 flex-1">
+            {railCollapsed ? (
+              layoutName.trim().charAt(0).toUpperCase() || "•"
+            ) : (
               <span className="min-w-0 flex-1 truncate text-left">{layoutName}</span>
-            </SelectTrigger>
-            <SelectPopup>
-              {(layouts ?? []).map((l) => (
-                <SelectItem key={l.id} value={l.id}>
-                  <SelectItemText>{l.name}</SelectItemText>
-                </SelectItem>
-              ))}
-            </SelectPopup>
-          </Select>
-          <Dialog>
-            <DialogTrigger
-              aria-label="Gestisci layout"
-              title="Gestisci layout"
-              className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border transition-colors"
-            >
-              <GearIcon className="size-3.5" />
-            </DialogTrigger>
-            <LayoutManager />
-          </Dialog>
-        </div>
-      )}
+            )}
+          </SelectTrigger>
+          <SelectPopup>
+            {(layouts ?? []).map((l) => (
+              <SelectItem key={l.id} value={l.id}>
+                <SelectItemText>{l.name}</SelectItemText>
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
+        <Dialog>
+          <DialogTrigger
+            aria-label="Gestisci layout"
+            title="Gestisci layout"
+            className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border transition-colors"
+          >
+            <GearIcon className="size-3.5" />
+          </DialogTrigger>
+          <LayoutManager />
+        </Dialog>
+      </div>
 
       {/* Stessa struttura a due gruppi in entrambi gli stati — cambia solo
           come si presenta ogni voce (icona+testo oppure icona sola) e la
@@ -200,23 +221,28 @@ export function Rail({
             come prima), da chiusa i giorni si centrano in quello spazio
             invece di restare incollati in alto con il vuoto sotto. */}
         <div className={cn("flex min-h-0 flex-1 flex-col", railCollapsed && "border-border border-t pt-4")}>
-          {!railCollapsed && (
-            <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+          {/* Icona calendario/ricerca (apre HistoryExplorer) — prima
+              spariva insieme all'etichetta a barra compressa, quindi da
+              compressa non c'era modo di aprirla: stesso problema del
+              layout sopra. Resta sempre, solo l'etichetta di testo è
+              solo da espansa. */}
+          <div className={cn("mb-2 flex shrink-0 items-center gap-2", railCollapsed ? "justify-center" : "justify-between")}>
+            {!railCollapsed && (
               <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
                 Cronologia — ultimi 7 giorni
               </p>
-              <Dialog>
-                <DialogTrigger
-                  aria-label="Apri calendario e ricerca"
-                  title="Calendario e ricerca"
-                  className="text-ink-faint hover:bg-muted hover:text-foreground grid size-6 shrink-0 place-items-center rounded-md transition-colors"
-                >
-                  <ExpandIcon className="size-3.5" />
-                </DialogTrigger>
-                <HistoryExplorer todayKey={todayKey} />
-              </Dialog>
-            </div>
-          )}
+            )}
+            <Dialog>
+              <DialogTrigger
+                aria-label="Apri calendario e ricerca"
+                title="Calendario e ricerca"
+                className="text-ink-faint hover:bg-muted hover:text-foreground grid size-6 shrink-0 place-items-center rounded-md transition-colors"
+              >
+                <ExpandIcon className="size-3.5" />
+              </DialogTrigger>
+              <HistoryExplorer todayKey={todayKey} />
+            </Dialog>
+          </div>
 
           {railCollapsed ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2">

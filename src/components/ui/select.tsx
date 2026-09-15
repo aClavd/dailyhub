@@ -7,7 +7,17 @@ const Select = SelectPrimitive.Root
 const SelectValue = SelectPrimitive.Value
 const SelectItemText = SelectPrimitive.ItemText
 
-function SelectTrigger({ className, children, ...props }: SelectPrimitive.Trigger.Props) {
+function SelectTrigger({
+  className,
+  children,
+  showIcon = true,
+  ...props
+}: SelectPrimitive.Trigger.Props & {
+  /** false per un trigger "icona sola" (es. il pallino layout del rail
+   * compresso) — la freccina in giù non ci sta/non serve su un cerchio
+   * di 28px. Default true: tutti gli altri usi restano invariati. */
+  showIcon?: boolean
+}) {
   return (
     <SelectPrimitive.Trigger
       className={cn(
@@ -17,11 +27,13 @@ function SelectTrigger({ className, children, ...props }: SelectPrimitive.Trigge
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon className="text-ink-faint">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-3">
-          <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </SelectPrimitive.Icon>
+      {showIcon && (
+        <SelectPrimitive.Icon className="text-ink-faint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-3">
+            <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </SelectPrimitive.Icon>
+      )}
     </SelectPrimitive.Trigger>
   )
 }
