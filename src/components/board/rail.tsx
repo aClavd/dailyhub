@@ -182,11 +182,13 @@ export function Rail({
             (history-panel-view.tsx, eliminato), ora qui sotto la Libreria:
             stesso rail, un solo interruttore comprimi/espandi per tutto
             (railCollapsed sopra) invece di due indipendenti. A rail
-            compresso si nasconde del tutto come le voci della Libreria —
-            niente vista mini-calendario a 52px, ci si affollavano due
-            sezioni diverse; basta espandere il rail per vederla. */}
-        {!railCollapsed && (
-          <div>
+            compresso resta una versione ridotta (numero del giorno +
+            pallino umore, come faceva già il vecchio pannello quando era
+            lui a comprimersi) invece di sparire del tutto — segnalato da
+            Claudio: senza, a rail compresso non restava alcun segnale che
+            la Cronologia esistesse. */}
+        <div className={cn(railCollapsed && "border-border border-t pt-4")}>
+          {!railCollapsed && (
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
                 Cronologia — ultimi 7 giorni
@@ -202,6 +204,32 @@ export function Rail({
                 <HistoryExplorer todayKey={todayKey} />
               </Dialog>
             </div>
+          )}
+
+          {railCollapsed ? (
+            <div className="flex flex-col items-center gap-1.5">
+              {historyDays.map((day) => (
+                <div
+                  key={day.key}
+                  title={`${day.label} — ${daySummary(day.entry) || "nessuna voce"}`}
+                  className={cn(
+                    "flex w-9 flex-col items-center gap-1 rounded-md py-1.5",
+                    day.isToday && "bg-brand-soft",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "font-mono text-[0.65rem]",
+                      day.isToday ? "text-primary font-semibold" : "text-ink-soft",
+                    )}
+                  >
+                    {day.dayNumber}
+                  </span>
+                  <span className={cn("size-1.5 rounded-full", moodDotClass(day.entry?.mood))} />
+                </div>
+              ))}
+            </div>
+          ) : (
             <div className="divide-border flex flex-col divide-y">
               {historyDays.map((day) => {
                 const summary = daySummary(day.entry)
@@ -232,8 +260,8 @@ export function Rail({
                 )
               })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </aside>
   )

@@ -100,6 +100,7 @@ export function DiarioWidget({
       />
 
       <QuickStats
+        isToday={isToday}
         mood={state.mood}
         weight={state.weight}
         sleepHours={state.sleepHours}
@@ -124,14 +125,16 @@ function DiaryHeader({
   onPrev: () => void
   onNext: () => void
 }) {
+  // Prima erano "‹"/"›" a size-5 (20px) e text-ink-faint (colore attenuato
+  // sempre, anche a riposo) — quasi invisibili, segnalato da Claudio.
+  // Stesso stile già usato per avanti/indietro nella Cronologia estesa
+  // (history-explorer.tsx, goPrev/goNext): bordo visibile, size-6, colore
+  // pieno di default, non solo all'hover.
+  const navButton =
+    "border-border text-ink-soft hover:text-foreground grid size-6 shrink-0 place-items-center rounded-md border text-sm disabled:opacity-30"
   return (
-    <div className="flex items-center justify-between gap-1">
-      <button
-        type="button"
-        onClick={onPrev}
-        aria-label="Giorno precedente"
-        className="text-ink-faint hover:text-foreground grid size-5 shrink-0 place-items-center rounded text-xs"
-      >
+    <div className="flex items-center justify-between gap-1.5">
+      <button type="button" onClick={onPrev} aria-label="Giorno precedente" className={navButton}>
         ‹
       </button>
       <span className="text-ink-faint min-w-0 flex-1 truncate text-center font-mono text-[0.68rem] tracking-wide uppercase">
@@ -143,7 +146,7 @@ function DiaryHeader({
         disabled={isToday}
         aria-label="Torna a oggi"
         title={isToday ? undefined : "Torna a oggi"}
-        className="text-ink-faint hover:text-foreground grid size-5 shrink-0 place-items-center rounded text-xs disabled:opacity-30"
+        className={navButton}
       >
         ›
       </button>
@@ -234,6 +237,7 @@ function HabitSection({
 }
 
 function QuickStats({
+  isToday,
   mood,
   weight,
   sleepHours,
@@ -241,6 +245,7 @@ function QuickStats({
   onWeight,
   onSleep,
 }: {
+  isToday: boolean
   mood: Mood | null
   weight: number | null
   sleepHours: number | null
@@ -250,8 +255,17 @@ function QuickStats({
 }) {
   return (
     <div className="border-border border-t pt-4">
-      <FieldLabel>Quick stats</FieldLabel>
-      <Segmented label="Umore di oggi" options={MOODS} value={mood} onChange={onMood} />
+      {/* Era "Quick stats" — non diceva niente su cosa fosse né che peso/
+          sonno si possono lasciare vuoti. Nome letterale + il placeholder
+          di MiniStat ("non lo so", sotto) fanno il lavoro insieme: non
+          serve una nota a parte per dire "facoltativo". */}
+      <FieldLabel>Umore, peso, sonno</FieldLabel>
+      <Segmented
+        label={isToday ? "Umore di oggi" : "Umore"}
+        options={MOODS}
+        value={mood}
+        onChange={onMood}
+      />
       <div className="mt-3 grid grid-cols-2 gap-3">
         <MiniStat label="Peso" unit="kg" step={0.1} value={weight} onChange={onWeight} />
         <MiniStat label="Sonno" unit="h" step={0.5} value={sleepHours} onChange={onSleep} />
@@ -288,8 +302,15 @@ function MiniStat({
             const raw = event.target.value
             onChange(raw === "" ? null : Number(raw))
           }}
-          placeholder="—"
-          className="font-mono w-14 border-0 bg-transparent p-0 text-lg font-medium tabular-nums outline-none placeholder:text-ink-faint"
+          // "non lo so", non "—": dice chiaramente che lasciarlo vuoto è
+          // una scelta valida (non hai controllato quel giorno), non solo
+          // l'aspetto grafico di un campo senza valore — è il punto che
+          // Claudio ha segnalato non essere chiaro dalla sola UI.
+          placeholder="non lo so"
+          // w-14 (56px) andava bene per "—" ma tagliava "non lo so" a metà
+          // ("non lo") — trovato guardando lo screenshot di verifica, non
+          // segnalato da Claudio. w-20 ci sta comoda in font mono.
+          className="font-mono w-20 border-0 bg-transparent p-0 text-lg font-medium tabular-nums outline-none placeholder:text-ink-faint placeholder:text-[0.7rem] placeholder:tracking-tight"
         />
         <span className="text-ink-faint text-xs">{unit}</span>
       </div>
