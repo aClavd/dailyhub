@@ -8,6 +8,7 @@ const PATHS: Record<WidgetType, string> = {
   mail: "M3 6h18v12H3zM3 7l9 6 9-6",
   diario: "M5 4h11l3 3v13H5zM9 4v16",
   pomodoro: "M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 13V9M9 3h6",
+  calendario: "M4 5h16a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 10h18M9 10v10M15 10v10",
   note: "M5 6h14M5 11h14M5 16h9",
   obiettivi: "M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
   lettura:

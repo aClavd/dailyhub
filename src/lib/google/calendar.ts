@@ -1,7 +1,7 @@
 import "server-only"
 
 import { auth } from "@/auth"
-import { fineGiornata, inizioGiornata } from "@/lib/datetime"
+import { fineGiornata, inizioGiornata, monthGrid, parseChiave } from "@/lib/datetime"
 
 export type CalendarEvent = {
   id: string
@@ -57,8 +57,10 @@ function normalize(e: GoogleEvent): CalendarEvent {
   }
 }
 
-/** Eventi del calendario primario per la giornata corrente. */
-export async function getTodayEvents(): Promise<CalendarResult> {
+/** Fetch+gestione errori condivisa — usata sia per "oggi" (getTodayEvents)
+ * sia per un mese intero (getMonthEvents): stessa convenzione di errori,
+ * stessa lettura della risposta, cambia solo l'intervallo di date. */
+async function fetchEvents(timeMin: Date, timeMax: Date): Promise<CalendarResult> {
   const session = await auth()
   if (!session?.user) return { ok: false, reason: "unauthenticated" }
   if (session.error || !session.accessToken) {
@@ -68,11 +70,13 @@ export async function getTodayEvents(): Promise<CalendarResult> {
   const url = new URL(
     "https://www.googleapis.com/calendar/v3/calendars/primary/events",
   )
-  url.searchParams.set("timeMin", inizioGiornata().toISOString())
-  url.searchParams.set("timeMax", fineGiornata().toISOString())
+  url.searchParams.set("timeMin", timeMin.toISOString())
+  url.searchParams.set("timeMax", timeMax.toISOString())
   url.searchParams.set("singleEvents", "true")
   url.searchParams.set("orderBy", "startTime")
-  url.searchParams.set("maxResults", "50")
+  // 250, non 50: un mese intero (getMonthEvents, 6 settimane) può avere
+  // più eventi di quanti ne bastino per una singola giornata.
+  url.searchParams.set("maxResults", "250")
 
   let res: Response
   try {
@@ -93,6 +97,23 @@ export async function getTodayEvents(): Promise<CalendarResult> {
     .map(normalize)
 
   return { ok: true, events }
+}
+
+/** Eventi del calendario primario per la giornata corrente. */
+export async function getTodayEvents(): Promise<CalendarResult> {
+  return fetchEvents(inizioGiornata(), fineGiornata())
+}
+
+/** Eventi del calendario primario per le 6 settimane mostrate dalla
+ * griglia mese del widget Calendario (monthGrid, lib/datetime.ts) — non un
+ * mese "di calendario" stretto (1-30/31), le stesse code di settimane del
+ * mese prima/dopo che la griglia mostra davvero, così quello che si vede
+ * e quello che è stato scaricato combaciano sempre. `monthCursorKey`
+ * qualsiasi giorno del mese da mostrare ("YYYY-MM-DD"), tipicamente il
+ * primo. */
+export async function getMonthEvents(monthCursorKey: string): Promise<CalendarResult> {
+  const days = monthGrid(parseChiave(monthCursorKey))
+  return fetchEvents(inizioGiornata(days[0]), fineGiornata(days[days.length - 1]))
 }
 
 export type CreateEventInput = {

@@ -1,9 +1,11 @@
 "use client"
 
+import { Plus } from "lucide-react"
 import type { ReactNode } from "react"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogTrigger } from "@/components/ui/dialog"
 import { EmphasisReporter, type WidgetEmphasis } from "@/components/board/widget-shell"
 import { reconnectGoogle } from "@/lib/actions/auth"
 import { refreshAgenda } from "@/lib/actions/calendar"
@@ -13,7 +15,7 @@ import { usePolling } from "@/lib/use-polling"
 import { cn } from "@/lib/utils"
 
 import { AgendaNotifier } from "./agenda-notifier"
-import { NewEventDialog } from "./new-event-dialog"
+import { NewEventForm } from "./new-event-form"
 
 // Ogni 90s: abbastanza vicino al tempo reale da sembrare "live" senza
 // bisogno di ricaricare, con enorme margine sulle quote gratuite di
@@ -56,7 +58,7 @@ function agendaEmphasis(events: CalendarEvent[]): { level: WidgetEmphasis; label
  * Possiede lo stato degli impegni di oggi — parte da `initial` (letto una
  * volta da page.tsx, server-side) e lo tiene aggiornato da due fonti: il
  * polling (ogni REFRESH_MS, usePolling) e la creazione di un nuovo impegno
- * da NewEventDialog. Rende sia AgendaBody sia AgendaNotifier sullo STESSO
+ * da NewEventForm. Rende sia AgendaBody sia AgendaNotifier sullo STESSO
  * stato, non due letture indipendenti: altrimenti un impegno arrivato via
  * polling non farebbe scattare l'avviso di AgendaNotifier finché non si
  * ricarica la pagina — i due andrebbero fuori sincrono.
@@ -67,9 +69,11 @@ export function AgendaLive({ initial, todayKey }: { initial: CalendarResult; tod
     void refreshAgenda().then(setResult)
   }, REFRESH_MS)
 
+  const refresh = () => void refreshAgenda().then(setResult)
+
   return (
     <>
-      <AgendaBody result={result} onCreated={setResult} />
+      <AgendaBody result={result} onCreated={refresh} />
       {result.ok && <AgendaNotifier events={result.events} todayKey={todayKey} />}
     </>
   )
@@ -82,8 +86,10 @@ export function AgendaBody({
   onCreated,
 }: {
   result: CalendarResult
-  onCreated: (result: CalendarResult) => void
+  /** Un impegno è stato creato — AgendaLive rilegge da sé (refreshAgenda). */
+  onCreated: () => void
 }) {
+  const [open, setOpen] = useState(false)
   const emphasis = result.ok ? agendaEmphasis(result.events) : { level: "none" as const }
   return (
     <div>
@@ -92,7 +98,18 @@ export function AgendaBody({
         <p className="text-ink-faint font-mono text-[0.68rem] tracking-wide uppercase">
           {result.ok ? countLabel(result.events.length) : "—"}
         </p>
-        <NewEventDialog onCreated={onCreated} />
+        {/* Dialog posseduto qui (non da NewEventForm, che è solo il
+            contenuto — stesso schema di MailFilterDialog in mail-card.tsx). */}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger
+            aria-label="Nuovo impegno"
+            title="Nuovo impegno"
+            className="text-ink-faint hover:bg-muted hover:text-foreground grid size-6 shrink-0 place-items-center rounded-md transition-colors"
+          >
+            <Plus className="size-3.5" />
+          </DialogTrigger>
+          <NewEventForm open={open} onCreated={onCreated} onClose={() => setOpen(false)} />
+        </Dialog>
       </div>
       {result.ok ? (
         <AgendaList events={result.events} />

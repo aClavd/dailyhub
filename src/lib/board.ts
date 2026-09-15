@@ -5,6 +5,7 @@ export type WidgetType =
   | "mail"
   | "diario"
   | "pomodoro"
+  | "calendario"
   | "note"
   | "obiettivi"
   | "lettura"
@@ -66,6 +67,13 @@ export const WIDGET_META: Record<WidgetType, WidgetMeta> = {
     w: 2, h: 2, minW: 1, minH: 2, maxW: 3, maxH: 4,
   },
   pomodoro: { title: "Studio · Pomodoro", desc: "timer 25 / 5", w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 2 },
+  calendario: {
+    title: "Calendario",
+    desc: "vista mese, Google Calendar",
+    // Più largo di default degli altri: 7 colonne (giorni) leggibili
+    // servono più spazio orizzontale di un elenco o un contatore.
+    w: 3, h: 3, minW: 2, minH: 2, maxW: 6, maxH: 4,
+  },
   note: { title: "Note rapide", desc: "un pensiero al volo", w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 2 },
   obiettivi: {
     title: "Obiettivi della settimana",
@@ -88,6 +96,7 @@ export const LIBRARY_WIDGETS: readonly WidgetType[] = [
   "mail",
   "diario",
   "pomodoro",
+  "calendario",
   "note",
   "obiettivi",
   "lettura",
