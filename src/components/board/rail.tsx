@@ -326,7 +326,11 @@ export function Rail({
                       </div>
                       <p
                         className={cn(
-                          "mt-1 truncate text-[0.7rem]",
+                          // text-[0.7rem] → text-[0.76rem] (pass di
+                          // calibrazione tipografica): è contenuto vero
+                          // (cosa è successo quel giorno), non un'etichetta
+                          // — merita di leggersi un po' meglio.
+                          "mt-1 truncate text-[0.76rem]",
                           summary ? "text-ink-soft" : "text-ink-faint italic",
                         )}
                       >

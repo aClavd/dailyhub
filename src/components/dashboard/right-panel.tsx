@@ -12,7 +12,7 @@ import { refreshAgenda } from "@/lib/actions/calendar"
 import { refreshMail } from "@/lib/actions/mail"
 import { agendaEmphasis, nextOrRunningEvent } from "@/lib/agenda-signal"
 import type { WidgetType } from "@/lib/board"
-import { oraBreve, traQuanto } from "@/lib/datetime"
+import { greeting, oraBreve, traQuanto } from "@/lib/datetime"
 import type { DiarioState } from "@/lib/diario"
 import type { CalendarResult } from "@/lib/google/calendar"
 import type { MailMessage, MailResult } from "@/lib/mail"
@@ -31,8 +31,15 @@ import { NewEventForm } from "./new-event-form"
 const REFRESH_MS = 90_000
 const MAX_MAIL_ROWS = 3
 
+// Bordo pieno sempre visibile → solo al hover (con uno sfondo tenue al
+// suo posto a riposo): il documento di Claudio chiede azioni "leggere",
+// coerenti col linguaggio editoriale — non un riquadro utility sempre
+// acceso. Testo text-[0.72rem] → text-xs (12px, uno scalino standard di
+// Tailwind, non un altro valore arbitrario): contenuto vero da leggere
+// (l'etichetta dell'azione), sale di una tacca come il resto del
+// contenuto primario del pannello — pass di calibrazione tipografica.
 const quickActionClass =
-  "border-border bg-card hover:bg-muted flex items-center gap-1.5 rounded-md border px-2 py-2 text-left text-[0.72rem] font-medium transition-colors"
+  "border-border/0 hover:border-border bg-muted/40 hover:bg-muted flex items-center gap-1.5 rounded-md border px-2 py-2 text-left text-xs font-medium transition-colors"
 
 /**
  * Right Sidebar / Personal Attention Center (Fase B, vedi il piano) —
@@ -91,6 +98,19 @@ export function RightPanel({
     return () => window.clearInterval(id)
   }, [])
 
+  // Stesso motivo/stessa tecnica di afterReminderHour sopra: il saluto del
+  // Daily Brief (greeting(), la stessa funzione già usata dal saluto
+  // principale in testata — non un secondo testo inventato) dipende
+  // dall'ora, quindi va calcolato solo lato client. `null` finché
+  // l'effect non gira una volta — la riga semplicemente non compare per
+  // un istante, invece di rischiare un mismatch fra ora del server e ora
+  // di chi guarda.
+  const [greetingWord, setGreetingWord] = useState<string | null>(null)
+  useEffect(() => {
+    const set = () => setGreetingWord(greeting())
+    set()
+  }, [])
+
   const eventSignal = events.ok ? nextOrRunningEvent(events.events) : null
   const eventLevel = events.ok ? agendaEmphasis(events.events).level : "none"
   const showEvent = Boolean(eventSignal) && eventLevel !== "none"
@@ -117,16 +137,26 @@ export function RightPanel({
   // la dicitura generica.
   const unreadImportantMail = importantMail.filter((m) => m.unread)
 
-  const briefParts: string[] = []
-  if (showEvent && eventSignal) briefParts.push(`${eventSignal.event.title} ${eventTimeLabel}`)
-  if (importantMail.length > 0) {
-    briefParts.push(
-      unreadImportantMail.length > 0
-        ? `${unreadImportantMail.length} ${unreadImportantMail.length === 1 ? "mail non letta" : "mail non lette"} da gestire`
-        : `${importantMail.length} ${importantMail.length === 1 ? "mail importante" : "mail importanti"} da gestire`,
+  // Daily Brief = sintesi, Attenzione = righe azionabili — prima
+  // ripetevano quasi le stesse identiche parole (segnalato da Claudio,
+  // "piccola duplicazione"): qui sotto solo frasi aggregate, mai un
+  // oggetto mail o un titolo impegno per esteso (quelli restano solo
+  // nelle righe di Attenzione sotto). L'unica eccezione deliberata è il
+  // blocco "Prossimo" — stesso impegno mostrato in entrambe le sezioni,
+  // ma con ruolo diverso: qui è la sintesi in evidenza, lì è la riga
+  // cliccabile.
+  const briefSentences: string[] = []
+  if (unreadImportantMail.length > 0) {
+    briefSentences.push(
+      `Hai ${unreadImportantMail.length} ${unreadImportantMail.length === 1 ? "mail non letta" : "mail non lette"} da gestire.`,
+    )
+  } else if (importantMail.length > 0) {
+    briefSentences.push(
+      `Hai ${importantMail.length} ${importantMail.length === 1 ? "mail importante" : "mail importanti"} da gestire.`,
     )
   }
-  if (showDiarioReminder) briefParts.push("diario ancora da scrivere")
+  if (showDiarioReminder) briefSentences.push("Diario ancora da scrivere.")
+  if (!showEvent) briefSentences.push("Nessun impegno imminente.")
 
   return (
     <aside
@@ -136,7 +166,11 @@ export function RightPanel({
         // vera con indicatori distinti (non un unico numero) chiede
         // qualche px in più, stesso tipo di aggiustamento già fatto per
         // il rail sinistro in questa sessione.
-        rightPanelCollapsed ? "w-12" : "w-72",
+        // w-72 (288px) → w-80 (320px, pass di calibrazione visiva):
+        // dentro il range 300-320px indicato da Claudio, per leggere
+        // comodamente oggetto mail/orari/promemoria senza dover
+        // troncare tutto.
+        rightPanelCollapsed ? "w-12" : "w-80",
       )}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-3.5">
@@ -199,9 +233,32 @@ export function RightPanel({
         <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
           <section>
             <SectionLabel>Daily Brief</SectionLabel>
-            <p className="text-ink-soft mt-1.5 text-[0.78rem] leading-snug">
-              {briefParts.length > 0 ? briefParts.join(" · ") : "Tutto tranquillo per ora."}
-            </p>
+            {attentionCount === 0 ? (
+              <p className="text-ink-soft mt-1.5 text-sm leading-snug">Tutto tranquillo per ora.</p>
+            ) : (
+              <div className="mt-1.5 space-y-0.5">
+                {greetingWord && (
+                  <p className="text-ink-soft text-sm leading-snug">
+                    {greetingWord.charAt(0).toUpperCase() + greetingWord.slice(1)}.
+                  </p>
+                )}
+                {briefSentences.map((sentence) => (
+                  <p key={sentence} className="text-ink-soft text-sm leading-snug">
+                    {sentence}
+                  </p>
+                ))}
+                {showEvent && eventSignal && (
+                  <div className="border-border mt-2.5 border-t pt-2">
+                    <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
+                      Prossimo
+                    </p>
+                    <p className="text-ink-soft mt-1 text-sm leading-snug">
+                      <span className="font-medium">{eventSignal.event.title}</span> · {eventTimeLabel}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           {attentionCount > 0 && (
@@ -265,7 +322,7 @@ export function RightPanel({
               />
               <Dialog open={eventFormOpen} onOpenChange={setEventFormOpen}>
                 <DialogTrigger className={quickActionClass}>
-                  <WidgetIcon type="agenda" className="text-primary size-4 shrink-0" />
+                  <WidgetIcon type="agenda" className="text-primary size-3.5 shrink-0" />
                   <span className="truncate">Nuovo evento</span>
                 </DialogTrigger>
                 <NewEventForm
@@ -276,7 +333,7 @@ export function RightPanel({
               </Dialog>
               <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
                 <DialogTrigger className={cn(quickActionClass, "col-span-2")}>
-                  <Search className="text-primary size-4 shrink-0" />
+                  <Search className="text-primary size-3.5 shrink-0" />
                   <span className="truncate">Cerca nella memoria</span>
                 </DialogTrigger>
                 <HistoryExplorer todayKey={todayKey} />
@@ -287,7 +344,7 @@ export function RightPanel({
           <section className="border-border border-t pt-4">
             <SectionLabel>Focus</SectionLabel>
             <div className="mt-1.5 flex items-center justify-between gap-2">
-              <p className="text-ink-soft min-w-0 flex-1 text-[0.78rem]">
+              <p className="text-ink-soft min-w-0 flex-1 text-sm">
                 {diarioInitial.pomodoroSessions === 0
                   ? "Nessuna sessione ancora oggi."
                   : `${diarioInitial.pomodoroSessions} ${diarioInitial.pomodoroSessions === 1 ? "sessione" : "sessioni"} · ~${studyMinutes} min`}
@@ -349,7 +406,7 @@ function AttentionRow({
         type={type}
         className={cn("size-3.5 shrink-0", urgent ? "text-destructive" : "text-primary")}
       />
-      <span className="min-w-0 flex-1 truncate text-[0.72rem]">{title}</span>
+      <span className="min-w-0 flex-1 truncate text-xs">{title}</span>
       <span
         className={cn(
           "shrink-0 text-[0.65rem] font-medium",
@@ -378,7 +435,7 @@ function MailRow({ message }: { message: MailMessage }) {
       )}
       <span
         className={cn(
-          "min-w-0 flex-1 truncate text-[0.72rem]",
+          "min-w-0 flex-1 truncate text-xs",
           message.unread && "font-semibold",
         )}
       >
@@ -418,9 +475,9 @@ function QuickAction({
       }}
       aria-disabled={added}
       title={added ? `${label} — già sulla board` : label}
-      className={cn(quickActionClass, added && "cursor-default opacity-45 hover:bg-card")}
+      className={cn(quickActionClass, added && "cursor-default opacity-45 hover:border-border/0 hover:bg-muted/40")}
     >
-      <WidgetIcon type={type} className="text-primary size-4 shrink-0" />
+      <WidgetIcon type={type} className="text-primary size-3.5 shrink-0" />
       <span className="truncate">{label}</span>
     </button>
   )

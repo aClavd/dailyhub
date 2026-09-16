@@ -40,7 +40,7 @@ export function HeaderFlankingRow({
 
   return (
     <div
-      className="mx-auto mt-6"
+      className="mx-auto mt-5"
       style={{ width: `min(100%, ${displayWidth})`, minWidth: "fit-content" }}
     >
       <div className="flex flex-col items-center gap-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">

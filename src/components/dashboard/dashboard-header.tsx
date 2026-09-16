@@ -13,10 +13,11 @@ export function DashboardHeader({
   const now = new Date()
 
   return (
-    // Fase 5.1: py ridotto (era py-8/sm:py-10) — meno distanza accumulata
-    // tra "Oggi conta questo" e il primo widget della board qui sotto, il
-    // resto del ritmo verticale interno (saluto/data/frase) resta com'era.
-    <section className="py-6 text-center sm:py-8">
+    // Fase 5.1: py ridotto (era py-8/sm:py-10). Pass di calibrazione
+    // visiva: ridotto di nuovo (py-6/sm:py-8 → py-5/sm:py-6) — il saluto
+    // deve introdurre la giornata, non dominarla («Workspace > Greeting»),
+    // una riduzione leggera, non drastica: resta comunque uno spazio suo.
+    <section className="py-5 text-center sm:py-6">
       <div className="mx-auto max-w-xs">
         <DailyQuote date={now} />
       </div>

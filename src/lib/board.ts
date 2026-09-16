@@ -17,12 +17,15 @@ export const BOARD_COLS = 6
  * (per calcolare la larghezza naturale della board) sia in board.tsx (per
  * il `minmax()` del CSS Grid vero): prima erano due letterali duplicati
  * che potevano disallinearsi. CELL_MAX è quella "piena" quando c'è spazio
- * (Fase 5.1: alzata da 15 a 16.5, +10%, per usare meglio gli schermi
- * larghi senza aggiungere colonne né allargare un widget più di un altro
- * — cresce l'unità di misura comune, non le proporzioni scelte da
- * Claudio). CELL_MIN resta la protezione su finestre strette, non tocca.
+ * (Fase 5.1: alzata da 15 a 16.5, +10%; pass di calibrazione visiva:
+ * alzata di nuovo a 19, +15%, stesso motivo — un layout tipico di 2-3
+ * colonne usate restava ~824px anche su un monitor larghissimo, tutto
+ * il resto spazio vuoto ai lati. Ancora: cresce l'unità di misura
+ * comune, non le colonne (BOARD_COLS resta 6, la logica di
+ * posizionamento non cambia) né le proporzioni scelte da Claudio).
+ * CELL_MIN resta la protezione su finestre strette, non tocca.
  */
-export const CELL_MAX_REM = 16.5
+export const CELL_MAX_REM = 19
 export const CELL_MIN_REM = 8
 
 /** Posizione e dimensione di un blocco sulla griglia logica, in celle (non px). */
