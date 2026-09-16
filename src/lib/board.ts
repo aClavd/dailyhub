@@ -67,7 +67,7 @@ export const WIDGET_META: Record<WidgetType, WidgetMeta> = {
   pomodoro: { title: "Studio · Pomodoro", desc: "timer 25 / 5", w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 2 },
   calendario: {
     title: "Calendario",
-    desc: "vista mese, Google Calendar",
+    desc: "vista mese, impegni e diario",
     // Più largo di default degli altri: 7 colonne (giorni) leggibili
     // servono più spazio orizzontale di un elenco o un contatore.
     w: 3, h: 3, minW: 2, minH: 2, maxW: 6, maxH: 4,
