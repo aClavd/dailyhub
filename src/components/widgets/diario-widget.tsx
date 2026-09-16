@@ -8,9 +8,16 @@ import { saveDiarioEntry } from "@/lib/actions/diario"
 import { addDays, chiaveGiorno, dataBreve, parseChiave } from "@/lib/datetime"
 import { MOODS, type DiarioState, type Mood } from "@/lib/diario"
 
+import { cn } from "@/lib/utils"
+
 import { CheckRow, FieldLabel, Segmented, textareaClass } from "./_shared"
 
 const SAVE_DELAY_MS = 600
+// Quanto resta visibile "salvato" prima di sparire da sé — abbastanza per
+// essere notato, non così tanto da restare lì a lungo senza motivo.
+const SAVED_FLASH_MS = 2000
+
+type SaveStatus = "idle" | "pending" | "saved"
 
 /**
  * Widget "Diario" unificato: un solo record al giorno per journaling,
@@ -36,8 +43,17 @@ export function DiarioWidget({
 }) {
   const [editingDate, setEditingDate] = useState(todayKey)
   const [state, setState] = useState<DiarioState>(initial)
+  // Salva in automatico senza chiedere conferma — comodo, ma senza nessun
+  // segnale non c'è modo di sapere se un'aggiunta è stata davvero salvata:
+  // punto sollevato da Claudio ("finito di compilare... come faccio a
+  // salvare?"), soprattutto scrivendo su un giorno passato dove ci si fida
+  // meno del "tanto va da sé". Non è un bug (verificato dal vivo: il
+  // salvataggio va a buon fine da solo, senza altre azioni) — mancava solo
+  // la conferma visibile.
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
   const [, startTransition] = useTransition()
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savedFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Il salvataggio vero (debounced) — tenuto anche qui, non solo nel
   // timer, per poterlo far scattare subito se si cambia giorno prima che
   // i 600ms passino da soli (altrimenti l'ultima modifica andrebbe persa,
@@ -47,9 +63,16 @@ export function DiarioWidget({
 
   const persist = useCallback((next: DiarioState, date: string, immediate: boolean) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
+    if (savedFlashTimer.current) clearTimeout(savedFlashTimer.current)
+    setSaveStatus("pending")
     const run = () => {
       pendingRun.current = null
-      startTransition(() => void saveDiarioEntry(date, next))
+      startTransition(() => {
+        void saveDiarioEntry(date, next).then(() => {
+          setSaveStatus("saved")
+          savedFlashTimer.current = setTimeout(() => setSaveStatus("idle"), SAVED_FLASH_MS)
+        })
+      })
     }
     pendingRun.current = run
     if (immediate) run()
@@ -68,6 +91,8 @@ export function DiarioWidget({
       saveTimer.current = null
     }
     pendingRun.current?.() // salva subito quello che c'era in sospeso, sulla data vecchia
+    if (savedFlashTimer.current) clearTimeout(savedFlashTimer.current)
+    setSaveStatus("idle") // niente "salvato" del giorno vecchio a sventolare su quello nuovo
     setEditingDate(date)
     if (date === todayKey) {
       setState(initial) // già in mano da page.tsx, nessun giro di rete
@@ -86,6 +111,7 @@ export function DiarioWidget({
         dayNumber={dayNumber}
         editingDate={editingDate}
         isToday={isToday}
+        saveStatus={saveStatus}
         onPrev={() => goTo(chiaveGiorno(addDays(parseChiave(editingDate), -1)))}
         onNext={() => goTo(chiaveGiorno(addDays(parseChiave(editingDate), 1)))}
       />
@@ -116,12 +142,14 @@ function DiaryHeader({
   dayNumber,
   editingDate,
   isToday,
+  saveStatus,
   onPrev,
   onNext,
 }: {
   dayNumber: number
   editingDate: string
   isToday: boolean
+  saveStatus: SaveStatus
   onPrev: () => void
   onNext: () => void
 }) {
@@ -133,23 +161,42 @@ function DiaryHeader({
   const navButton =
     "border-border text-ink-soft hover:text-foreground grid size-6 shrink-0 place-items-center rounded-md border text-sm disabled:opacity-30"
   return (
-    <div className="flex items-center justify-between gap-1.5">
-      <button type="button" onClick={onPrev} aria-label="Giorno precedente" className={navButton}>
-        ‹
-      </button>
-      <span className="text-ink-faint min-w-0 flex-1 truncate text-center font-mono text-[0.68rem] tracking-wide uppercase">
-        {isToday ? `Giorno ${dayNumber} · oggi` : dataBreve(parseChiave(editingDate))}
-      </span>
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={isToday}
-        aria-label="Torna a oggi"
-        title={isToday ? undefined : "Torna a oggi"}
-        className={navButton}
-      >
-        ›
-      </button>
+    <div>
+      <div className="flex items-center justify-between gap-1.5">
+        <button type="button" onClick={onPrev} aria-label="Giorno precedente" className={navButton}>
+          ‹
+        </button>
+        <span className="text-ink-faint min-w-0 flex-1 truncate text-center font-mono text-[0.68rem] tracking-wide uppercase">
+          {isToday ? `Giorno ${dayNumber} · oggi` : dataBreve(parseChiave(editingDate))}
+        </span>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={isToday}
+          aria-label="Torna a oggi"
+          title={isToday ? undefined : "Torna a oggi"}
+          className={navButton}
+        >
+          ›
+        </button>
+      </div>
+      {/* "salvataggio…"/"salvato": prima il salvataggio automatico non dava
+          nessun segnale, dava l'impressione di dover fare qualcosa per
+          confermare — funzionava già, mancava solo dirlo. Riga a sé sotto
+          l'intestazione, non appesa al testo della data: quel testo ha già
+          un `truncate` tutto suo, appendere altro lì dentro lo tagliava via
+          in silenzio se non c'entrava (bug trovato guardando lo screenshot
+          di verifica, non segnalato da Claudio). */}
+      {saveStatus !== "idle" && (
+        <p
+          className={cn(
+            "mt-1 text-center font-mono text-[0.6rem] tracking-wide uppercase",
+            saveStatus === "saved" ? "text-primary" : "text-ink-faint",
+          )}
+        >
+          {saveStatus === "pending" ? "salvataggio…" : "salvato"}
+        </p>
+      )}
     </div>
   )
 }
