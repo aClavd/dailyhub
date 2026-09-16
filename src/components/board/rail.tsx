@@ -238,20 +238,41 @@ export function Rail({
             si prende sempre lo spazio che resta sotto la Libreria: da
             aperta non cambia nulla (il contenuto sfora comunque, si scrolla
             come prima), da chiusa i giorni si centrano in quello spazio
-            invece di restare incollati in alto con il vuoto sotto. */}
-        <div className={cn("flex min-h-0 flex-1 flex-col", railCollapsed && "border-border border-t pt-4")}>
-          {/* Icona calendario/ricerca (apre HistoryExplorer) — prima
-              spariva insieme all'etichetta a barra compressa, quindi da
-              compressa non c'era modo di aprirla: stesso problema del
-              layout sopra. Resta sempre, solo l'etichetta di testo è
-              solo da espansa. */}
-          <div className={cn("mb-2 flex shrink-0 items-center gap-2", railCollapsed ? "justify-center" : "justify-between")}>
-            {!railCollapsed && (
-              <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
-                Cronologia — ultimi 7 giorni
-              </p>
-            )}
-            <Dialog>
+            invece di restare incollati in alto con il vuoto sotto.
+
+            bg-background (non bg-card, quello del rail stesso): un tono
+            leggermente più scuro/grigio crea una zona "incassata"
+            riconoscibile a colpo d'occhio, senza inventare un colore
+            nuovo — stessa relazione card/background già usata ovunque
+            nell'app. Serve a rendere Libreria e Cronologia due mondi
+            visivamente distinti (workspace vs memoria), non due sezioni
+            identiche impilate una sull'altra. */}
+        <div
+          className={cn(
+            "bg-background flex min-h-0 flex-1 flex-col rounded-lg",
+            railCollapsed ? "px-1 pt-3 pb-2" : "px-2 py-3",
+          )}
+        >
+          {/* Un solo <Dialog>, due DialogTrigger (icona in testata + link
+              testuale in fondo all'elenco, sotto): stesso dialog aperto da
+              due punti diversi, non due istanze — Base UI condivide lo
+              stato open tra tutti i Trigger dentro la stessa Root. */}
+          <Dialog>
+            {/* Icona calendario/ricerca — prima spariva insieme
+                all'etichetta a barra compressa, quindi da compressa non
+                c'era modo di aprirla: stesso problema del layout sopra.
+                Resta sempre, solo l'etichetta di testo è solo da espansa. */}
+            <div
+              className={cn(
+                "mb-2 flex shrink-0 items-center gap-2",
+                railCollapsed ? "justify-center" : "justify-between",
+              )}
+            >
+              {!railCollapsed && (
+                <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
+                  Cronologia — ultimi 7 giorni
+                </p>
+              )}
               <DialogTrigger
                 aria-label="Apri calendario e ricerca"
                 title="Calendario e ricerca"
@@ -259,65 +280,77 @@ export function Rail({
               >
                 <HistoryIcon className="size-3.5" />
               </DialogTrigger>
-              <HistoryExplorer todayKey={todayKey} />
-            </Dialog>
-          </div>
+            </div>
 
-          {railCollapsed ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2">
-              {historyDays.map((day) => (
-                <div
-                  key={day.key}
-                  title={`${day.label} — ${daySummary(day.entry) || "nessuna voce"}`}
-                  className={cn(
-                    "flex w-9 flex-col items-center gap-1 rounded-md py-1.5",
-                    day.isToday && "bg-brand-soft",
-                  )}
-                >
-                  <span
+            {railCollapsed ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-2">
+                {historyDays.map((day) => (
+                  <div
+                    key={day.key}
+                    title={`${day.label} — ${daySummary(day.entry) || "nessuna voce"}`}
                     className={cn(
-                      "font-mono text-[0.65rem]",
-                      day.isToday ? "text-primary font-semibold" : "text-ink-soft",
+                      "flex w-9 flex-col items-center gap-1 rounded-md py-1.5",
+                      day.isToday && "bg-brand-soft",
                     )}
                   >
-                    {day.dayNumber}
-                  </span>
-                  <span className={cn("size-1.5 rounded-full", moodDotClass(day.entry?.mood))} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="divide-border flex flex-col divide-y">
-              {historyDays.map((day) => {
-                const summary = daySummary(day.entry)
-                return (
-                  <div key={day.key} className="py-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn("size-1.5 shrink-0 rounded-full", moodDotClass(day.entry?.mood))}
-                      />
-                      <span className="font-mono text-[0.65rem] tracking-wide text-ink-soft uppercase">
-                        {day.label}
-                      </span>
-                      {day.isToday && (
-                        <span className="text-primary ml-auto text-[0.58rem] font-semibold tracking-wide uppercase">
-                          oggi
-                        </span>
-                      )}
-                    </div>
-                    <p
+                    <span
                       className={cn(
-                        "mt-1 truncate text-[0.7rem]",
-                        summary ? "text-ink-soft" : "text-ink-faint italic",
+                        "font-mono text-[0.65rem]",
+                        day.isToday ? "text-primary font-semibold" : "text-ink-soft",
                       )}
                     >
-                      {summary || "Nessuna voce"}
-                    </p>
+                      {day.dayNumber}
+                    </span>
+                    <span className={cn("size-1.5 rounded-full", moodDotClass(day.entry?.mood))} />
                   </div>
-                )
-              })}
-            </div>
-          )}
+                ))}
+              </div>
+            ) : (
+              <div className="divide-border flex flex-col divide-y">
+                {historyDays.map((day) => {
+                  const summary = daySummary(day.entry)
+                  return (
+                    <div key={day.key} className="py-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn("size-1.5 shrink-0 rounded-full", moodDotClass(day.entry?.mood))}
+                        />
+                        <span className="font-mono text-[0.65rem] tracking-wide text-ink-soft uppercase">
+                          {day.label}
+                        </span>
+                        {day.isToday && (
+                          <span className="text-primary ml-auto text-[0.58rem] font-semibold tracking-wide uppercase">
+                            oggi
+                          </span>
+                        )}
+                      </div>
+                      <p
+                        className={cn(
+                          "mt-1 truncate text-[0.7rem]",
+                          summary ? "text-ink-soft" : "text-ink-faint italic",
+                        )}
+                      >
+                        {summary || "Nessuna voce"}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Secondo modo di aprire lo stesso dialog (vedi commento
+                sopra) — link testuale esplicito in fondo alla preview,
+                come chiesto: l'icona da sola in testata non si leggeva
+                come "vedi tutto", solo come un pulsante di servizio. Solo
+                da espansa: da compressa non c'è testo da mostrare. */}
+            {!railCollapsed && (
+              <DialogTrigger className="text-primary hover:underline mt-2 shrink-0 text-left text-[0.68rem] font-medium">
+                Vedi tutta la cronologia →
+              </DialogTrigger>
+            )}
+
+            <HistoryExplorer todayKey={todayKey} />
+          </Dialog>
         </div>
       </div>
     </aside>
@@ -340,7 +373,7 @@ function RailSection({
           {label}
         </p>
       )}
-      <div className={cn("flex flex-col items-center", collapsed ? "gap-2" : "gap-1.5")}>{children}</div>
+      <div className={cn("flex flex-col items-center", collapsed ? "gap-2" : "gap-1")}>{children}</div>
     </div>
   )
 }
@@ -411,7 +444,10 @@ function RailItem({
         // 64px, size-11 (44px) ci sta comoda e si avvicina di più
         // all'altezza reale di una riga da espansa (icona + titolo +
         // descrizione, ~54px). Vedi commento sopra su <aside>.
-        collapsed ? "size-11 justify-center" : "w-full gap-2.5 px-2.5 py-2 text-left",
+        // py-2 → py-1.5: Libreria leggermente più compatta (Claudio: "un
+        // filo meno di padding", non compressa fino a diventare illeggibile
+        // — resta comunque icona + titolo + descrizione su due righe).
+        collapsed ? "size-11 justify-center" : "w-full gap-2.5 px-2.5 py-1.5 text-left",
         added && "cursor-default opacity-45 hover:border-border hover:bg-card",
         // "pointer", non "grab": si può anche solo cliccare/toccare per
         // aggiungere (onClick sopra) — il trascinamento è un'alternativa,
