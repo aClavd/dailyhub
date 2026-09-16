@@ -8,11 +8,11 @@ import { reconnectGoogle } from "@/lib/actions/auth"
 import { fetchMonthEvents } from "@/lib/actions/calendar"
 import { fetchDiarioHistory } from "@/lib/actions/history"
 import { addMonths, chiaveGiorno, dataEstesa, meseAnno, monthGrid, oraBreve, parseChiave } from "@/lib/datetime"
-import { DIARIO_EMPTY, moodDotClass, type DiarioState } from "@/lib/diario"
+import { DIARIO_EMPTY, isDiarioEntryEmpty, moodDotClass, type DiarioState } from "@/lib/diario"
 import type { CalendarEvent, CalendarResult } from "@/lib/google/calendar"
 import { cn } from "@/lib/utils"
 
-import { DiarioDaySummary, isDiarioEntryEmpty } from "@/components/dashboard/diario-day-summary"
+import { DiarioDaySummary } from "@/components/dashboard/diario-day-summary"
 import { NewEventForm } from "@/components/dashboard/new-event-form"
 
 const GIORNI_BREVI = ["L", "M", "M", "G", "V", "S", "D"]

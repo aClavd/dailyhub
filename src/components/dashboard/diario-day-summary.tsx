@@ -1,21 +1,5 @@
-import { moodDotClass, type DiarioState } from "@/lib/diario"
+import { isDiarioEntryEmpty, moodDotClass, type DiarioState } from "@/lib/diario"
 import { cn } from "@/lib/utils"
-
-/** Un giorno con una riga in DB ma tutti i campi al valore di default —
- * es. un JournalEntry creato solo per contare un pomodoro, mai aperto per
- * scrivere — conta come "nessuna voce" per chi guarda, non come un giorno
- * con contenuto. */
-export function isDiarioEntryEmpty(entry: DiarioState): boolean {
-  return (
-    !entry.mood &&
-    !entry.obiettivo &&
-    !entry.testo &&
-    Object.keys(entry.habits).length === 0 &&
-    entry.weight == null &&
-    entry.sleepHours == null &&
-    entry.pomodoroSessions === 0
-  )
-}
 
 /**
  * Riepilogo di un giorno (umore, obiettivo, diario, abitudini, peso/

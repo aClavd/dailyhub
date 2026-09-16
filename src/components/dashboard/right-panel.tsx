@@ -1,6 +1,6 @@
 "use client"
 
-import { Search } from "lucide-react"
+import { Search, Settings } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 
@@ -18,11 +18,13 @@ import type { CalendarResult } from "@/lib/google/calendar"
 import type { MailMessage, MailResult } from "@/lib/mail"
 import { matchingFilter } from "@/lib/mail-filter-match"
 import type { MailFilterSummary } from "@/lib/queries/mail-filters"
+import type { SpotifyStatus } from "@/lib/queries/spotify"
 import { usePolling } from "@/lib/use-polling"
 import { cn } from "@/lib/utils"
 
 import { CHECK_EVERY_MS as DIARIO_CHECK_MS, REMINDER_HOUR } from "./diario-reminder"
 import { HistoryExplorer } from "./history-explorer"
+import { InsightsDialog } from "./insights-dialog"
 import { NewEventForm } from "./new-event-form"
 
 // Stesso intervallo già usato da Impegni/Mail (agenda-card.tsx/mail-card.tsx)
@@ -64,12 +66,21 @@ export function RightPanel({
   filters,
   diarioInitial,
   todayKey,
+  googleError,
+  spotifyStatus,
+  liberoConfigured,
 }: {
   initialEvents: CalendarResult
   initialMail: MailResult
   filters: MailFilterSummary[]
   diarioInitial: DiarioState
   todayKey: string
+  /** Per la scheda Account del dialog Impostazioni (insights-dialog.tsx) —
+   * stesso `session.error` che già fa comparire "Riconnetti Google" in
+   * Impegni/Mail, qui solo esposto anche qui invece di ricalcolato. */
+  googleError?: string
+  spotifyStatus: SpotifyStatus
+  liberoConfigured: boolean
 }) {
   const { rightPanelCollapsed, toggleRightPanel, hasWidget, addWidget, habitList, todayDiarioPatch } =
     useBoard()
@@ -183,18 +194,40 @@ export function RightPanel({
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-3.5">
         {!rightPanelCollapsed && <span className="font-heading text-sm font-semibold">Oggi</span>}
-        <button
-          type="button"
-          onClick={toggleRightPanel}
-          aria-label={rightPanelCollapsed ? "Espandi il pannello" : "Riduci il pannello"}
-          aria-expanded={!rightPanelCollapsed}
-          className={cn(
-            "border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border text-sm transition-colors",
-            rightPanelCollapsed && "mx-auto",
+        <div className={cn("flex items-center gap-1.5", rightPanelCollapsed && "mx-auto")}>
+          {/* Impostazioni (account connessi + Andamento) — solo da
+              espansa, stesso criterio dell'ingranaggio "Gestisci layout"
+              nel rail sinistro (rail.tsx): da compressa il pannello è già
+              dedicato all'Attention Rail, niente spazio per una seconda
+              icona di servizio. */}
+          {!rightPanelCollapsed && (
+            <Dialog>
+              <DialogTrigger
+                aria-label="Impostazioni"
+                title="Impostazioni"
+                className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border transition-colors"
+              >
+                <Settings className="size-3.5" />
+              </DialogTrigger>
+              <InsightsDialog
+                todayKey={todayKey}
+                habitList={habitList}
+                googleError={googleError}
+                spotifyStatus={spotifyStatus}
+                liberoConfigured={liberoConfigured}
+              />
+            </Dialog>
           )}
-        >
-          {rightPanelCollapsed ? "‹" : "›"}
-        </button>
+          <button
+            type="button"
+            onClick={toggleRightPanel}
+            aria-label={rightPanelCollapsed ? "Espandi il pannello" : "Riduci il pannello"}
+            aria-expanded={!rightPanelCollapsed}
+            className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border text-sm transition-colors"
+          >
+            {rightPanelCollapsed ? "‹" : "›"}
+          </button>
+        </div>
       </div>
 
       {/* "Attention Rail" — da compressa niente più un unico numero sul

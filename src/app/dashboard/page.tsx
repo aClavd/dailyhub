@@ -18,6 +18,7 @@ import { TopBar } from "@/components/dashboard/top-bar"
 import { DiarioWidget } from "@/components/widgets/diario-widget"
 import { PomodoroWidget } from "@/components/widgets/pomodoro-widget"
 import { chiaveGiorno, dataBreve } from "@/lib/datetime"
+import { isLiberoConfigured } from "@/lib/libero-mail"
 import { getActiveBoardLayout } from "@/lib/queries/board"
 import { getDiarioHistory, getDiarioToday } from "@/lib/queries/diario"
 import { getTodayEvents } from "@/lib/google/calendar"
@@ -74,6 +75,7 @@ export default async function DashboardPage() {
     eventsInitial,
     mailInitial,
     mailFilters,
+    spotifyStatus,
   ] = await Promise.all([
     getActiveBoardLayout(),
     getDiarioToday(chiaveGiorno()),
@@ -81,6 +83,12 @@ export default async function DashboardPage() {
     getTodayEvents(),
     getMail(),
     listMailFilters(),
+    // Serve sia a SpotifySection sotto (Suspense) sia alla scheda Account
+    // del dialog Impostazioni — getSpotifyStatus è avvolta in cache()
+    // (lib/queries/spotify.ts) apposta: due letture identiche nella stessa
+    // richiesta si deduplicano da sole, non raddoppiano la vera chiamata a
+    // Spotify.
+    getSpotifyStatus(),
   ])
 
   return (
@@ -124,6 +132,9 @@ export default async function DashboardPage() {
             filters={mailFilters}
             diarioInitial={diarioInitial}
             todayKey={todayKey}
+            googleError={session.error}
+            spotifyStatus={spotifyStatus}
+            liberoConfigured={isLiberoConfigured()}
           />
         </div>
       </BoardProvider>

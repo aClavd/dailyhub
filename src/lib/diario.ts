@@ -38,6 +38,25 @@ export const DEFAULT_HABITS: readonly string[] = [
   "Journaling",
 ]
 
+/** Un giorno con una riga in DB ma tutti i campi al valore di default —
+ * es. un JournalEntry creato solo per contare un pomodoro, mai aperto per
+ * scrivere — conta come "nessuna voce" per chi guarda, non come un giorno
+ * con contenuto. Spostata qui (prima viveva in diario-day-summary.tsx,
+ * un componente) perché ora serve anche a lib/queries/diario.ts (streak
+ * e riepilogo Andamento): un file di sola logica non deve dipendere da
+ * un file di UI. */
+export function isDiarioEntryEmpty(entry: DiarioState): boolean {
+  return (
+    !entry.mood &&
+    !entry.obiettivo &&
+    !entry.testo &&
+    Object.keys(entry.habits).length === 0 &&
+    entry.weight == null &&
+    entry.sleepHours == null &&
+    entry.pomodoroSessions === 0
+  )
+}
+
 /** Colore del pallino umore — condiviso tra il pannello Cronologia a 7
  * giorni e la Cronologia estesa (history-explorer.tsx). */
 export function moodDotClass(mood?: Mood | null): string {
@@ -45,6 +64,16 @@ export function moodDotClass(mood?: Mood | null): string {
   if (mood === "Così così" || mood === "Neutro") return "bg-ink-faint"
   if (mood === "Buono" || mood === "Ottimo") return "bg-good"
   return "bg-border"
+}
+
+/** Stessa scala di moodDotClass, come classe `text-*` invece di `bg-*` —
+ * serve dove il colore va applicato a `currentColor` (icone SVG a mano,
+ * stroke/fill dei grafici Andamento) invece che a uno sfondo. */
+export function moodTextColorClass(mood?: Mood | null): string {
+  if (mood === "Difficile") return "text-destructive"
+  if (mood === "Così così" || mood === "Neutro") return "text-ink-faint"
+  if (mood === "Buono" || mood === "Ottimo") return "text-good"
+  return "text-border"
 }
 
 /**

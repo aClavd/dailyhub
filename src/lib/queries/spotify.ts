@@ -1,5 +1,7 @@
 import "server-only"
 
+import { cache } from "react"
+
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { fetchSpotifyNowPlaying, refreshSpotifyToken, type SpotifyNowPlaying } from "@/lib/spotify"
@@ -50,7 +52,7 @@ export async function getValidSpotifyAccessToken(): Promise<string | null> {
  * qualcosa (o niente), o un errore (token rifiutato anche dopo il
  * rinnovo — serve ricollegare).
  */
-export async function getSpotifyStatus(): Promise<SpotifyStatus> {
+export const getSpotifyStatus = cache(async (): Promise<SpotifyStatus> => {
   const session = await auth()
   if (!session?.user?.id) return { connected: false }
 
@@ -69,4 +71,4 @@ export async function getSpotifyStatus(): Promise<SpotifyStatus> {
   } catch {
     return { connected: true, error: true }
   }
-}
+})

@@ -14,6 +14,14 @@ export type LiberoResult =
   | { ok: true; messages: LiberoMessage[] }
   | { ok: false; reason: "not-configured" | "api"; detail?: string }
 
+/** Solo per la scheda Account del dialog Impostazioni: sapere se Libero è
+ * configurato senza doverci davvero aprire una connessione IMAP — stessa
+ * coppia di env var di getLiberoMessages qui sotto, un solo posto che sa
+ * quali sono. */
+export function isLiberoConfigured(): boolean {
+  return Boolean(process.env.LIBERO_EMAIL && process.env.LIBERO_APP_PASSWORD)
+}
+
 /**
  * Tutta la posta in arrivo (INBOX) di Libero via IMAP: niente OAuth/API, si
  * legge con le credenziali dell'account (password applicativa consigliata —

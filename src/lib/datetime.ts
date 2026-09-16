@@ -170,3 +170,29 @@ export function addDays(date: Date, days: number): Date {
 export function addMonths(date: Date, months: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + months, 1)
 }
+
+/** Somma (o sottrae) anni a una data, riportandola al 1° gennaio — stesso
+ * criterio di addMonths, per la navigazione anno-per-anno della scheda
+ * Andamento. */
+export function addYears(date: Date, years: number): Date {
+  return new Date(date.getFullYear() + years, 0, 1)
+}
+
+/** I giorni del mese di `cursor` (1 → ultimo), senza gli sconfinamenti nei
+ * mesi adiacenti che monthGrid aggiunge apposta per riempire una griglia
+ * calendario — qui serve l'elenco vero, per aggregare dati reali (scheda
+ * Andamento), non una griglia da disegnare. */
+export function monthDates(cursor = new Date()): Date[] {
+  const year = cursor.getFullYear()
+  const month = cursor.getMonth()
+  const last = new Date(year, month + 1, 0).getDate()
+  return Array.from({ length: last }, (_, i) => new Date(year, month, i + 1))
+}
+
+/** I giorni dell'anno di `cursor`, 1 gennaio → 31 dicembre. */
+export function yearDates(cursor = new Date()): Date[] {
+  const year = cursor.getFullYear()
+  const start = new Date(year, 0, 1)
+  const days = Math.round((new Date(year, 11, 31).getTime() - start.getTime()) / 86_400_000) + 1
+  return Array.from({ length: days }, (_, i) => addDays(start, i))
+}
