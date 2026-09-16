@@ -24,8 +24,12 @@ function DialogPopup({
       />
       <DialogPrimitive.Popup
         className={cn(
-          "bg-card border-border fixed top-1/2 left-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border shadow-xl outline-none transition-all",
+          "bg-card border-border fixed top-1/2 left-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border shadow-xl outline-none transition-all motion-reduce:transition-opacity",
+          // Il fade resta (accettabile anche con prefers-reduced-motion:
+          // reduce, non è "movimento"), lo scale in ingresso/uscita no —
+          // annullato sotto quella preferenza.
           "data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0",
+          "motion-reduce:data-[ending-style]:scale-100 motion-reduce:data-[starting-style]:scale-100",
           className,
         )}
         {...props}

@@ -85,16 +85,38 @@ export function WidgetShell({
   // "modello dati" sotto resta comunque a celle, invariato — è solo il
   // livello visivo di questo blocco durante il trascinamento.
   const [liveRect, setLiveRect] = useState<LiveRect | null>(null)
-  const prevSize = useRef({ w: committedPlacement?.w, h: committedPlacement?.h })
+  // x/y qui dentro, non solo w/h: prima l'assestamento scattava solo per un
+  // cambio di dimensione, mai per un cambio di sola posizione — un blocco
+  // che si sposta per richiudere il buco lasciato da uno eliminato
+  // (repackLayout, board-context.tsx) scattava di colpo nel nuovo posto,
+  // senza nessuna transizione (Claudio: animazioni per una UX più fluida).
+  const prevPlacement = useRef({
+    x: committedPlacement?.x,
+    y: committedPlacement?.y,
+    w: committedPlacement?.w,
+    h: committedPlacement?.h,
+  })
   const sectionRef = useRef<HTMLElement | null>(null)
 
-  // Breve "assestamento" quando la taglia definitiva cambia — sul blocco
-  // attivo e su qualunque vicino a cui il resize ha tolto/dato spazio, non
-  // durante il trascinamento (solo quando il valore *committato* cambia).
+  // Breve "assestamento" quando la posizione o la taglia definitiva
+  // cambia — sul blocco attivo e su qualunque vicino a cui il
+  // resize/repack ha tolto/dato spazio o cambiato posto, non durante il
+  // trascinamento (solo quando il valore *committato* cambia).
   useEffect(() => {
     if (!committedPlacement) return
-    if (prevSize.current.w !== committedPlacement.w || prevSize.current.h !== committedPlacement.h) {
-      prevSize.current = { w: committedPlacement.w, h: committedPlacement.h }
+    const prev = prevPlacement.current
+    if (
+      prev.x !== committedPlacement.x ||
+      prev.y !== committedPlacement.y ||
+      prev.w !== committedPlacement.w ||
+      prev.h !== committedPlacement.h
+    ) {
+      prevPlacement.current = {
+        x: committedPlacement.x,
+        y: committedPlacement.y,
+        w: committedPlacement.w,
+        h: committedPlacement.h,
+      }
       setJustResized(true)
       const id = setTimeout(() => setJustResized(false), 220)
       return () => clearTimeout(id)
@@ -274,7 +296,7 @@ export function WidgetShell({
           // un blocco già sulla board (isDraggingReorder).
           isDraggingReorder && !dragOver && "outline-primary/40 outline-2 outline-dashed outline-offset-[-4px]",
           liveRect && "shadow-lg",
-          justResized && "[animation:widget-settle_220ms_ease-out]",
+          justResized && "[animation:widget-settle_220ms_ease-out] motion-reduce:[animation:none]",
         )}
       >
         {/* "Spina" sul bordo sinistro — trasparente di default, si accende

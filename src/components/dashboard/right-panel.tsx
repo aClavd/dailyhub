@@ -169,7 +169,7 @@ export function RightPanel({
   return (
     <aside
       className={cn(
-        "hidden shrink-0 flex-col border-l border-border bg-card transition-[width] duration-150 lg:sticky lg:top-0 lg:flex lg:h-screen",
+        "hidden shrink-0 flex-col border-l border-border bg-card transition-[width] duration-150 motion-reduce:transition-none lg:sticky lg:top-0 lg:flex lg:h-screen",
         // w-10 (40px) bastava per il solo pulsante — un'"Attention Rail"
         // vera con indicatori distinti (non un unico numero) chiede
         // qualche px in più, stesso tipo di aggiustamento già fatto per

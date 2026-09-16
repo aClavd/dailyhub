@@ -111,7 +111,7 @@ export function Rail({
   return (
     <aside
       className={cn(
-        "hidden shrink-0 flex-col border-r border-border bg-card transition-[width] duration-150 lg:sticky lg:top-0 lg:flex lg:h-screen",
+        "hidden shrink-0 flex-col border-r border-border bg-card transition-[width] duration-150 motion-reduce:transition-none lg:sticky lg:top-0 lg:flex lg:h-screen",
         // 52px → 64px (Fase successiva): a 52px le icone della Libreria
         // erano già al massimo consentito dalla larghezza (size-9 = 36px,
         // niente margine), sensibilmente più piccole delle righe da

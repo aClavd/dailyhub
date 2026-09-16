@@ -44,8 +44,11 @@ function SelectPopup({ className, children, ...props }: SelectPrimitive.Popup.Pr
       <SelectPrimitive.Positioner sideOffset={6} align="start">
         <SelectPrimitive.Popup
           className={cn(
-            "bg-card border-border z-50 max-h-64 min-w-[10rem] overflow-y-auto rounded-lg border p-1 shadow-lg outline-none",
-            "data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 transition-all",
+            "bg-card border-border z-50 max-h-64 min-w-[10rem] overflow-y-auto rounded-lg border p-1 shadow-lg outline-none transition-all motion-reduce:transition-opacity",
+            // Stesso criterio di dialog.tsx: il fade resta, lo scale no
+            // sotto prefers-reduced-motion.
+            "data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0",
+            "motion-reduce:data-[ending-style]:scale-100 motion-reduce:data-[starting-style]:scale-100",
             className,
           )}
           {...props}
