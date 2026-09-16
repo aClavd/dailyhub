@@ -60,8 +60,16 @@ export function WidgetShell({
   emphasis?: WidgetEmphasis
   children: React.ReactNode
 }) {
-  const { committedLayout, placementOf, setPreview, commitLayout, removeWidget, moveWidget } =
-    useBoard()
+  const {
+    committedLayout,
+    placementOf,
+    setPreview,
+    commitLayout,
+    removeWidget,
+    moveWidget,
+    isDraggingReorder,
+    setIsDraggingReorder,
+  } = useBoard()
   const meta = WIDGET_META[type]
   const placement = placementOf(type)
   const committedPlacement = committedLayout.find((p) => p.type === type)
@@ -255,6 +263,16 @@ export function WidgetShell({
           // colonna piena larghezza (batte questo style inline).
           "board-cell bg-card ring-foreground/10 relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl ring-1",
           (dragOver || resizing) && "ring-primary ring-2",
+          // Contorno tratteggiato su OGNI blocco (tranne quello già sotto
+          // il cursore, che ha già l'anello pieno sopra) dall'inizio di
+          // uno spostamento — non solo al passaggio del mouse: prima
+          // l'unico segnale era l'anello sul blocco esatto sotto al
+          // cursore in quel momento, niente vista d'insieme di dove si
+          // potesse rilasciare (Claudio: "non si capisce... dove posso
+          // spostarlo"). Stessa idea già in board.tsx per l'aggiunta
+          // dalla Libreria (isDraggingWidget), qui per lo spostamento di
+          // un blocco già sulla board (isDraggingReorder).
+          isDraggingReorder && !dragOver && "outline-primary/40 outline-2 outline-dashed outline-offset-[-4px]",
           liveRect && "shadow-lg",
           justResized && "[animation:widget-settle_220ms_ease-out]",
         )}
@@ -281,12 +299,22 @@ export function WidgetShell({
             onDragStart={(event) => {
               event.dataTransfer.setData(REORDER_MIME, type)
               event.dataTransfer.effectAllowed = "move"
+              setIsDraggingReorder(true)
             }}
+            // Sempre attaccato, non condizionato a nulla — stessa lezione
+            // già imparata in questa sessione per rail.tsx: staccarlo in
+            // certe condizioni (es. dopo un drop riuscito che cambia
+            // `added`/props) lascia il contorno acceso per sempre, perché
+            // l'evento nativo dragend arriva dopo che l'handler non c'è più.
+            onDragEnd={() => setIsDraggingReorder(false)}
             aria-label={`Sposta ${meta.title}`}
             title="Trascina per spostare"
-            className="text-ink-faint hover:bg-muted hover:text-foreground grid size-6 shrink-0 cursor-grab place-items-center rounded-md active:cursor-grabbing"
+            // size-6→size-7, icona size-3.5→size-4: era troppo debole per
+            // leggersi come maniglia (Claudio, punto collegato — non si
+            // capiva nemmeno che il blocco si potesse prendere).
+            className="text-ink-faint hover:bg-muted hover:text-foreground grid size-7 shrink-0 cursor-grab place-items-center rounded-md active:cursor-grabbing"
           >
-            <GripIcon className="size-3.5" />
+            <GripIcon className="size-4" />
           </button>
           <WidgetIcon type={type} className="text-ink-faint size-3.5 shrink-0" />
           <h3 className="font-heading min-w-0 flex-1 truncate text-sm font-medium">

@@ -14,12 +14,14 @@ import {
 import {
   WIDGET_META,
   findFreeSpot,
+  repackLayout,
   type ActiveBoardState,
   type BoardState,
   type SavedLayoutSummary,
   type WidgetPlacement,
   type WidgetType,
 } from "@/lib/board"
+import type { DiarioState } from "@/lib/diario"
 
 type BoardApi = {
   /** Posizione/dimensione di ogni blocco — committata, oppure l'anteprima
@@ -83,6 +85,28 @@ type BoardApi = {
    * subito la zona di rilascio, non solo quando il cursore ci passa sopra. */
   isDraggingWidget: boolean
   setIsDraggingWidget: (value: boolean) => void
+
+  /** Vero mentre si trascina un blocco GIÀ sulla board per spostarlo
+   * (acceso dalla maniglia in widget-shell.tsx, non dalla Libreria) —
+   * ogni WidgetShell lo legge per mostrare un contorno "qui puoi
+   * rilasciare" su tutti i blocchi fin dall'inizio del trascinamento,
+   * non solo su quello sotto il cursore in quel momento (Claudio: "non
+   * si capisce... dove posso spostarlo"). */
+  isDraggingReorder: boolean
+  setIsDraggingReorder: (value: boolean) => void
+
+  /** Segnale live (non persistito) del diario/pomodoro di OGGI — un
+   * merge parziale per campo, non uno snapshot intero: DiarioWidget
+   * scrive testo/umore/abitudini/peso/sonno quando si edita oggi,
+   * PomodoroWidget scrive pomodoroSessions quando completa una
+   * sessione, ognuno la propria parte senza sovrascrivere quella
+   * dell'altro con un valore vecchio. RightPanel/Rail lo sovrappongono
+   * alla prop statica letta a caricamento pagina (diarioInitial/
+   * historyDays), che altrimenti resta ferma allo scatto iniziale —
+   * segnalato da Claudio ("ho scritto... salvato... ma la sidebar
+   * segna ancora da scrivere"). */
+  todayDiarioPatch: Partial<DiarioState>
+  patchTodayDiario: (patch: Partial<DiarioState>) => void
 }
 
 const BoardContext = createContext<BoardApi | null>(null)
@@ -118,6 +142,8 @@ export function BoardProvider({
   const [layouts, setLayouts] = useState<SavedLayoutSummary[] | null>(null)
   const [mailHasRecent, setMailHasRecent] = useState(false)
   const [isDraggingWidget, setIsDraggingWidget] = useState(false)
+  const [isDraggingReorder, setIsDraggingReorder] = useState(false)
+  const [todayDiarioPatch, setTodayDiarioPatch] = useState<Partial<DiarioState>>({})
   const [, startTransition] = useTransition()
 
   // Letto da `persist` senza essere una dipendenza reattiva — cambia solo
@@ -163,10 +189,17 @@ export function BoardProvider({
 
   const removeWidget = useCallback(
     (type: WidgetType) => {
-      setLayout(committedLayout.filter((p) => p.type !== type))
+      // repackLayout, non solo filter: senza, i blocchi rimasti restavano
+      // dove stavano e il buco lasciato da quello eliminato restava vuoto
+      // — segnalato da Claudio, vedi lib/board.ts.
+      setLayout(repackLayout(committedLayout.filter((p) => p.type !== type)))
     },
     [committedLayout, setLayout],
   )
+
+  const patchTodayDiario = useCallback((patch: Partial<DiarioState>) => {
+    setTodayDiarioPatch((prev) => ({ ...prev, ...patch }))
+  }, [])
 
   const moveWidget = useCallback(
     (from: WidgetType, to: WidgetType) => {
@@ -322,6 +355,10 @@ export function BoardProvider({
       setMailHasRecent,
       isDraggingWidget,
       setIsDraggingWidget,
+      isDraggingReorder,
+      setIsDraggingReorder,
+      todayDiarioPatch,
+      patchTodayDiario,
     }),
     [
       layout,
@@ -348,6 +385,9 @@ export function BoardProvider({
       deleteLayout,
       mailHasRecent,
       isDraggingWidget,
+      isDraggingReorder,
+      todayDiarioPatch,
+      patchTodayDiario,
     ],
   )
 

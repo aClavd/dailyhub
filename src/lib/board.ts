@@ -158,21 +158,20 @@ function placementsOverlap(a: WidgetPlacement, b: WidgetPlacement): boolean {
 }
 
 /**
- * Ripara un layout eventualmente corrotto — coordinate negative o oltre
- * BOARD_COLS, blocchi sovrapposti. Poteva succedere ridimensionando un
- * bordo già sul margine della board (bug in board-resize.ts, corretto,
- * ma può aver già scritto dati non validi su un layout salvato prima
- * della correzione). Se è già tutto valido lo ritorna invariato senza
- * toccare nulla; altrimenti lo ricostruisce da capo con lo stesso
- * bin-packing usato per i layout legacy, mantenendo tipo e dimensione
- * (clampata a min/max) di ogni blocco — si scartano solo le posizioni,
- * si ripiazzano da zero nell'ordine in cui erano salvate.
+ * Ricostruisce un layout da capo con bin-packing (stesso ordine
+ * dell'array in ingresso, primo posto libero riga per riga) mantenendo
+ * tipo e dimensione (clampata a min/max) di ogni blocco — scarta solo
+ * le posizioni. Se il layout dato non aveva buchi/sovrapposizioni,
+ * l'algoritmo è deterministico: il risultato è identico all'originale,
+ * nessun rischio di scombinare un layout già compatto.
+ *
+ * Estratta da `sanitizeLayout` (sotto) perché serve anche a
+ * `removeWidget` (board-context.tsx): eliminare un blocco lasciava un
+ * buco al posto suo invece di far richiudere lo spazio agli altri —
+ * segnalato da Claudio ("gli altri si devono ridimensionare... e non
+ * devono lasciare spazi vuoti").
  */
-export function sanitizeLayout(layout: readonly WidgetPlacement[]): WidgetPlacement[] {
-  const isValid = (p: WidgetPlacement) => p.x >= 0 && p.y >= 0 && p.x + p.w <= BOARD_COLS
-  const hasOverlap = layout.some((a, i) => layout.some((b, j) => i < j && placementsOverlap(a, b)))
-  if (layout.every(isValid) && !hasOverlap) return layout as WidgetPlacement[]
-
+export function repackLayout(layout: readonly WidgetPlacement[]): WidgetPlacement[] {
   const rebuilt: WidgetPlacement[] = []
   for (const p of layout) {
     const meta = WIDGET_META[p.type]
@@ -182,6 +181,21 @@ export function sanitizeLayout(layout: readonly WidgetPlacement[]): WidgetPlacem
     rebuilt.push({ type: p.type, x, y, w, h })
   }
   return rebuilt
+}
+
+/**
+ * Ripara un layout eventualmente corrotto — coordinate negative o oltre
+ * BOARD_COLS, blocchi sovrapposti. Poteva succedere ridimensionando un
+ * bordo già sul margine della board (bug in board-resize.ts, corretto,
+ * ma può aver già scritto dati non validi su un layout salvato prima
+ * della correzione). Se è già tutto valido lo ritorna invariato senza
+ * toccare nulla; altrimenti chiama `repackLayout` sopra.
+ */
+export function sanitizeLayout(layout: readonly WidgetPlacement[]): WidgetPlacement[] {
+  const isValid = (p: WidgetPlacement) => p.x >= 0 && p.y >= 0 && p.x + p.w <= BOARD_COLS
+  const hasOverlap = layout.some((a, i) => layout.some((b, j) => i < j && placementsOverlap(a, b)))
+  if (layout.every(isValid) && !hasOverlap) return layout as WidgetPlacement[]
+  return repackLayout(layout)
 }
 
 /** Piazza una sequenza di blocchi in ordine, uno via via nel primo posto libero. */

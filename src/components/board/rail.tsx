@@ -7,8 +7,7 @@ import { Dialog, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectItem, SelectItemText, SelectPopup, SelectTrigger } from "@/components/ui/select"
 import { HistoryExplorer } from "@/components/dashboard/history-explorer"
 import { DND_MIME, WIDGET_META, LIBRARY_WIDGETS, type WidgetType } from "@/lib/board"
-import type { DiarioState } from "@/lib/diario"
-import { daySummary, moodDotClass } from "@/lib/diario"
+import { DIARIO_EMPTY, daySummary, moodDotClass, type DiarioState } from "@/lib/diario"
 import { cn } from "@/lib/utils"
 
 import { useBoard } from "./board-context"
@@ -89,7 +88,18 @@ export function Rail({
     loadLayouts,
     switchLayout,
     mailHasRecent,
+    todayDiarioPatch,
   } = useBoard()
+
+  // historyDays è letto una volta sola, server-side, al caricamento della
+  // pagina — la voce di oggi restava ferma lì anche dopo aver scritto nel
+  // Diario (segnalato da Claudio). Solo il giorno di oggi viene
+  // sovrapposto con todayDiarioPatch (board-context.tsx, aggiornato in
+  // tempo reale da diario-widget.tsx/pomodoro-widget.tsx) — gli altri 6
+  // giorni restano quelli letti dal server, invariati.
+  const days: HistoryDayData[] = historyDays.map((day) =>
+    day.isToday ? { ...day, entry: { ...(day.entry ?? DIARIO_EMPTY), ...todayDiarioPatch } } : day,
+  )
 
   // Precaricato appena la barra monta, non solo quando lo switcher si apre:
   // così la tendina ha già l'elenco pronto al primo click, non un vuoto che
@@ -284,7 +294,7 @@ export function Rail({
 
             {railCollapsed ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-2">
-                {historyDays.map((day) => (
+                {days.map((day) => (
                   <div
                     key={day.key}
                     title={`${day.label} — ${daySummary(day.entry) || "nessuna voce"}`}
@@ -307,7 +317,7 @@ export function Rail({
               </div>
             ) : (
               <div className="divide-border flex flex-col divide-y">
-                {historyDays.map((day) => {
+                {days.map((day) => {
                   const summary = daySummary(day.entry)
                   return (
                     <div key={day.key} className="py-2">

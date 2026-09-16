@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState, useTransition } from "react"
+import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 
 import { useBoard } from "@/components/board/board-context"
 import { fetchDiarioEntry } from "@/lib/actions/history"
@@ -41,6 +41,7 @@ export function DiarioWidget({
   dayNumber: number
   todayKey: string
 }) {
+  const { patchTodayDiario } = useBoard()
   const [editingDate, setEditingDate] = useState(todayKey)
   const [state, setState] = useState<DiarioState>(initial)
   // Salva in automatico senza chiedere conferma — comodo, ma senza nessun
@@ -60,6 +61,26 @@ export function DiarioWidget({
   // mai salvata: bug reale a cui ho pensato scrivendo questo, non trovato
   // dal vivo ma facile da immaginare — scrivi, cambi subito giorno).
   const pendingRun = useRef<(() => void) | null>(null)
+
+  // Segnala in su, verso board-context.tsx, il contenuto di OGGI (mai un
+  // giorno passato) mentre lo si scrive — non solo dopo il salvataggio: il
+  // pannello destro e la Cronologia nel rail restano fermi allo scatto
+  // iniziale della pagina altrimenti (segnalato da Claudio: "ho scritto...
+  // salvato... ma la sidebar segna ancora da scrivere"). Stesso schema già
+  // approvato in questo progetto per useReportEmphasis (widget-shell.tsx):
+  // un setter di un antenato chiamato dentro un effect è un side-effect
+  // legittimo verso l'esterno, non uno stato derivato nello stesso
+  // componente (quello sì vietato dal linter di questo progetto).
+  useEffect(() => {
+    if (editingDate !== todayKey) return
+    patchTodayDiario({
+      testo: state.testo,
+      mood: state.mood,
+      habits: state.habits,
+      weight: state.weight,
+      sleepHours: state.sleepHours,
+    })
+  }, [state, editingDate, todayKey, patchTodayDiario])
 
   const persist = useCallback((next: DiarioState, date: string, immediate: boolean) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)

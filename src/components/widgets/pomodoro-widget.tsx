@@ -3,10 +3,34 @@
 import { SkipForward } from "lucide-react"
 import { useEffect, useRef, useState, useTransition } from "react"
 
+import { useBoard } from "@/components/board/board-context"
 import { useReportEmphasis } from "@/components/board/widget-shell"
+import { useToast } from "@/components/dashboard/toast-context"
 import { incrementPomodoroSession } from "@/lib/actions/diario"
 import { chiaveGiorno } from "@/lib/datetime"
 import { cn } from "@/lib/utils"
+
+// Nessuna gestione d'errore prima: se incrementPomodoroSession falliva
+// (rete, server di sviluppo che si stava riavviando — è successo per
+// davvero: controllato sul database reale di Claudio, 2 sessioni salvate
+// contro 3 fatte) la sessione contata in locale non risultava mai salvata
+// e nessuno se ne accorgeva. Due tentativi in più con un piccolo ritardo;
+// solo se falliscono anche quelli, un avviso nello stack di notifiche già
+// esistente (toast-context.tsx) — non un sistema nuovo, e nessun rollback
+// del contatore locale: la sessione l'hai fatta per davvero, resta
+// visibile per te in questa pagina, solo onestà se il salvataggio non va
+// a buon fine.
+const RETRY_DELAYS_MS = [2000, 5000]
+
+function saveSessionWithRetry(date: string, onFinalFailure: () => void, attempt = 0) {
+  incrementPomodoroSession(date).catch(() => {
+    if (attempt < RETRY_DELAYS_MS.length) {
+      setTimeout(() => saveSessionWithRetry(date, onFinalFailure, attempt + 1), RETRY_DELAYS_MS[attempt])
+    } else {
+      onFinalFailure()
+    }
+  })
+}
 
 type Phase = "focus" | "short" | "long"
 
@@ -84,11 +108,21 @@ function playClick(ctx: AudioContext) {
  * "record" salvato sul giorno per poterlo confrontare nel tempo.
  */
 export function PomodoroWidget({ initial }: { initial: number }) {
+  const { patchTodayDiario } = useBoard()
+  const pushToast = useToast()
   const [sessioni, setSessioni] = useState(initial)
   const [phase, setPhase] = useState<Phase>("focus")
   const [left, setLeft] = useState(DURATIONS.focus)
   const [running, setRunning] = useState(false)
   const [, startTransition] = useTransition()
+
+  // Segnala in su il conteggio di oggi — stesso motivo/stesso schema di
+  // diario-widget.tsx (vedi lì per i commenti generali): senza, il Focus
+  // nel pannello destro restava fermo al valore letto al caricamento
+  // della pagina anche dopo aver completato una sessione qui.
+  useEffect(() => {
+    patchTodayDiario({ pomodoroSessions: sessioni })
+  }, [sessioni, patchTodayDiario])
 
   // Timestamp assoluto di fine invece di scalare un secondo alla volta: se il
   // tab va in background (o il browser rallenta) i tick di setInterval
@@ -115,7 +149,17 @@ export function PomodoroWidget({ initial }: { initial: number }) {
     if (phase === "focus") {
       const next = sessioni + 1
       setSessioni(next)
-      startTransition(() => void incrementPomodoroSession(chiaveGiorno()))
+      const date = chiaveGiorno()
+      startTransition(() => {
+        saveSessionWithRetry(date, () => {
+          pushToast({
+            id: `pomodoro-save-failed-${date}-${next}`,
+            title: "Sessione Pomodoro non salvata",
+            label: "Il conteggio di oggi potrebbe non essere aggiornato sul server.",
+            accent: "attenzione",
+          })
+        })
+      })
       const nextPhase: Phase = next % 4 === 0 ? "long" : "short"
       setPhase(nextPhase)
       setLeft(DURATIONS[nextPhase])

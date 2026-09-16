@@ -71,7 +71,15 @@ export function RightPanel({
   diarioInitial: DiarioState
   todayKey: string
 }) {
-  const { rightPanelCollapsed, toggleRightPanel, hasWidget, addWidget, habitList } = useBoard()
+  const { rightPanelCollapsed, toggleRightPanel, hasWidget, addWidget, habitList, todayDiarioPatch } =
+    useBoard()
+  // diarioInitial è letto una volta sola, server-side, al caricamento della
+  // pagina — senza questo merge restava fermo lì anche dopo aver scritto e
+  // salvato nel blocco Diario (segnalato da Claudio). todayDiarioPatch
+  // (board-context.tsx) è aggiornato in tempo reale da diario-widget.tsx/
+  // pomodoro-widget.tsx: sovrapposto qui campo per campo, sempre la
+  // versione più fresca di ciascun campo.
+  const diario: DiarioState = { ...diarioInitial, ...todayDiarioPatch }
   const [events, setEvents] = useState(initialEvents)
   const [mail, setMail] = useState(initialMail)
   const [eventFormOpen, setEventFormOpen] = useState(false)
@@ -121,13 +129,13 @@ export function RightPanel({
     : ""
 
   const importantMail = mail.messages.filter((m) => matchingFilter(m, filters))
-  const diarioWritten = Boolean(diarioInitial.testo.trim())
+  const diarioWritten = Boolean(diario.testo.trim())
   const showDiarioReminder = afterReminderHour && !diarioWritten
 
   const attentionCount = (showEvent ? 1 : 0) + importantMail.length + (showDiarioReminder ? 1 : 0)
 
-  const habitsDone = Object.values(diarioInitial.habits).filter(Boolean).length
-  const studyMinutes = Math.round(diarioInitial.pomodoroSessions * (DURATIONS.focus / 60))
+  const habitsDone = Object.values(diario.habits).filter(Boolean).length
+  const studyMinutes = Math.round(diario.pomodoroSessions * (DURATIONS.focus / 60))
 
   // "Non lette", non solo "importanti", quando il dato è disponibile —
   // stato nativo di Gmail (message.unread), non un secondo stato nostro
@@ -215,12 +223,12 @@ export function RightPanel({
             </span>
           )}
           {(showEvent || importantMail.length > 0 || showDiarioReminder) &&
-            diarioInitial.pomodoroSessions > 0 && (
+            diario.pomodoroSessions > 0 && (
               <span aria-hidden className="border-border w-5 shrink-0 border-t" />
             )}
-          {diarioInitial.pomodoroSessions > 0 && (
+          {diario.pomodoroSessions > 0 && (
             <span
-              title={`${diarioInitial.pomodoroSessions} sessioni Pomodoro oggi`}
+              title={`${diario.pomodoroSessions} sessioni Pomodoro oggi`}
               className="text-primary shrink-0 font-mono text-[0.7rem] font-semibold"
             >
               P
@@ -345,9 +353,9 @@ export function RightPanel({
             <SectionLabel>Focus</SectionLabel>
             <div className="mt-1.5 flex items-center justify-between gap-2">
               <p className="text-ink-soft min-w-0 flex-1 text-sm">
-                {diarioInitial.pomodoroSessions === 0
+                {diario.pomodoroSessions === 0
                   ? "Nessuna sessione ancora oggi."
-                  : `${diarioInitial.pomodoroSessions} ${diarioInitial.pomodoroSessions === 1 ? "sessione" : "sessioni"} · ~${studyMinutes} min`}
+                  : `${diario.pomodoroSessions} ${diario.pomodoroSessions === 1 ? "sessione" : "sessioni"} · ~${studyMinutes} min`}
               </p>
               <button
                 type="button"
