@@ -122,7 +122,11 @@ export function RightPanel({
     <aside
       className={cn(
         "hidden shrink-0 flex-col border-l border-border bg-card transition-[width] duration-150 lg:sticky lg:top-0 lg:flex lg:h-screen",
-        rightPanelCollapsed ? "w-10" : "w-72",
+        // w-10 (40px) bastava per il solo pulsante — un'"Attention Rail"
+        // vera con indicatori distinti (non un unico numero) chiede
+        // qualche px in più, stesso tipo di aggiustamento già fatto per
+        // il rail sinistro in questa sessione.
+        rightPanelCollapsed ? "w-12" : "w-72",
       )}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-3.5">
@@ -133,25 +137,53 @@ export function RightPanel({
           aria-label={rightPanelCollapsed ? "Espandi il pannello" : "Riduci il pannello"}
           aria-expanded={!rightPanelCollapsed}
           className={cn(
-            "border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint relative grid size-6 shrink-0 place-items-center rounded-md border text-sm transition-colors",
+            "border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border text-sm transition-colors",
             rightPanelCollapsed && "mx-auto",
           )}
         >
           {rightPanelCollapsed ? "‹" : "›"}
-          {/* Unico indicatore lasciato acceso da compressa — non un elenco
-              icone come la Libreria (qui il contenuto è testo/notifiche,
-              non blocchi da trascinare): un conteggio reale di quante cose
-              aspettano attenzione, non un pallino decorativo. */}
-          {rightPanelCollapsed && attentionCount > 0 && (
-            <span
-              aria-hidden
-              className="bg-destructive absolute -top-1.5 -right-1.5 grid size-3.5 place-items-center rounded-full text-[0.55rem] font-semibold text-white"
-            >
-              {attentionCount > 9 ? "9+" : attentionCount}
-            </span>
-          )}
         </button>
       </div>
+
+      {/* "Attention Rail" — da compressa niente più un unico numero sul
+          pulsante: indicatori distinti per tipo (attenzione / promemoria /
+          focus), silenziosi quando non c'è nulla di quel tipo — mai un
+          segnaposto vuoto. Dati identici a quelli già calcolati sotto per
+          la vista espansa, nessun segnale nuovo. */}
+      {rightPanelCollapsed && (
+        <div className="flex flex-1 flex-col items-center gap-3 overflow-y-auto py-3">
+          {(showEvent || importantMail.length > 0) && (
+            <span
+              title={
+                showEvent && eventSignal
+                  ? `${eventSignal.event.title} ${eventTimeLabel}`
+                  : `${importantMail.length} mail da gestire`
+              }
+              className={cn(
+                "size-2 shrink-0 rounded-full",
+                eventLevel === "urgente" ? "bg-destructive" : "bg-primary",
+              )}
+            />
+          )}
+          {showDiarioReminder && (
+            <span title="Diario di oggi — da scrivere" className="shrink-0">
+              <WidgetIcon type="diario" className="text-primary size-4" />
+            </span>
+          )}
+          {(showEvent || importantMail.length > 0 || showDiarioReminder) &&
+            diarioInitial.pomodoroSessions > 0 && (
+              <span aria-hidden className="border-border w-5 shrink-0 border-t" />
+            )}
+          {diarioInitial.pomodoroSessions > 0 && (
+            <span
+              title={`${diarioInitial.pomodoroSessions} sessioni Pomodoro oggi`}
+              className="text-primary shrink-0 font-mono text-[0.7rem] font-semibold"
+            >
+              P
+            </span>
+          )}
+        </div>
+      )}
 
       {!rightPanelCollapsed && (
         <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
