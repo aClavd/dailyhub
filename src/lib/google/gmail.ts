@@ -10,6 +10,10 @@ export type GmailMessage = {
   snippet: string | null
   date: string | null
   link: string
+  /** Stato nativo di Gmail (etichetta "UNREAD"), non una copia nostra —
+   * il documento di Claudio chiede esplicitamente di riusare lo stato
+   * letto/non letto dei provider invece di duplicarlo su database. */
+  unread: boolean
 }
 
 export type GmailResult =
@@ -23,6 +27,9 @@ type GmailHeader = { name: string; value: string }
 type GmailMessageDetail = {
   id: string
   snippet?: string
+  // Già presente in ogni risposta di messages.get, qualunque `format` —
+  // non serve chiedere altro né un'altra chiamata per averlo.
+  labelIds?: string[]
   payload?: { headers?: GmailHeader[] }
 }
 
@@ -108,6 +115,7 @@ export async function getGmailMessages(): Promise<GmailResult> {
         snippet: d.snippet?.trim() || null,
         date: dateHeader ? new Date(dateHeader).toISOString() : null,
         link: `https://mail.google.com/mail/u/0/#all/${d.id}`,
+        unread: d.labelIds?.includes("UNREAD") ?? false,
       }
     })
     .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))

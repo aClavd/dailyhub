@@ -16,6 +16,10 @@ export type MailMessage = {
   snippet: string | null
   date: string | null
   link: string | null
+  /** Stato letto/non letto nativo del provider (solo Gmail per ora — vedi
+   * lib/google/gmail.ts). Libero resta `false`: leggere il flag IMAP
+   * `\Seen` è fattibile ma è un'altra modifica a sé, fuori da questo giro. */
+  unread: boolean
 }
 
 export type ProviderStatus =
@@ -54,7 +58,13 @@ export const getMail = cache(async (): Promise<MailResult> => {
       ? gmail.messages.map((m) => ({ ...m, provider: "gmail" as const }))
       : []),
     ...(libero.ok
-      ? libero.messages.map((m) => ({ ...m, provider: "libero" as const, snippet: null, link: null }))
+      ? libero.messages.map((m) => ({
+          ...m,
+          provider: "libero" as const,
+          snippet: null,
+          link: null,
+          unread: false,
+        }))
       : []),
   ].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
 

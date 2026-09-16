@@ -164,7 +164,19 @@ function MailRow({ message }: { message: MailMessage }) {
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <ProviderTag provider={message.provider} />
-        <span className="truncate font-medium">{message.from}</span>
+        {/* Pallino "non letta" — stato nativo di Gmail (message.unread,
+            vedi lib/google/gmail.ts), non un secondo stato duplicato sul
+            database: chiesto esplicitamente nel documento di ricerca di
+            Claudio ("riusa lo stato esistente invece di duplicarlo").
+            Solo per le non lette: un pallino vuoto su OGNI mail già letta
+            (o su tutte quelle di Libero, che non lo sa) sarebbe rumore
+            nuovo che prima non c'era. */}
+        {message.unread && (
+          <span aria-hidden title="Non letta" className="bg-primary size-1.5 shrink-0 rounded-full" />
+        )}
+        <span className={cn("truncate", message.unread ? "font-semibold" : "font-medium")}>
+          {message.from}
+        </span>
         {message.date && (
           <span className="text-ink-faint ml-auto shrink-0 font-mono text-[0.68rem]">
             {dateLabel(message.date)}

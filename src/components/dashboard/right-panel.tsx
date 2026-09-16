@@ -109,11 +109,21 @@ export function RightPanel({
   const habitsDone = Object.values(diarioInitial.habits).filter(Boolean).length
   const studyMinutes = Math.round(diarioInitial.pomodoroSessions * (DURATIONS.focus / 60))
 
+  // "Non lette", non solo "importanti", quando il dato è disponibile —
+  // stato nativo di Gmail (message.unread), non un secondo stato nostro
+  // (vedi lib/google/gmail.ts). Libero non lo sa (sempre `unread: false`,
+  // non perché sia stata letta per davvero) — se il conteggio "non lette"
+  // risulta zero non vuol dire che non ci sia nulla da segnalare, resta
+  // la dicitura generica.
+  const unreadImportantMail = importantMail.filter((m) => m.unread)
+
   const briefParts: string[] = []
   if (showEvent && eventSignal) briefParts.push(`${eventSignal.event.title} ${eventTimeLabel}`)
   if (importantMail.length > 0) {
     briefParts.push(
-      `${importantMail.length} ${importantMail.length === 1 ? "mail importante" : "mail importanti"} da gestire`,
+      unreadImportantMail.length > 0
+        ? `${unreadImportantMail.length} ${unreadImportantMail.length === 1 ? "mail non letta" : "mail non lette"} da gestire`
+        : `${importantMail.length} ${importantMail.length === 1 ? "mail importante" : "mail importanti"} da gestire`,
     )
   }
   if (showDiarioReminder) briefParts.push("diario ancora da scrivere")
@@ -361,7 +371,17 @@ function MailRow({ message }: { message: MailMessage }) {
   const content = (
     <>
       <WidgetIcon type="mail" className="text-primary size-3.5 shrink-0" />
-      <span className="min-w-0 flex-1 truncate text-[0.72rem]">
+      {/* Stesso pallino "non letta" di mail-card.tsx — stato nativo di
+          Gmail, non duplicato. */}
+      {message.unread && (
+        <span aria-hidden title="Non letta" className="bg-primary size-1.5 shrink-0 rounded-full" />
+      )}
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate text-[0.72rem]",
+          message.unread && "font-semibold",
+        )}
+      >
         {message.subject.trim() || "(senza oggetto)"}
       </span>
       {message.date && (
