@@ -7,7 +7,8 @@ import { useEffect, useState } from "react"
 import { useBoard } from "@/components/board/board-context"
 import { WidgetIcon } from "@/components/board/widget-icon"
 import { Dialog, DialogTrigger } from "@/components/ui/dialog"
-import { DURATIONS } from "@/components/widgets/pomodoro-widget"
+import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip"
+import { DURATIONS, PHASE_BAR, PHASE_LABELS, PHASE_TEXT } from "@/components/widgets/pomodoro-widget"
 import { refreshAgenda } from "@/lib/actions/calendar"
 import { refreshMail } from "@/lib/actions/mail"
 import { agendaEmphasis, nextOrRunningEvent } from "@/lib/agenda-signal"
@@ -33,15 +34,15 @@ import { NewEventForm } from "./new-event-form"
 const REFRESH_MS = 90_000
 const MAX_MAIL_ROWS = 3
 
-// Bordo pieno sempre visibile → solo al hover (con uno sfondo tenue al
-// suo posto a riposo): il documento di Claudio chiede azioni "leggere",
-// coerenti col linguaggio editoriale — non un riquadro utility sempre
-// acceso. Testo text-[0.72rem] → text-xs (12px, uno scalino standard di
-// Tailwind, non un altro valore arbitrario): contenuto vero da leggere
-// (l'etichetta dell'azione), sale di una tacca come il resto del
-// contenuto primario del pannello — pass di calibrazione tipografica.
+// Sez. 9 (Sidebar System Refinement): non più una card per azione (bordo +
+// sfondo tenue sempre presenti, "grid di 5 CTA") — righe integrate a piena
+// larghezza, nessuno sfondo/bordo a riposo, solo un hover molto sottile.
+// Meno "pulsante", più "voce di un menu leggero" — coerente col resto del
+// pannello (AttentionRow/MailRow restano card, sono azionabili su qualcosa
+// di specifico da gestire; Quick Actions sono scorciatoie, non elementi da
+// "risolvere").
 const quickActionClass =
-  "border-border/0 hover:border-border bg-muted/40 hover:bg-muted flex items-center gap-1.5 rounded-md border px-2 py-2 text-left text-xs font-medium transition-colors"
+  "hover:bg-muted text-ink-soft hover:text-foreground flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-xs font-medium transition-colors"
 
 /**
  * Right Sidebar / Personal Attention Center (Fase B, vedi il piano) —
@@ -69,6 +70,7 @@ export function RightPanel({
   googleError,
   spotifyStatus,
   liberoConfigured,
+  userEmail,
 }: {
   initialEvents: CalendarResult
   initialMail: MailResult
@@ -81,9 +83,17 @@ export function RightPanel({
   googleError?: string
   spotifyStatus: SpotifyStatus
   liberoConfigured: boolean
+  userEmail?: string | null
 }) {
-  const { rightPanelCollapsed, toggleRightPanel, hasWidget, addWidget, habitList, todayDiarioPatch } =
-    useBoard()
+  const {
+    rightPanelCollapsed,
+    toggleRightPanel,
+    hasWidget,
+    addWidget,
+    habitList,
+    todayDiarioPatch,
+    pomodoroLive,
+  } = useBoard()
   // diarioInitial è letto una volta sola, server-side, al caricamento della
   // pagina — senza questo merge restava fermo lì anche dopo aver scritto e
   // salvato nel blocco Diario (segnalato da Claudio). todayDiarioPatch
@@ -155,6 +165,24 @@ export function RightPanel({
   // risulta zero non vuol dire che non ci sia nulla da segnalare, resta
   // la dicitura generica.
   const unreadImportantMail = importantMail.filter((m) => m.unread)
+  // Presupposto: importantMail arriva già ordinata più-recente-prima (stesso
+  // ordine di lib/mail.ts, mai ri-ordinata qui) — il primo elemento è la
+  // mail più recente, per la micro-preview della Attention Rail compressa.
+  const latestMail = importantMail[0]
+
+  // Stato del Focus, derivato da pomodoroLive (board-context.tsx, live dal
+  // widget Pomodoro montato — Sidebar System Refinement, Step 5):
+  // - "idle-unmounted": il blocco non è sulla board, nessuno stato da riflettere.
+  // - "idle-mounted": è sulla board ma non c'è una sessione in corso o in pausa.
+  // - "paused": fase iniziata e messa in pausa (pausedLeft < durata piena).
+  // - "running": conto alla rovescia attivo.
+  const focusState: "idle-unmounted" | "idle-mounted" | "paused" | "running" = !pomodoroLive
+    ? "idle-unmounted"
+    : pomodoroLive.running
+      ? "running"
+      : pomodoroLive.pausedLeft < DURATIONS[pomodoroLive.phase]
+        ? "paused"
+        : "idle-mounted"
 
   // Daily Brief = sintesi, Attenzione = righe azionabili — prima
   // ripetevano quasi le stesse identiche parole (segnalato da Claudio,
@@ -215,6 +243,7 @@ export function RightPanel({
                 googleError={googleError}
                 spotifyStatus={spotifyStatus}
                 liberoConfigured={liberoConfigured}
+                userEmail={userEmail}
               />
             </Dialog>
           )}
@@ -230,48 +259,145 @@ export function RightPanel({
         </div>
       </div>
 
-      {/* "Attention Rail" — da compressa niente più un unico numero sul
-          pulsante: indicatori distinti per tipo (attenzione / promemoria /
-          focus), silenziosi quando non c'è nulla di quel tipo — mai un
-          segnaposto vuoto. Dati identici a quelli già calcolati sotto per
-          la vista espansa, nessun segnale nuovo. */}
+      {/* Attention Rail — la sidebar compressa non è "nascosta", è un
+          livello di densità diverso della STESSA informazione espansa
+          sotto (Sidebar System Refinement, sez. 4-6): un'icona semantica
+          per tipo invece di un unico pallino, ognuna col proprio stato
+          (silenziosa se non c'è nulla di quel tipo, mai un segnaposto
+          vuoto) e una micro-preview al hover (sez. 7) che riusa Tooltip
+          (components/ui/tooltip.tsx) — nessun secondo sistema di popup,
+          la stessa primitiva Base UI già usata per Dialog/Select. Numeri
+          solo dove aggiungono informazione reale (conteggio mail, N/tot
+          abitudini) — mai un contatore decorativo. Dati identici a quelli
+          già calcolati sotto per la vista espansa, nessun segnale nuovo. */}
       {rightPanelCollapsed && (
-        <div className="flex flex-1 flex-col items-center gap-3 overflow-y-auto py-3">
-          {(showEvent || importantMail.length > 0) && (
-            <span
-              title={
-                showEvent && eventSignal
-                  ? `${eventSignal.event.title} ${eventTimeLabel}`
-                  : `${importantMail.length} mail da gestire`
+        <div className="animate-in fade-in-0 slide-in-from-left-1 motion-reduce:animate-none flex flex-1 flex-col items-center gap-3 overflow-y-auto py-3 duration-200">
+          {showEvent && eventSignal && (
+            <RailIndicator
+              label={`Impegno: ${eventSignal.event.title}`}
+              preview={
+                <>
+                  <TooltipLabel>Impegni</TooltipLabel>
+                  <p className="mt-0.5 font-medium">{eventSignal.event.title}</p>
+                  <p className="text-background/70 mt-0.5">{eventTimeLabel}</p>
+                </>
               }
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "size-2 rounded-full",
+                  eventLevel === "urgente" ? "bg-destructive" : "bg-primary",
+                )}
+              />
+            </RailIndicator>
+          )}
+
+          {importantMail.length > 0 && (
+            <RailIndicator
+              label={`${importantMail.length} mail importanti`}
+              preview={
+                <>
+                  <TooltipLabel>Mail</TooltipLabel>
+                  <p className="mt-0.5">
+                    {importantMail.length} {importantMail.length === 1 ? "mail importante" : "mail importanti"}
+                  </p>
+                  {latestMail?.date && (
+                    <p className="text-background/70 mt-0.5">Ultima ricevuta {oraBreve(latestMail.date)}</p>
+                  )}
+                </>
+              }
+            >
+              <span className="text-primary flex items-center gap-0.5">
+                <WidgetIcon type="mail" className="size-4" />
+                <span className="font-mono text-[0.68rem] font-semibold tabular-nums">
+                  {importantMail.length}
+                </span>
+              </span>
+            </RailIndicator>
+          )}
+
+          {showDiarioReminder && (
+            <RailIndicator
+              label="Diario di oggi da scrivere"
+              preview={
+                <>
+                  <TooltipLabel>Diario</TooltipLabel>
+                  <p className="mt-0.5">Ancora da scrivere oggi</p>
+                </>
+              }
+            >
+              <WidgetIcon type="diario" className="text-primary size-4" />
+            </RailIndicator>
+          )}
+
+          {(showEvent || importantMail.length > 0 || showDiarioReminder) && (
+            <span aria-hidden className="border-border w-5 shrink-0 border-t" />
+          )}
+
+          <RailIndicator
+            label="Focus"
+            preview={
+              <>
+                <TooltipLabel>Focus</TooltipLabel>
+                {focusState === "idle-unmounted" && <p className="mt-0.5">Nessuna sessione oggi → Avvia</p>}
+                {focusState === "idle-mounted" && (
+                  <p className="mt-0.5">
+                    {diario.pomodoroSessions === 0
+                      ? "Nessuna sessione ancora oggi"
+                      : `${diario.pomodoroSessions} ${diario.pomodoroSessions === 1 ? "sessione" : "sessioni"} · ~${studyMinutes} min`}
+                  </p>
+                )}
+                {focusState === "paused" && pomodoroLive && (
+                  <p className="mt-0.5">
+                    {PHASE_LABELS[pomodoroLive.phase]} in pausa · <StaticClock seconds={pomodoroLive.pausedLeft} />
+                  </p>
+                )}
+                {focusState === "running" && pomodoroLive?.endAt && (
+                  <p className="mt-0.5">
+                    {PHASE_LABELS[pomodoroLive.phase]} · <FocusClock endAt={pomodoroLive.endAt} />
+                  </p>
+                )}
+              </>
+            }
+          >
+            <WidgetIcon
+              type="pomodoro"
               className={cn(
-                "size-2 shrink-0 rounded-full",
-                eventLevel === "urgente" ? "bg-destructive" : "bg-primary",
+                "size-4",
+                focusState === "running"
+                  ? "text-destructive"
+                  : focusState === "paused"
+                    ? "text-primary"
+                    : focusState === "idle-mounted" && diario.pomodoroSessions > 0
+                      ? "text-primary"
+                      : "text-ink-faint",
               )}
             />
-          )}
-          {showDiarioReminder && (
-            <span title="Diario di oggi — da scrivere" className="shrink-0">
-              <WidgetIcon type="diario" className="text-primary size-4" />
-            </span>
-          )}
-          {(showEvent || importantMail.length > 0 || showDiarioReminder) &&
-            diario.pomodoroSessions > 0 && (
-              <span aria-hidden className="border-border w-5 shrink-0 border-t" />
-            )}
-          {diario.pomodoroSessions > 0 && (
-            <span
-              title={`${diario.pomodoroSessions} sessioni Pomodoro oggi`}
-              className="text-primary shrink-0 font-mono text-[0.7rem] font-semibold"
+          </RailIndicator>
+
+          {habitList.length > 0 && (
+            <RailIndicator
+              label={`${habitsDone} di ${habitList.length} abitudini oggi`}
+              preview={
+                <>
+                  <TooltipLabel>Oggi</TooltipLabel>
+                  <p className="mt-0.5">
+                    {habitsDone}/{habitList.length} abitudini
+                  </p>
+                </>
+              }
             >
-              P
-            </span>
+              <span className="text-ink-soft font-mono text-[0.68rem] font-semibold tabular-nums">
+                {habitsDone}/{habitList.length}
+              </span>
+            </RailIndicator>
           )}
         </div>
       )}
 
       {!rightPanelCollapsed && (
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
+        <div className="animate-in fade-in-0 slide-in-from-right-1 motion-reduce:animate-none flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4 duration-200">
           <section>
             <SectionLabel>Daily Brief</SectionLabel>
             {attentionCount === 0 ? (
@@ -342,7 +468,10 @@ export function RightPanel({
 
           <section>
             <SectionLabel>Azioni rapide</SectionLabel>
-            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+            {/* Lista compatta, non più una griglia di 5 grandi CTA (sez. 9):
+                stesso set di azioni, integrate come righe leggere —
+                sfondo/colore solo al hover, nessun bordo a riposo. */}
+            <div className="mt-1">
               <QuickAction
                 type="note"
                 label="Nuova nota"
@@ -363,7 +492,7 @@ export function RightPanel({
               />
               <Dialog open={eventFormOpen} onOpenChange={setEventFormOpen}>
                 <DialogTrigger className={quickActionClass}>
-                  <WidgetIcon type="agenda" className="text-primary size-3.5 shrink-0" />
+                  <WidgetIcon type="agenda" className="text-ink-faint size-3.5 shrink-0" />
                   <span className="truncate">Nuovo evento</span>
                 </DialogTrigger>
                 <NewEventForm
@@ -373,8 +502,8 @@ export function RightPanel({
                 />
               </Dialog>
               <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-                <DialogTrigger className={cn(quickActionClass, "col-span-2")}>
-                  <Search className="text-primary size-3.5 shrink-0" />
+                <DialogTrigger className={quickActionClass}>
+                  <Search className="text-ink-faint size-3.5 shrink-0" />
                   <span className="truncate">Cerca nella memoria</span>
                 </DialogTrigger>
                 <HistoryExplorer todayKey={todayKey} />
@@ -382,24 +511,71 @@ export function RightPanel({
             </div>
           </section>
 
+          {/* Focus riflette lo stato REALE del Pomodoro montato sulla board
+              (pomodoroLive, board-context.tsx) — nessun secondo timer: il
+              countdown qui sotto (FocusClock) legge lo stesso `endAt` e
+              ricalcola per conto proprio, avvia/pausa chiamano le stesse
+              identiche funzioni del widget centrale (Sidebar System
+              Refinement, Step 5). */}
           <section className="border-border border-t pt-4">
             <SectionLabel>Focus</SectionLabel>
-            <div className="mt-1.5 flex items-center justify-between gap-2">
-              <p className="text-ink-soft min-w-0 flex-1 text-sm">
-                {diario.pomodoroSessions === 0
-                  ? "Nessuna sessione ancora oggi."
-                  : `${diario.pomodoroSessions} ${diario.pomodoroSessions === 1 ? "sessione" : "sessioni"} · ~${studyMinutes} min`}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!hasWidget("pomodoro")) addWidget("pomodoro")
-                }}
-                className="text-primary hover:bg-brand-soft shrink-0 rounded-md px-2 py-1 text-[0.68rem] font-semibold"
-              >
-                {hasWidget("pomodoro") ? "Sulla board" : "Vai"}
-              </button>
-            </div>
+            {focusState === "running" && pomodoroLive?.endAt ? (
+              <div className="mt-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className={cn("text-sm font-medium", PHASE_TEXT[pomodoroLive.phase])}>
+                    {PHASE_LABELS[pomodoroLive.phase]}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={pomodoroLive.toggleRunning}
+                    className="text-primary hover:bg-brand-soft shrink-0 rounded-md px-2 py-1 text-[0.68rem] font-semibold"
+                  >
+                    Pausa
+                  </button>
+                </div>
+                <FocusActive
+                  endAt={pomodoroLive.endAt}
+                  totalSec={DURATIONS[pomodoroLive.phase]}
+                  textClass={PHASE_TEXT[pomodoroLive.phase]}
+                  barClass={PHASE_BAR[pomodoroLive.phase]}
+                />
+              </div>
+            ) : focusState === "paused" && pomodoroLive ? (
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <p className="text-ink-soft min-w-0 flex-1 text-sm">
+                  <StaticClock seconds={pomodoroLive.pausedLeft} /> · In pausa
+                </p>
+                <button
+                  type="button"
+                  onClick={pomodoroLive.toggleRunning}
+                  className="text-primary hover:bg-brand-soft shrink-0 rounded-md px-2 py-1 text-[0.68rem] font-semibold"
+                >
+                  Riprendi
+                </button>
+              </div>
+            ) : (
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <p className="text-ink-soft min-w-0 flex-1 text-sm">
+                  {diario.pomodoroSessions === 0
+                    ? "Nessuna sessione ancora oggi."
+                    : `${diario.pomodoroSessions} ${diario.pomodoroSessions === 1 ? "sessione" : "sessioni"} · ~${studyMinutes} min`}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Il blocco è già montato (focusState "idle-mounted"):
+                    // avvialo per davvero da qui, stessa funzione del
+                    // pulsante Avvia del widget — altrimenti mancava
+                    // proprio la board per aggiungerlo (idle-unmounted).
+                    if (pomodoroLive) pomodoroLive.toggleRunning()
+                    else if (!hasWidget("pomodoro")) addWidget("pomodoro")
+                  }}
+                  className="text-primary hover:bg-brand-soft shrink-0 rounded-md px-2 py-1 text-[0.68rem] font-semibold"
+                >
+                  {pomodoroLive ? "Avvia" : "Vai"}
+                </button>
+              </div>
+            )}
           </section>
 
           {habitList.length > 0 && (
@@ -516,10 +692,107 @@ function QuickAction({
       }}
       aria-disabled={added}
       title={added ? `${label} — già sulla board` : label}
-      className={cn(quickActionClass, added && "cursor-default opacity-45 hover:border-border/0 hover:bg-muted/40")}
+      className={cn(quickActionClass, added && "cursor-default opacity-45 hover:bg-transparent")}
     >
-      <WidgetIcon type={type} className="text-primary size-3.5 shrink-0" />
+      <WidgetIcon type={type} className="text-ink-faint size-3.5 shrink-0" />
       <span className="truncate">{label}</span>
     </button>
   )
+}
+
+function formatClock(seconds: number): string {
+  const mm = String(Math.floor(seconds / 60)).padStart(2, "0")
+  const ss = String(seconds % 60).padStart(2, "0")
+  return `${mm}:${ss}`
+}
+
+/** Countdown congelato — nessun ticking, per lo stato "in pausa" (il tempo
+ * rimasto non scorre finché non si riprende). */
+function StaticClock({ seconds }: { seconds: number }) {
+  return <span className="font-mono tabular-nums">{formatClock(seconds)}</span>
+}
+
+/** Countdown live per la Attention Rail — legge `endAt` (board-context.tsx,
+ * cambia solo su avvio/pausa/completamento in pomodoro-widget.tsx) e
+ * ricalcola i secondi rimasti con un setInterval TUTTO SUO: un secondo
+ * orologio che legge la stessa ora vera del widget centrale, non un
+ * secondo timer (Sidebar System Refinement, Step 5 — "NON creare un
+ * secondo timer"). Isolato in un componente a parte apposta: il tick di
+ * QUESTO span, ogni secondo, non fa ri-renderizzare il resto del pannello
+ * (a differenza di aggiornare `pomodoroLive` in board-context ogni tick,
+ * che ri-renderizzerebbe tutta l'app — vedi il commento lì). */
+function FocusClock({ endAt }: { endAt: number }) {
+  const [left, setLeft] = useState(() => Math.max(0, Math.round((endAt - Date.now()) / 1000)))
+  useEffect(() => {
+    const tick = () => setLeft(Math.max(0, Math.round((endAt - Date.now()) / 1000)))
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [endAt])
+  return <span className="font-mono tabular-nums">{formatClock(left)}</span>
+}
+
+/** Come FocusClock, con numero grande + barra di progresso — solo per la
+ * sezione Focus espansa: stesso linguaggio visivo del widget centrale
+ * (PHASE_BAR/PHASE_TEXT riusati dal chiamante, non ridefiniti qui). */
+function FocusActive({
+  endAt,
+  totalSec,
+  textClass,
+  barClass,
+}: {
+  endAt: number
+  totalSec: number
+  textClass: string
+  barClass: string
+}) {
+  const [left, setLeft] = useState(() => Math.max(0, Math.round((endAt - Date.now()) / 1000)))
+  useEffect(() => {
+    const tick = () => setLeft(Math.max(0, Math.round((endAt - Date.now()) / 1000)))
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [endAt])
+  const progress = totalSec > 0 ? (100 * (totalSec - left)) / totalSec : 0
+  return (
+    <div className="mt-1.5">
+      <p className={cn("font-mono text-2xl font-medium tabular-nums", textClass)}>{formatClock(left)}</p>
+      <div className="bg-muted mt-1.5 h-1 overflow-hidden rounded-full">
+        <div className={cn("h-full transition-[width]", barClass)} style={{ width: `${progress}%` }} />
+      </div>
+    </div>
+  )
+}
+
+/** Un'icona/indicatore della Attention Rail compressa + la sua
+ * micro-preview al hover (sez. 7 del documento) — riusa Tooltip
+ * (components/ui/tooltip.tsx, avvolge la primitiva Base UI già usata da
+ * Dialog/Select) per tutti gli indicatori, non un popover diverso per
+ * ciascuno: "se il sistema di tooltip esiste già, riutilizzarlo" — qui è
+ * la prima volta che serve, quindi è anche il posto in cui nasce, pronto
+ * per essere riusato altrove in futuro. */
+function RailIndicator({
+  children,
+  preview,
+  label,
+}: {
+  children: ReactNode
+  preview: ReactNode
+  /** Nome accessibile del trigger — la preview è solo al hover/focus, senza
+   * un aria-label chi naviga da tastiera o con uno screen reader non
+   * saprebbe cosa rappresenta l'icona. */
+  label: string
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger aria-label={label} className="grid shrink-0 place-items-center rounded-md p-0.5">
+        {children}
+      </TooltipTrigger>
+      <TooltipPopup side="left">{preview}</TooltipPopup>
+    </Tooltip>
+  )
+}
+
+function TooltipLabel({ children }: { children: ReactNode }) {
+  return <p className="text-background/60 text-[0.6rem] font-semibold tracking-[0.08em] uppercase">{children}</p>
 }

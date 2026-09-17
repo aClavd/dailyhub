@@ -107,7 +107,37 @@ type BoardApi = {
    * segna ancora da scrivere"). */
   todayDiarioPatch: Partial<DiarioState>
   patchTodayDiario: (patch: Partial<DiarioState>) => void
+
+  /** Stato live del Pomodoro montato sulla board — la sezione Focus del
+   * pannello destro lo riflette in tempo reale (Sidebar System Refinement,
+   * Step 5: "il Focus deve rappresentare lo stato reale del Pomodoro
+   * centrale... NON creare un secondo timer"). `null` se il blocco non è
+   * sulla board: il timer esiste solo come stato dell'istanza montata, non
+   * gira in background — non c'è niente da riflettere finché non c'è un
+   * widget.
+   *
+   * `endAt` (timestamp assoluto di fine, non i secondi rimanenti) è la
+   * parte importante: cambia solo agli avvii/pause/completamenti, non ogni
+   * secondo — chi legge (right-panel.tsx) calcola il proprio countdown da
+   * lì con un setInterval TUTTO SUO. Se qui dentro girasse un numero di
+   * secondi aggiornato ogni tick, ogni consumatore di useBoard() (board,
+   * rail, right-panel) ri-renderizzerebbe ogni secondo — due orologi che
+   * leggono la stessa ora vera, non un secondo timer. */
+  pomodoroLive: PomodoroLive
+  setPomodoroLive: (value: PomodoroLive) => void
 }
+
+export type PomodoroLive = {
+  phase: "focus" | "short" | "long"
+  running: boolean
+  endAt: number | null
+  /** Quanto restava (in secondi) al momento della pausa/dell'ultimo report
+   * — mostrato mentre `endAt` è null (in pausa) o come valore di appoggio
+   * al primo render. */
+  pausedLeft: number
+  toggleRunning: () => void
+  skip: () => void
+} | null
 
 const BoardContext = createContext<BoardApi | null>(null)
 
@@ -144,6 +174,7 @@ export function BoardProvider({
   const [isDraggingWidget, setIsDraggingWidget] = useState(false)
   const [isDraggingReorder, setIsDraggingReorder] = useState(false)
   const [todayDiarioPatch, setTodayDiarioPatch] = useState<Partial<DiarioState>>({})
+  const [pomodoroLive, setPomodoroLive] = useState<PomodoroLive>(null)
   const [, startTransition] = useTransition()
 
   // Letto da `persist` senza essere una dipendenza reattiva — cambia solo
@@ -359,6 +390,8 @@ export function BoardProvider({
       setIsDraggingReorder,
       todayDiarioPatch,
       patchTodayDiario,
+      pomodoroLive,
+      setPomodoroLive,
     }),
     [
       layout,
@@ -388,6 +421,7 @@ export function BoardProvider({
       isDraggingReorder,
       todayDiarioPatch,
       patchTodayDiario,
+      pomodoroLive,
     ],
   )
 

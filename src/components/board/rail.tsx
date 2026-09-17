@@ -293,7 +293,7 @@ export function Rail({
             </div>
 
             {railCollapsed ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-2">
+              <div className="animate-in fade-in-0 motion-reduce:animate-none flex flex-1 flex-col items-center justify-center gap-2 duration-200">
                 {days.map((day) => (
                   <div
                     key={day.key}
@@ -316,7 +316,7 @@ export function Rail({
                 ))}
               </div>
             ) : (
-              <div className="divide-border flex flex-col divide-y">
+              <div className="divide-border animate-in fade-in-0 motion-reduce:animate-none flex flex-col divide-y duration-200">
                 {days.map((day) => {
                   const summary = daySummary(day.entry)
                   return (

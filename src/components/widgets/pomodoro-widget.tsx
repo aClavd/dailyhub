@@ -1,7 +1,7 @@
 "use client"
 
 import { SkipForward } from "lucide-react"
-import { useEffect, useRef, useState, useTransition } from "react"
+import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 
 import { useBoard } from "@/components/board/board-context"
 import { useReportEmphasis } from "@/components/board/widget-shell"
@@ -32,7 +32,7 @@ function saveSessionWithRetry(date: string, onFinalFailure: () => void, attempt 
   })
 }
 
-type Phase = "focus" | "short" | "long"
+export type Phase = "focus" | "short" | "long"
 
 // Esportate (Right Sidebar, Fase B): il Focus del pannello destro deriva
 // "minuti di studio oggi" da sessioni × durata di un blocco — stessa fonte
@@ -43,20 +43,27 @@ export const DURATIONS: Record<Phase, number> = {
   long: 15 * 60,
 }
 
-const LABELS: Record<Phase, string> = {
+// Esportate (Sidebar System Refinement, Step 5): la sezione Focus del
+// pannello destro mostra la stessa etichetta di fase del widget centrale
+// quando una sessione è live — non un'etichetta ridigitata lì.
+export const PHASE_LABELS: Record<Phase, string> = {
   focus: "Studio",
   short: "Pausa breve",
   long: "Pausa lunga",
 }
+const LABELS = PHASE_LABELS
 
 // Rosso in studio, blu in pausa — riusa colori già nella palette (destructive
 // e il blu di Libero mail), nessuna tinta nuova aggiunta al design system.
-const PHASE_TEXT: Record<Phase, string> = {
+// Esportate (Sidebar System Refinement, Step 5): la sezione Focus del
+// pannello destro usa la stessa coppia di colori per fase, non una scelta
+// propria.
+export const PHASE_TEXT: Record<Phase, string> = {
   focus: "text-destructive",
   short: "text-libero-fg",
   long: "text-libero-fg",
 }
-const PHASE_BAR: Record<Phase, string> = {
+export const PHASE_BAR: Record<Phase, string> = {
   focus: "bg-destructive",
   short: "bg-libero-fg",
   long: "bg-libero-fg",
@@ -108,12 +115,27 @@ function playClick(ctx: AudioContext) {
  * "record" salvato sul giorno per poterlo confrontare nel tempo.
  */
 export function PomodoroWidget({ initial }: { initial: number }) {
-  const { patchTodayDiario } = useBoard()
+  const { patchTodayDiario, setPomodoroLive } = useBoard()
   const pushToast = useToast()
   const [sessioni, setSessioni] = useState(initial)
   const [phase, setPhase] = useState<Phase>("focus")
   const [left, setLeft] = useState(DURATIONS.focus)
   const [running, setRunning] = useState(false)
+
+  // Timestamp assoluto di fine invece di scalare un secondo alla volta: se il
+  // tab va in background (o il browser rallenta) i tick di setInterval
+  // possono saltare o accumularsi — contando "a mano" un secondo per tick si
+  // rischia di non accorgersi mai che il tempo è scaduto. Ricalcolando ogni
+  // volta dal timestamp assoluto il countdown resta corretto qualunque cosa
+  // succeda in mezzo. `endAtRef` pilota il tick loop qui sotto (invariato);
+  // `endAt` (stato, sotto) è lo STESSO valore ma tenuto anche come stato,
+  // solo per essere condiviso col pannello destro (Right Sidebar Focus,
+  // Step 5) — aggiornato negli stessi punti in cui lo è endAtRef, mai
+  // riletto dal ref durante un render (rischierebbe di leggere un valore
+  // di un istante prima di quando l'effect sotto lo aggiorna).
+  const endAtRef = useRef<number | null>(null)
+  const [endAt, setEndAt] = useState<number | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
   const [, startTransition] = useTransition()
 
   // Segnala in su il conteggio di oggi — stesso motivo/stesso schema di
@@ -124,23 +146,36 @@ export function PomodoroWidget({ initial }: { initial: number }) {
     patchTodayDiario({ pomodoroSessions: sessioni })
   }, [sessioni, patchTodayDiario])
 
-  // Timestamp assoluto di fine invece di scalare un secondo alla volta: se il
-  // tab va in background (o il browser rallenta) i tick di setInterval
-  // possono saltare o accumularsi — contando "a mano" un secondo per tick si
-  // rischia di non accorgersi mai che il tempo è scaduto. Ricalcolando ogni
-  // volta dal timestamp assoluto il countdown resta corretto qualunque cosa
-  // succeda in mezzo.
-  const endAtRef = useRef<number | null>(null)
-  const audioCtxRef = useRef<AudioContext | null>(null)
+  // Avvia/mette in pausa — estratta da useCallback (prima era inline
+  // nell'onClick) perché ora serve anche fuori da qui: il pannello destro
+  // (Right Sidebar Focus) la richiama tramite pomodoroLive.toggleRunning
+  // sotto, stesso identico pulsante Avvia/Pausa, non uno nuovo che duplica
+  // la logica dell'AudioContext.
+  const toggleRunning = useCallback(() => {
+    if (!running) {
+      // L'AudioContext va creato durante un gesto reale dell'utente — crearlo
+      // dopo, dentro il tick del timer, verrebbe bloccato dalle policy di
+      // autoplay dei browser. Un click dal pannello destro è comunque un
+      // gesto reale dell'utente, la policy resta rispettata.
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext()
+      try {
+        playClick(audioCtxRef.current)
+      } catch {
+        // niente audio, pazienza
+      }
+    }
+    setRunning((value) => !value)
+  }, [running])
 
   // Chiude il blocco corrente come se il countdown fosse arrivato a zero —
-  // condivisa tra lo scatto naturale del timer e il pulsante "salta"
-  // (Pomofocus la chiama così: salti alla fine, non annulli e basta), un
-  // solo punto che decide fase successiva/conteggio/suono invece di due
-  // copie della stessa logica.
-  function completePhase() {
+  // condivisa tra lo scatto naturale del timer, il pulsante "salta"
+  // (Pomofocus la chiama così: salti alla fine, non annulli e basta) e ora
+  // anche il pannello destro (pomodoroLive.skip) — un solo punto che decide
+  // fase successiva/conteggio/suono, non copie della stessa logica.
+  const completePhase = useCallback(() => {
     setRunning(false)
     endAtRef.current = null
+    setEndAt(null)
     try {
       if (audioCtxRef.current) playChime(audioCtxRef.current)
     } catch {
@@ -167,14 +202,20 @@ export function PomodoroWidget({ initial }: { initial: number }) {
       setPhase("focus")
       setLeft(DURATIONS.focus)
     }
-  }
+    // pushToast/startTransition intenzionalmente fuori: contesto/hook
+    // stabili, non serve ricrearli tra le dipendenze.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, sessioni])
 
   useEffect(() => {
     if (!running) {
       endAtRef.current = null
       return
     }
-    if (endAtRef.current === null) endAtRef.current = Date.now() + left * 1000
+    if (endAtRef.current === null) {
+      endAtRef.current = Date.now() + left * 1000
+      setEndAt(endAtRef.current)
+    }
 
     const tick = () => {
       const endAt = endAtRef.current
@@ -191,11 +232,25 @@ export function PomodoroWidget({ initial }: { initial: number }) {
     // "running" diventa true (quel render lo vede comunque, essendo running
     // già tra le dipendenze) — includerlo ricreerebbe l'intervallo a ogni
     // tick, ogni secondo, invece che una volta sola all'avvio/al cambio fase.
-    // completePhase intenzionalmente fuori: è una funzione normale
-    // ridefinita a ogni render, chiuderebbe comunque sullo stesso
-    // phase/sessioni già nelle dipendenze qui sotto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, phase, sessioni])
+  }, [running, phase, sessioni, completePhase])
+
+  // Segnala in su lo stato live per la sezione Focus del pannello destro
+  // (Right Sidebar Step 5) — SOLO ai cambi di fase/running/endAt (rari),
+  // mai a ogni tick: aggiornare qui un numero ogni secondo farebbe
+  // ri-renderizzare tutta l'app che consuma useBoard() ogni secondo (board,
+  // rail, right-panel). Il pannello destro calcola il proprio countdown da
+  // `endAt` con un setInterval tutto suo — un secondo orologio che legge la
+  // stessa ora vera, non un secondo timer (nessuna logica di fase/conteggio
+  // duplicata: toggleRunning/skip sotto SONO questi stessi, non copie).
+  useEffect(() => {
+    setPomodoroLive({ phase, running, endAt, pausedLeft: left, toggleRunning, skip: completePhase })
+    return () => setPomodoroLive(null)
+    // left intenzionalmente fuori: pausedLeft deve restare il valore di
+    // quando running/endAt sono cambiati l'ultima volta (il momento giusto
+    // per "quanto restava"), non aggiornarsi ogni tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, running, endAt, toggleRunning, completePhase, setPomodoroLive])
 
   // "attenzione", non "urgente": una sessione che scorre è uno stato
   // calmo che acquisisce rilevanza, non qualcosa che richiede attenzione
@@ -233,20 +288,7 @@ export function PomodoroWidget({ initial }: { initial: number }) {
       <div className="mt-3 flex gap-2">
         <button
           type="button"
-          onClick={() => {
-            // L'AudioContext va creato durante un gesto reale dell'utente
-            // (questo click) — crearlo dopo, dentro il tick del timer,
-            // verrebbe bloccato dalle policy di autoplay dei browser.
-            if (!running) {
-              if (!audioCtxRef.current) audioCtxRef.current = new AudioContext()
-              try {
-                playClick(audioCtxRef.current)
-              } catch {
-                // niente audio, pazienza
-              }
-            }
-            setRunning((value) => !value)
-          }}
+          onClick={toggleRunning}
           className="bg-brand-soft text-primary flex-1 rounded-md py-1.5 text-xs font-semibold"
         >
           {running ? "Pausa" : "Avvia"}
@@ -265,6 +307,7 @@ export function PomodoroWidget({ initial }: { initial: number }) {
           onClick={() => {
             setRunning(false)
             endAtRef.current = null
+            setEndAt(null)
             setPhase("focus")
             setLeft(DURATIONS.focus)
           }}
