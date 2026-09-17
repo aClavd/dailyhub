@@ -2,7 +2,7 @@
 
 import { Search, Settings } from "lucide-react"
 import type { ReactNode } from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { useBoard } from "@/components/board/board-context"
 import { WidgetIcon } from "@/components/board/widget-icon"
@@ -42,7 +42,54 @@ const MAX_MAIL_ROWS = 3
 // di specifico da gestire; Quick Actions sono scorciatoie, non elementi da
 // "risolvere").
 const quickActionClass =
-  "hover:bg-muted text-ink-soft hover:text-foreground flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-xs font-medium transition-colors"
+  "hover:bg-muted text-ink-soft hover:text-foreground active:translate-y-px flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-xs font-medium transition-colors duration-100"
+
+// Motion Language v1, livello STANDARD — deve combaigare con la durata di
+// attention-exit in globals.css.
+const ATTENTION_EXIT_MS = 200
+
+type Row = { key: string; node: ReactNode }
+
+/**
+ * Tiene a schermo, per `exitMs` in più, le righe appena sparite dai dati
+ * sorgente (`rows`) — non uno stato/sorgente nuovo: Attenzione resta
+ * derivata esattamente come prima (agenda-signal.ts/mail-filter-match.ts),
+ * questo hook fa solo da "memoria di scena" per il loro ultimo contenuto
+ * reso, il tempo di far girare l'animazione di uscita (attention-exit,
+ * globals.css) prima che la riga sparisca per davvero. Popup e Attenzione
+ * restano la stessa fonte di verità — qui non cambia quando/se un
+ * elemento compare, solo quanto ci mette a togliersi di torno dopo.
+ * Nessun FLIP sui vicini che risalgono (deliberato, vedi il piano): uno
+ * scatto piccolo quando la riga sparisce per davvero è accettato.
+ */
+function useExitingRows(rows: Row[], exitMs: number): (Row & { exiting: boolean })[] {
+  const [ghosts, setGhosts] = useState<Row[]>([])
+  const prevRowsRef = useRef(rows)
+
+  useEffect(() => {
+    const prevRows = prevRowsRef.current
+    const currentKeys = new Set(rows.map((r) => r.key))
+    const justRemoved = prevRows.filter((r) => !currentKeys.has(r.key))
+    prevRowsRef.current = rows
+    if (justRemoved.length === 0) return
+    setGhosts((prev) => [...prev, ...justRemoved])
+    // Niente cleanup che cancella questi timer: ognuno riguarda solo la
+    // propria chiave, farli scadere tutti per conto proprio anche se
+    // l'effect gira di nuovo prima (un'altra riga cambiata nel frattempo)
+    // è corretto — cancellarli qui orfanerebbe quei fantasmi per sempre.
+    for (const r of justRemoved) {
+      window.setTimeout(() => {
+        setGhosts((prev) => prev.filter((g) => g.key !== r.key))
+      }, exitMs)
+    }
+  }, [rows, exitMs])
+
+  const currentKeys = new Set(rows.map((r) => r.key))
+  return [
+    ...rows.map((r) => ({ ...r, exiting: false })),
+    ...ghosts.filter((g) => !currentKeys.has(g.key)).map((g) => ({ ...g, exiting: true })),
+  ]
+}
 
 /**
  * Right Sidebar / Personal Attention Center (Fase B, vedi il piano) —
@@ -205,10 +252,62 @@ export function RightPanel({
   if (showDiarioReminder) briefSentences.push("Diario ancora da scrivere.")
   if (!showEvent) briefSentences.push("Nessun impegno imminente.")
 
+  // Righe di Attenzione — stessa fonte/stessa logica di sempre (sopra),
+  // solo raccolte in un array con identità stabile (key) così
+  // useExitingRows (Motion Language v1) può accorgersi di quale riga è
+  // appena sparita e farla animare in uscita invece di un taglio secco.
+  const attentionRowsSource: Row[] = [
+    ...(showEvent && eventSignal
+      ? [
+          {
+            key: `event-${eventSignal.event.id}`,
+            node: (
+              <AttentionRow
+                type="agenda"
+                title={eventSignal.event.title}
+                time={eventTimeLabel}
+                urgent={eventLevel === "urgente"}
+                onClick={() => {
+                  if (!hasWidget("agenda")) addWidget("agenda")
+                }}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...importantMail.slice(0, MAX_MAIL_ROWS).map((m) => ({
+      key: `mail-${m.provider}-${m.id}`,
+      node: <MailRow message={m} />,
+    })),
+    ...(showDiarioReminder
+      ? [
+          {
+            key: `diario-${todayKey}`,
+            node: (
+              <AttentionRow
+                type="diario"
+                title="Diario di oggi"
+                time="da scrivere"
+                urgent={false}
+                onClick={() => {
+                  if (!hasWidget("diario")) addWidget("diario")
+                }}
+              />
+            ),
+          },
+        ]
+      : []),
+  ]
+  const attentionRows = useExitingRows(attentionRowsSource, ATTENTION_EXIT_MS)
+
   return (
     <aside
       className={cn(
-        "hidden shrink-0 flex-col border-l border-border bg-card transition-[width] duration-150 motion-reduce:transition-none lg:sticky lg:top-0 lg:flex lg:h-screen",
+        // Motion Language v1 — livello STANDARD (200ms): allineata alla
+        // durata del contenuto sotto, non più un numero a sé (era 150ms) —
+        // la larghezza e il contenuto entrante appartengono alla stessa
+        // transizione percepita, non due timer indipendenti.
+        "hidden shrink-0 flex-col overflow-hidden border-l border-border bg-card transition-[width] duration-200 motion-reduce:transition-none lg:sticky lg:top-0 lg:flex lg:h-screen",
         // w-10 (40px) bastava per il solo pulsante — un'"Attention Rail"
         // vera con indicatori distinti (non un unico numero) chiede
         // qualche px in più, stesso tipo di aggiustamento già fatto per
@@ -233,7 +332,7 @@ export function RightPanel({
               <DialogTrigger
                 aria-label="Impostazioni"
                 title="Impostazioni"
-                className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border transition-colors"
+                className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint active:translate-y-px grid size-6 shrink-0 place-items-center rounded-md border transition-colors duration-100"
               >
                 <Settings className="size-3.5" />
               </DialogTrigger>
@@ -252,7 +351,7 @@ export function RightPanel({
             onClick={toggleRightPanel}
             aria-label={rightPanelCollapsed ? "Espandi il pannello" : "Riduci il pannello"}
             aria-expanded={!rightPanelCollapsed}
-            className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint grid size-6 shrink-0 place-items-center rounded-md border text-sm transition-colors"
+            className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint active:translate-y-px grid size-6 shrink-0 place-items-center rounded-md border text-sm transition-colors duration-100"
           >
             {rightPanelCollapsed ? "‹" : "›"}
           </button>
@@ -271,7 +370,14 @@ export function RightPanel({
           abitudini) — mai un contatore decorativo. Dati identici a quelli
           già calcolati sotto per la vista espansa, nessun segnale nuovo. */}
       {rightPanelCollapsed && (
-        <div className="animate-in fade-in-0 slide-in-from-left-1 motion-reduce:animate-none flex flex-1 flex-col items-center gap-3 overflow-y-auto py-3 duration-200">
+        // delay-75: il contenuto entrante aspetta un istante dopo che la
+        // larghezza ha iniziato a muoversi (Motion Language v1, sez. 2) —
+        // per la prima parte del movimento si vede SOLO la larghezza
+        // cambiare ("si sta comprimendo"), poi la Attention Rail sfuma
+        // dentro ("stessa informazione, più densa") — non le due cose
+        // insieme fin dal primo istante, che si percepiva come "un
+        // componente sparisce, un altro appare".
+        <div className="animate-in fade-in-0 slide-in-from-left-1 motion-reduce:animate-none flex flex-1 flex-col items-center gap-3 overflow-y-auto py-3 duration-200 delay-75">
           {showEvent && eventSignal && (
             <RailIndicator
               label={`Impegno: ${eventSignal.event.title}`}
@@ -310,7 +416,16 @@ export function RightPanel({
             >
               <span className="text-primary flex items-center gap-0.5">
                 <WidgetIcon type="mail" className="size-4" />
-                <span className="font-mono text-[0.68rem] font-semibold tabular-nums">
+                {/* key={valore}: forza React a rimontare questo span
+                 * quando il numero cambia (2→3 mail), non a ogni render —
+                 * la dissolvenza MICRO riparte solo lì, un piccolo
+                 * "battito" quando il conteggio cambia davvero (sez. 4,
+                 * "cambio numeri") invece di uno scatto o di girare a ogni
+                 * poll anche se il numero è rimasto lo stesso. */}
+                <span
+                  key={importantMail.length}
+                  className="animate-in fade-in-0 duration-100 motion-reduce:animate-none font-mono text-[0.68rem] font-semibold tabular-nums"
+                >
                   {importantMail.length}
                 </span>
               </span>
@@ -361,10 +476,15 @@ export function RightPanel({
               </>
             }
           >
+            {/* key={focusState}: stesso "battito" MICRO di sopra quando lo
+             * stato del Focus cambia categoria (idle→running→paused),
+             * non ad ogni tick del countdown (focusState non cambia ogni
+             * secondo, solo su avvio/pausa/completamento). */}
             <WidgetIcon
+              key={focusState}
               type="pomodoro"
               className={cn(
-                "size-4",
+                "animate-in fade-in-0 duration-100 motion-reduce:animate-none size-4",
                 focusState === "running"
                   ? "text-destructive"
                   : focusState === "paused"
@@ -388,7 +508,10 @@ export function RightPanel({
                 </>
               }
             >
-              <span className="text-ink-soft font-mono text-[0.68rem] font-semibold tabular-nums">
+              <span
+                key={habitsDone}
+                className="animate-in fade-in-0 duration-100 motion-reduce:animate-none text-ink-soft font-mono text-[0.68rem] font-semibold tabular-nums"
+              >
                 {habitsDone}/{habitList.length}
               </span>
             </RailIndicator>
@@ -397,7 +520,9 @@ export function RightPanel({
       )}
 
       {!rightPanelCollapsed && (
-        <div className="animate-in fade-in-0 slide-in-from-right-1 motion-reduce:animate-none flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4 duration-200">
+        // Stesso delay-75 di sopra, stessa ragione — coerenza tra le due
+        // direzioni (apri/chiudi) e con il rail sinistro (rail.tsx).
+        <div className="animate-in fade-in-0 slide-in-from-right-1 motion-reduce:animate-none flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4 duration-200 delay-75">
           <section>
             <SectionLabel>Daily Brief</SectionLabel>
             {attentionCount === 0 ? (
@@ -428,39 +553,31 @@ export function RightPanel({
             )}
           </section>
 
-          {attentionCount > 0 && (
+          {attentionRows.length > 0 && (
             <section>
               <SectionLabel>Attenzione</SectionLabel>
               <div className="mt-1.5 flex flex-col gap-1.5">
-                {showEvent && eventSignal && (
-                  <AttentionRow
-                    type="agenda"
-                    title={eventSignal.event.title}
-                    time={eventTimeLabel}
-                    urgent={eventLevel === "urgente"}
-                    onClick={() => {
-                      if (!hasWidget("agenda")) addWidget("agenda")
-                    }}
-                  />
-                )}
-                {importantMail.slice(0, MAX_MAIL_ROWS).map((m) => (
-                  <MailRow key={`${m.provider}-${m.id}`} message={m} />
+                {attentionRows.map(({ key, node, exiting }) => (
+                  <div
+                    key={key}
+                    className={cn(
+                      // Motion Language v1 — in uscita (risolta/sparita):
+                      // dissolvenza + collasso dell'altezza, poi tolta per
+                      // davvero (useExitingRows sopra). motion-reduce:
+                      // sparisce di scatto invece di restare a mezz'aria
+                      // per attention-exit-ms — coerente col resto
+                      // ("sidebar width può diventare istantanea").
+                      exiting &&
+                        "pointer-events-none overflow-hidden [animation:attention-exit_200ms_ease-out_forwards] motion-reduce:hidden",
+                    )}
+                  >
+                    {node}
+                  </div>
                 ))}
                 {importantMail.length > MAX_MAIL_ROWS && (
                   <p className="text-ink-faint px-1 text-[0.68rem]">
                     +{importantMail.length - MAX_MAIL_ROWS} altre mail
                   </p>
-                )}
-                {showDiarioReminder && (
-                  <AttentionRow
-                    type="diario"
-                    title="Diario di oggi"
-                    time="da scrivere"
-                    urgent={false}
-                    onClick={() => {
-                      if (!hasWidget("diario")) addWidget("diario")
-                    }}
-                  />
                 )}
               </div>
             </section>
@@ -528,7 +645,7 @@ export function RightPanel({
                   <button
                     type="button"
                     onClick={pomodoroLive.toggleRunning}
-                    className="text-primary hover:bg-brand-soft shrink-0 rounded-md px-2 py-1 text-[0.68rem] font-semibold"
+                    className="text-primary hover:bg-brand-soft active:translate-y-px shrink-0 rounded-md px-2 py-1 text-[0.68rem] font-semibold transition-colors duration-100"
                   >
                     Pausa
                   </button>
@@ -548,7 +665,7 @@ export function RightPanel({
                 <button
                   type="button"
                   onClick={pomodoroLive.toggleRunning}
-                  className="text-primary hover:bg-brand-soft shrink-0 rounded-md px-2 py-1 text-[0.68rem] font-semibold"
+                  className="text-primary hover:bg-brand-soft active:translate-y-px shrink-0 rounded-md px-2 py-1 text-[0.68rem] font-semibold transition-colors duration-100"
                 >
                   Riprendi
                 </button>
@@ -570,7 +687,7 @@ export function RightPanel({
                     if (pomodoroLive) pomodoroLive.toggleRunning()
                     else if (!hasWidget("pomodoro")) addWidget("pomodoro")
                   }}
-                  className="text-primary hover:bg-brand-soft shrink-0 rounded-md px-2 py-1 text-[0.68rem] font-semibold"
+                  className="text-primary hover:bg-brand-soft active:translate-y-px shrink-0 rounded-md px-2 py-1 text-[0.68rem] font-semibold transition-colors duration-100"
                 >
                   {pomodoroLive ? "Avvia" : "Vai"}
                 </button>
@@ -617,16 +734,38 @@ function AttentionRow({
     <button
       type="button"
       onClick={onClick}
-      className="border-border bg-card hover:bg-muted flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors"
+      className={cn(
+        "border-border bg-card hover:bg-muted relative flex items-center gap-2 overflow-hidden rounded-md border px-2 py-1.5 text-left transition-colors duration-100",
+        // Motion Language v1 — STANDARD, entra con una piccola dissolvenza
+        // + risalita al montaggio (nuova voce di Attenzione). Gioca una
+        // volta sola: la classe non è condizionata da uno stato che
+        // cambia più tardi, quindi non riparte ai render successivi.
+        // animation-duration-200 (non duration-200): quest'ultima è la
+        // stessa variabile di transition-colors qui sopra — usarla anche
+        // per l'animazione le farebbe combaciare per forza sulla stessa
+        // durata invece di restare due timing indipendenti.
+        "animate-in fade-in-0 slide-in-from-top-1 animation-duration-200 motion-reduce:animate-none",
+      )}
     >
+      {/* Impulso UNA volta sola quando la riga nasce (o diventa) urgente
+       * — attention-emphasis, globals.css. Elemento a parte apposta: sta
+       * sulla proprietà `animation` della sua stessa origine, non su
+       * quella del bottone qui sopra (già occupata dall'entrata) — due
+       * animazioni indipendenti, nessuna sovrascrive l'altra. */}
+      {urgent && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 [animation:attention-emphasis_300ms_ease-out] motion-reduce:hidden"
+        />
+      )}
       <WidgetIcon
         type={type}
-        className={cn("size-3.5 shrink-0", urgent ? "text-destructive" : "text-primary")}
+        className={cn("relative size-3.5 shrink-0", urgent ? "text-destructive" : "text-primary")}
       />
-      <span className="min-w-0 flex-1 truncate text-xs">{title}</span>
+      <span className="relative min-w-0 flex-1 truncate text-xs">{title}</span>
       <span
         className={cn(
-          "shrink-0 text-[0.65rem] font-medium",
+          "relative shrink-0 text-[0.65rem] font-medium",
           urgent ? "text-destructive" : "text-ink-faint",
         )}
       >
@@ -640,8 +779,10 @@ function AttentionRow({
  * c'è (Gmail), riga informativa senza azione quando non c'è (Libero non
  * espone un link diretto, vedi lib/mail.ts): mai un'azione finta. */
 function MailRow({ message }: { message: MailMessage }) {
+  // animation-duration-200 (non duration-200): stessa ragione di
+  // AttentionRow — non condividere la variabile con transition-colors qui.
   const rowClass =
-    "border-border bg-card flex items-center gap-2 rounded-md border px-2 py-1.5 transition-colors"
+    "border-border bg-card flex items-center gap-2 rounded-md border px-2 py-1.5 transition-colors duration-100 animate-in fade-in-0 slide-in-from-top-1 animation-duration-200 motion-reduce:animate-none"
   const content = (
     <>
       <WidgetIcon type="mail" className="text-primary size-3.5 shrink-0" />
@@ -785,7 +926,18 @@ function RailIndicator({
 }) {
   return (
     <Tooltip>
-      <TooltipTrigger aria-label={label} className="grid shrink-0 place-items-center rounded-md p-0.5">
+      {/* Motion Language v1, livello MICRO — un indicatore che compare
+       * (l'evento diventa imminente, arriva mail, ecc.) sfuma dentro in
+       * fretta invece di scattare: gioca solo al mount, come le altre
+       * entrate di questa sessione. Chi sparisce resta un taglio secco —
+       * qui la rail è già compatta, un collasso vero si vedrebbe a
+       * malapena e non vale la complessità in più (a differenza della
+       * lista Attenzione espansa, dove le righe sono grandi abbastanza
+       * da giustificarlo). */}
+      <TooltipTrigger
+        aria-label={label}
+        className="animate-in fade-in-0 duration-100 motion-reduce:animate-none grid shrink-0 place-items-center rounded-md p-0.5"
+      >
         {children}
       </TooltipTrigger>
       <TooltipPopup side="left">{preview}</TooltipPopup>

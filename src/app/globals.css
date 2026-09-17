@@ -226,6 +226,36 @@
   }
 }
 
+/* ============================================================
+   Motion Language v1 (vedi l'audit "DailyHub — Motion Language &
+   Microinteraction"). Quattro livelli, una sola curva (ease-out)
+   ovunque — il numero è qui come riferimento scritto unico; la
+   maggior parte dei componenti usa le classi Tailwind letterali
+   corrispondenti (duration-100/200/300, delay-75, gli
+   [animation:..._Nms_ease-out] sotto) invece di leggere queste
+   custom property via var(), per restare coerenti con come il resto
+   del progetto già scrive CSS — vedi qui per sapere "a quale livello
+   appartiene" un numero incontrato altrove.
+
+   MICRO      100ms  — hover, press, icone
+   STANDARD   200ms  — sidebar, popup, righe Attenzione
+              +75ms  — ritardo del contenuto ENTRANTE su un cambio
+                       di densità (sidebar open/collapsed), così la
+                       larghezza si vede muovere per prima
+   LAYOUT     220ms  — assestamento post drag/resize/add/remove
+                       widget (already esistente come widget-settle)
+   EMPHASIS   300ms  — un impulso UNA SOLA VOLTA su un cambiamento
+                       importante, mai in loop
+   ============================================================ */
+:root {
+  --motion-ease: ease-out;
+  --motion-micro: 100ms;
+  --motion-standard: 200ms;
+  --motion-standard-delay: 75ms;
+  --motion-layout: 220ms;
+  --motion-emphasis: 300ms;
+}
+
 /* Piccolo "assestamento" quando un blocco cambia taglia: la griglia CSS
    non anima gli span di colonna/riga, quindi diamo un feedback tattile
    sul blocco stesso appena la nuova taglia si applica. */
@@ -235,6 +265,70 @@
   }
   100% {
     scale: 1;
+  }
+}
+
+/* Ingresso di un blocco appena aggiunto alla board — stessa direzione di
+   widget-settle (scale 0.97→1) più una dissolvenza, playa una sola volta
+   al mount (la classe che la usa non è condizionata da uno stato che
+   cambia più tardi, quindi il browser non la ripete ai render successivi
+   — vedi widget-shell.tsx, `justAdded`). */
+@keyframes widget-enter {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+/* Uscita di un blocco rimosso dalla board — gioca PRIMA che il layout
+   venga davvero ricalcolato (vedi board-context.tsx, removeWidget): il
+   blocco sfuma/si restringe da solo nella sua cella attuale, poi (a
+   animazione finita) il resto della board si assesta nel buco lasciato
+   libero con l'animazione widget-settle già esistente — sequenziale, non
+   simultaneo, per evitare che due animazioni si sovrappongano sulla
+   stessa cella. */
+@keyframes widget-exit {
+  from {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+/* Una riga di Attenzione che si risolve/sparisce — dissolvenza + collasso
+   dell'altezza (max-height, il trucco CSS standard per animare qualcosa
+   che altrimenti sarebbe "height: auto", non animabile direttamente). Chi
+   resta risale di conseguenza con un piccolo scatto quando la riga viene
+   tolta per davvero — accettato esplicitamente, niente FLIP per questo. */
+@keyframes attention-exit {
+  from {
+    opacity: 1;
+    max-height: 4rem;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+  }
+}
+
+/* Impulso UNA VOLTA SOLA su una riga di Attenzione che nasce già urgente
+   (o lo diventa mentre è già a schermo) — un velo di colore che sfuma via,
+   mai un loop. Stesso rosso già usato per "urgente" altrove (widget-shell,
+   agenda-signal), nessuna tinta nuova. */
+@keyframes attention-emphasis {
+  0%,
+  55% {
+    background-color: color-mix(in oklch, var(--destructive) 16%, transparent);
+  }
+  100% {
+    background-color: transparent;
   }
 }
 

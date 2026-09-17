@@ -69,12 +69,24 @@ export function WidgetShell({
     moveWidget,
     isDraggingReorder,
     setIsDraggingReorder,
+    leavingWidgets,
   } = useBoard()
   const meta = WIDGET_META[type]
   const placement = placementOf(type)
   const committedPlacement = committedLayout.find((p) => p.type === type)
+  const isLeaving = leavingWidgets.has(type)
   const [dragOver, setDragOver] = useState(false)
   const [justResized, setJustResized] = useState(false)
+  // Vero solo al mount, si spegne da solo — Motion Language v1: il
+  // blocco appena aggiunto entra con una dissolvenza (widget-enter,
+  // globals.css) invece di comparire già "finito". `true` come stato
+  // iniziale (non un effect che lo accende): deve poter animare fin dal
+  // primissimo render, non un istante dopo.
+  const [justAdded, setJustAdded] = useState(true)
+  useEffect(() => {
+    const id = setTimeout(() => setJustAdded(false), 220)
+    return () => clearTimeout(id)
+  }, [])
   // Segnalato dal contenuto (una volta risolto) via EmphasisContext — la
   // prop `emphasis` esterna, se mai passata, resta prioritaria.
   const [contentEmphasis, setContentEmphasis] = useState<EmphasisReport>({ level: "none" })
@@ -296,7 +308,17 @@ export function WidgetShell({
           // un blocco già sulla board (isDraggingReorder).
           isDraggingReorder && !dragOver && "outline-primary/40 outline-2 outline-dashed outline-offset-[-4px]",
           liveRect && "shadow-lg",
-          justResized && "[animation:widget-settle_220ms_ease-out] motion-reduce:[animation:none]",
+          // Motion Language v1 — mutuamente esclusive nel tempo (in uscita
+          // batte appena-aggiunto batte assestato, un solo ramo per volta:
+          // niente due animazioni che si contendono la stessa proprietà
+          // `animation`). In uscita: anche pointer-events-none, sta per
+          // sparire, niente interazioni a metà (doppio click sulla ×,
+          // drag che parte su un blocco che non ci sarà più).
+          isLeaving
+            ? "pointer-events-none [animation:widget-exit_220ms_ease-out_forwards] motion-reduce:opacity-0"
+            : justAdded
+              ? "[animation:widget-enter_220ms_ease-out] motion-reduce:[animation:none]"
+              : justResized && "[animation:widget-settle_220ms_ease-out] motion-reduce:[animation:none]",
         )}
       >
         {/* "Spina" sul bordo sinistro — trasparente di default, si accende

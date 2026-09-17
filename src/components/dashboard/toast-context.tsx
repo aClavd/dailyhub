@@ -60,8 +60,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       {toasts.length > 0 && (
         <div className="fixed right-4 bottom-4 z-40 flex w-72 flex-col gap-2">
-          {toasts.map((t) => (
-            <ToastRow key={t.id} toast={t} onDismiss={() => removeAfterExit(t.id)} />
+          {toasts.map((t, index) => (
+            <ToastRow key={t.id} toast={t} index={index} onDismiss={() => removeAfterExit(t.id)} />
           ))}
         </div>
       )}
@@ -69,7 +69,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-function ToastRow({ toast, onDismiss }: { toast: ToastEntry; onDismiss: () => void }) {
+function ToastRow({
+  toast,
+  index,
+  onDismiss,
+}: {
+  toast: ToastEntry
+  /** Posizione nello stack attualmente a schermo — Motion Language v1:
+   * un piccolo stagger (~50ms per posizione, tetto a 100ms) quando più
+   * avvisi sono visibili insieme, così non entrano tutti in un blocco
+   * unico. Solo un ritardo in più sullo stesso ingresso già esistente,
+   * non un secondo sistema. */
+  index: number
+  onDismiss: () => void
+}) {
   // Parte "fuori" (traslato+trasparente) e passa a "dentro" un istante dopo
   // il montaggio — nello stesso render andrebbero già uniti in una sola
   // pittura del browser, senza vedere la transizione partire davvero.
@@ -81,9 +94,12 @@ function ToastRow({ toast, onDismiss }: { toast: ToastEntry; onDismiss: () => vo
 
   return (
     <div
+      style={{ transitionDelay: index > 0 ? `${Math.min(index, 2) * 50}ms` : undefined }}
       className={cn(
         "bg-card border-border flex items-start gap-2.5 rounded-xl border p-3 shadow-lg",
-        "transition-all duration-200 ease-out motion-reduce:transition-none",
+        // transition-[opacity,transform] (non transition-all): solo le due
+        // proprietà che cambiano davvero, non ogni proprietà animabile.
+        "transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none",
         entered && !toast.leaving ? "translate-y-0 opacity-100" : "translate-y-1.5 opacity-0",
       )}
     >

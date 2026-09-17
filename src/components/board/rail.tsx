@@ -111,7 +111,10 @@ export function Rail({
   return (
     <aside
       className={cn(
-        "hidden shrink-0 flex-col border-r border-border bg-card transition-[width] duration-150 motion-reduce:transition-none lg:sticky lg:top-0 lg:flex lg:h-screen",
+        // Motion Language v1, livello STANDARD (200ms) — stessa durata del
+        // pannello destro (right-panel.tsx), era 150ms: allineata,
+        // "stessa logica per tutte le sidebar".
+        "hidden shrink-0 flex-col overflow-hidden border-r border-border bg-card transition-[width] duration-200 motion-reduce:transition-none lg:sticky lg:top-0 lg:flex lg:h-screen",
         // 52px → 64px (Fase successiva): a 52px le icone della Libreria
         // erano già al massimo consentito dalla larghezza (size-9 = 36px,
         // niente margine), sensibilmente più piccole delle righe da
@@ -293,7 +296,7 @@ export function Rail({
             </div>
 
             {railCollapsed ? (
-              <div className="animate-in fade-in-0 motion-reduce:animate-none flex flex-1 flex-col items-center justify-center gap-2 duration-200">
+              <div className="animate-in fade-in-0 motion-reduce:animate-none flex flex-1 flex-col items-center justify-center gap-2 duration-200 delay-75">
                 {days.map((day) => (
                   <div
                     key={day.key}
@@ -316,7 +319,7 @@ export function Rail({
                 ))}
               </div>
             ) : (
-              <div className="divide-border animate-in fade-in-0 motion-reduce:animate-none flex flex-col divide-y duration-200">
+              <div className="divide-border animate-in fade-in-0 motion-reduce:animate-none flex flex-col divide-y duration-200 delay-75">
                 {days.map((day) => {
                   const summary = daySummary(day.entry)
                   return (

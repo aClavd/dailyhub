@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState, useTransition } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from "react"
 
 import {
   createBoardLayout,
@@ -108,6 +108,15 @@ type BoardApi = {
   todayDiarioPatch: Partial<DiarioState>
   patchTodayDiario: (patch: Partial<DiarioState>) => void
 
+  /** Blocchi "in uscita" — Motion Language v1: `removeWidget` non toglie
+   * più il placement subito, lo lascia in `committedLayout` per
+   * `WIDGET_EXIT_MS` (widget-shell.tsx applica l'animazione di uscita
+   * mentre `leavingWidgets.has(type)`), SOLO dopo lo toglie per davvero e
+   * fa richiudere lo spazio agli altri — sequenziale, non simultaneo:
+   * prima il blocco sparisce da solo, poi il resto si assesta
+   * (widget-settle, già esistente) nel buco lasciato libero. */
+  leavingWidgets: ReadonlySet<WidgetType>
+
   /** Stato live del Pomodoro montato sulla board — la sezione Focus del
    * pannello destro lo riflette in tempo reale (Sidebar System Refinement,
    * Step 5: "il Focus deve rappresentare lo stato reale del Pomodoro
@@ -138,6 +147,11 @@ export type PomodoroLive = {
   toggleRunning: () => void
   skip: () => void
 } | null
+
+// Deve combaciare con la durata di widget-exit in globals.css (Motion
+// Language v1, livello LAYOUT) — il tempo che ci vuole perché l'uscita
+// finisca prima di togliere per davvero il placement.
+const WIDGET_EXIT_MS = 220
 
 const BoardContext = createContext<BoardApi | null>(null)
 
@@ -174,6 +188,7 @@ export function BoardProvider({
   const [isDraggingWidget, setIsDraggingWidget] = useState(false)
   const [isDraggingReorder, setIsDraggingReorder] = useState(false)
   const [todayDiarioPatch, setTodayDiarioPatch] = useState<Partial<DiarioState>>({})
+  const [leavingWidgets, setLeavingWidgets] = useState<Set<WidgetType>>(() => new Set())
   const [pomodoroLive, setPomodoroLive] = useState<PomodoroLive>(null)
   const [, startTransition] = useTransition()
 
@@ -182,6 +197,20 @@ export function BoardProvider({
   // di board qualsiasi: un ref evita di dover ricreare `persist` (e quindi
   // tutti i mutatori che ne dipendono) ogni volta che cambi layout.
   const layoutIdRef = useRef(initial.layoutId)
+
+  // Sempre il valore più fresco di committedLayout, letto da removeWidget
+  // dentro un setTimeout (Motion Language v1 — la rimozione vera avviene
+  // 220ms dopo il click, per lasciare girare l'animazione di uscita):
+  // un ref invece del closure dell'evento, così se nel frattempo cambia
+  // committedLayout per un altro motivo (un widget aggiunto, uno
+  // spostato) la rimozione parte comunque dal layout più recente, non da
+  // uno stantio. Sincronizzato in un effect (non durante il render — il
+  // linter di questo progetto lo vieta esplicitamente, i ref non vanno
+  // letti/scritti in fase di render).
+  const committedLayoutRef = useRef(committedLayout)
+  useEffect(() => {
+    committedLayoutRef.current = committedLayout
+  }, [committedLayout])
 
   // Salva sul DB in background; lo stato locale è già aggiornato, quindi la
   // UI non aspetta il giro di rete.
@@ -220,12 +249,30 @@ export function BoardProvider({
 
   const removeWidget = useCallback(
     (type: WidgetType) => {
-      // repackLayout, non solo filter: senza, i blocchi rimasti restavano
-      // dove stavano e il buco lasciato da quello eliminato restava vuoto
-      // — segnalato da Claudio, vedi lib/board.ts.
-      setLayout(repackLayout(committedLayout.filter((p) => p.type !== type)))
+      // Già in uscita: click doppio sulla × durante l'animazione, non fare
+      // nulla (idempotente) invece di programmare una seconda rimozione.
+      if (leavingWidgets.has(type)) return
+      setLeavingWidgets((prev) => new Set(prev).add(type))
+      window.setTimeout(() => {
+        setLeavingWidgets((prev) => {
+          if (!prev.has(type)) return prev
+          const next = new Set(prev)
+          next.delete(type)
+          return next
+        })
+        // Letto dal ref (aggiornato ad ogni render, vedi sotto), non dal
+        // closure catturato al click — se nel frattempo (durante i 220ms
+        // di uscita) è stato aggiunto/spostato un altro blocco, questo
+        // resta corretto invece di ripartire da un layout ormai vecchio.
+        // Un setTimeout nativo non è soggetto al doppio invocazione dello
+        // Strict Mode (a differenza di un updater funzionale di
+        // setState), quindi persist qui non rischia di scattare due volte.
+        const next = repackLayout(committedLayoutRef.current.filter((p) => p.type !== type))
+        setCommittedLayout(next)
+        persist({ layout: next })
+      }, WIDGET_EXIT_MS)
     },
-    [committedLayout, setLayout],
+    [leavingWidgets, persist],
   )
 
   const patchTodayDiario = useCallback((patch: Partial<DiarioState>) => {
@@ -390,6 +437,7 @@ export function BoardProvider({
       setIsDraggingReorder,
       todayDiarioPatch,
       patchTodayDiario,
+      leavingWidgets,
       pomodoroLive,
       setPomodoroLive,
     }),
@@ -421,6 +469,7 @@ export function BoardProvider({
       isDraggingReorder,
       todayDiarioPatch,
       patchTodayDiario,
+      leavingWidgets,
       pomodoroLive,
     ],
   )
