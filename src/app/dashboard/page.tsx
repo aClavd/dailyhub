@@ -97,7 +97,7 @@ export default async function DashboardPage() {
         <div className="flex flex-1">
           <Rail historyDays={historyDays} todayKey={todayKey} />
           <div className="min-w-0 flex-1 px-4 pb-16 sm:px-6 lg:px-10 xl:px-14">
-            <TopBar email={session.user.email} />
+            <TopBar />
             <DashboardHeader
               firstName={firstName}
               spotifySlot={
@@ -135,6 +135,7 @@ export default async function DashboardPage() {
             googleError={session.error}
             spotifyStatus={spotifyStatus}
             liberoConfigured={isLiberoConfigured()}
+            userEmail={session.user.email}
           />
         </div>
       </BoardProvider>

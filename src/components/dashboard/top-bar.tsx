@@ -1,30 +1,20 @@
-import { signOut } from "@/auth"
-import { Button } from "@/components/ui/button"
-
-export function TopBar({ email }: { email?: string | null }) {
+/**
+ * Solo il marchio, solo su mobile (su desktop vive nella barra laterale a
+ * tutta altezza — vedi rail.tsx). Prima mostrava anche email + "Esci": con
+ * l'Account center nel dialog Impostazioni (insights-dialog.tsx, sez. 13-14
+ * del documento di rifinitura sidebar) quella riga era ridondante —
+ * "Esci" si è spostato lì (lib/actions/auth.ts:logout, stessa Server
+ * Action). `lg:hidden` sull'intero header, non solo sul marchio: su
+ * desktop non c'è più nulla da mostrare qui, niente riga vuota col bordo.
+ */
+export function TopBar() {
   return (
-    <header className="flex items-center justify-between border-b border-border py-3.5">
-      {/* Su desktop il marchio vive nella barra laterale a tutta altezza. */}
-      <div className="flex items-center gap-2 lg:hidden">
+    <header className="flex items-center border-b border-border py-3.5 lg:hidden">
+      <div className="flex items-center gap-2">
         <span className="bg-primary size-2 rounded-full" />
         <span className="font-heading text-base font-semibold">
           <span className="text-ink-faint font-normal">Daily</span>Hub
         </span>
-      </div>
-      <div className="ml-auto flex items-center gap-3">
-        {email ? (
-          <span className="text-ink-soft hidden text-sm sm:inline">{email}</span>
-        ) : null}
-        <form
-          action={async () => {
-            "use server"
-            await signOut({ redirectTo: "/" })
-          }}
-        >
-          <Button type="submit" variant="outline" size="sm">
-            Esci
-          </Button>
-        </form>
       </div>
     </header>
   )

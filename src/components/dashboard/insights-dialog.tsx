@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { DialogClose, DialogPopup, DialogTitle } from "@/components/ui/dialog"
 import { Segmented } from "@/components/widgets/_shared"
 import { DURATIONS } from "@/components/widgets/pomodoro-widget"
-import { reconnectGoogle } from "@/lib/actions/auth"
+import { logout, reconnectGoogle } from "@/lib/actions/auth"
 import { fetchDiarioRange, fetchDiarioStreaks } from "@/lib/actions/history"
 import { disconnectSpotify } from "@/lib/actions/spotify"
 import {
@@ -124,12 +124,14 @@ export function InsightsDialog({
   googleError,
   spotifyStatus,
   liberoConfigured,
+  userEmail,
 }: {
   todayKey: string
   habitList: readonly string[]
   googleError?: string
   spotifyStatus: SpotifyStatus
   liberoConfigured: boolean
+  userEmail?: string | null
 }) {
   const [tab, setTab] = useState<Tab>("Andamento")
   const [period, setPeriod] = useState<Period>("Settimana")
@@ -190,7 +192,12 @@ export function InsightsDialog({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         {tab === "Account" ? (
-          <AccountTab googleError={googleError} spotifyStatus={spotifyStatus} liberoConfigured={liberoConfigured} />
+          <AccountTab
+            googleError={googleError}
+            spotifyStatus={spotifyStatus}
+            liberoConfigured={liberoConfigured}
+            userEmail={userEmail}
+          />
         ) : (
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -286,32 +293,50 @@ function StatTile({ label, value }: { label: string; value: string }) {
   )
 }
 
+/**
+ * Connected Accounts (sez. 13 del documento di rifinitura sidebar) — il
+ * posto centrale per i servizi collegati. Gmail e Google Calendar restano
+ * DUE righe distinte (si leggono meglio: "quali dati sblocca ciascuno" è
+ * più chiaro di una riga sola "Google") ma UNA SOLA fonte di verità
+ * (`googleError`, lo stesso `session.error` di sempre) — non due
+ * connessioni finte, la stessa sessione Google presentata due volte
+ * perché copre due permessi distinti (calendar.events + gmail.readonly,
+ * vedi src/auth.ts). Riconnettersi da una riga rinnova anche l'altra.
+ */
 function AccountTab({
   googleError,
   spotifyStatus,
   liberoConfigured,
+  userEmail,
 }: {
   googleError?: string
   spotifyStatus: SpotifyStatus
   liberoConfigured: boolean
+  userEmail?: string | null
 }) {
   const spotifyError = spotifyStatus.connected && "error" in spotifyStatus
+  const googleAction = googleError ? (
+    <form action={reconnectGoogle}>
+      <Button type="submit" variant="outline" size="sm">
+        Riconnetti
+      </Button>
+    </form>
+  ) : null
   return (
     <div className="flex flex-col gap-2.5">
       <AccountRow
-        title="Google"
-        detail="Calendario e Gmail"
+        title="Gmail"
+        detail={googleError ? "Mail in arrivo" : userEmail || "Mail in arrivo"}
         status={googleError ? "Sessione scaduta" : "Connesso"}
         ok={!googleError}
-        action={
-          googleError ? (
-            <form action={reconnectGoogle}>
-              <Button type="submit" variant="outline" size="sm">
-                Riconnetti
-              </Button>
-            </form>
-          ) : null
-        }
+        action={googleAction}
+      />
+      <AccountRow
+        title="Google Calendar"
+        detail={googleError ? "Impegni di oggi" : userEmail || "Impegni di oggi"}
+        status={googleError ? "Sessione scaduta" : "Connesso"}
+        ok={!googleError}
+        action={googleAction}
       />
       <AccountRow
         title="Spotify"
@@ -343,6 +368,24 @@ function AccountTab({
         Libero non è un account per-utente: si configura via variabili d&apos;ambiente sul server, nessuna
         azione possibile da qui.
       </p>
+
+      {/* Esci — prima nella testata della dashboard (top-bar.tsx), spostato
+          qui (sez. 14): l'Account center è il posto naturale per l'unica
+          azione che riguarda la sessione DailyHub stessa, non un servizio
+          collegato. Stessa Server Action di sempre (lib/actions/auth.ts,
+          ora esportata a parte da lì — prima viveva inline in top-bar.tsx,
+          un Server Component: un "use server" inline non è una posizione
+          valida qui, che è un Client Component), nessuna logica nuova. */}
+      <div className="border-border mt-1 border-t pt-3">
+        <form action={logout}>
+          <button
+            type="submit"
+            className="text-ink-faint hover:text-destructive text-xs font-medium underline-offset-2 hover:underline"
+          >
+            Esci da DailyHub
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
