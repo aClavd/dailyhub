@@ -123,8 +123,16 @@ export function CalendarWidget() {
   const currentMonth = cursor.getMonth()
 
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-2">
+    // Calendar Geometry Fix v1 — root diventa una colonna flex a piena
+    // altezza: il div di widget-shell.tsx che ci contiene (@container
+    // min-h-0 flex-1 ...) ha già un'altezza reale (è lui stesso flex-1
+    // dentro il <section> a piena altezza del guscio) — h-full qui la
+    // eredita correttamente, senza bisogno di toccare widget-shell.tsx.
+    // Header e riga giorni della settimana restano shrink-0 (altezza
+    // naturale, mai una riga della griglia); solo la griglia dei 42
+    // giorni sotto prende flex-1 e distribuisce lo spazio che resta.
+    <div className="flex h-full flex-col">
+      <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -157,14 +165,23 @@ export function CalendarWidget() {
         <CalendarError reason={result.reason} />
       ) : (
         <>
-          <div className="text-ink-faint mb-1 grid grid-cols-7 gap-0.5 text-center text-[0.58rem] uppercase">
+          <div className="text-ink-faint mb-1 grid shrink-0 grid-cols-7 gap-0.5 text-center text-[0.58rem] uppercase">
             {/* Indice come key: L/M/M/G/V/S/D non sono univoci come testo
                 (martedì e mercoledì iniziano entrambi per M). */}
             {GIORNI_BREVI.map((g, i) => (
               <div key={i}>{g}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-0.5">
+          {/* grid-rows-6 (= repeat(6, minmax(0,1fr)), come grid-cols-7 già
+              fa in orizzontale) + flex-1 min-h-0: le 6 righe si dividono
+              per davvero lo spazio verticale che resta nel widget, non
+              più content-sized (~32px fissi, indipendenti da quanto
+              spazio il layout engine avesse assegnato — causa esatta del
+              vuoto sotto la griglia nell'audit). min-h-0 (non il default
+              min-height:auto di un flex item) è quello che permette a
+              questo blocco di restringersi/crescere per davvero invece di
+              restare bloccato all'altezza del proprio contenuto. */}
+          <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 gap-0.5">
             {days.map((d) => {
               const key = chiaveGiorno(d)
               const inMonth = d.getMonth() === currentMonth
