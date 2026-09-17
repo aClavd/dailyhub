@@ -11,13 +11,12 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip"
 import { DURATIONS, PHASE_BAR, PHASE_LABELS, PHASE_TEXT } from "@/components/widgets/pomodoro-widget"
 import { refreshAgenda } from "@/lib/actions/calendar"
 import { refreshMail } from "@/lib/actions/mail"
-import { agendaEmphasis, nextOrRunningEvent } from "@/lib/agenda-signal"
+import { buildBriefSentences, computeAttentionSignals } from "@/lib/attention-signals"
 import type { WidgetType } from "@/lib/board"
-import { greeting, oraBreve, traQuanto } from "@/lib/datetime"
+import { greeting, oraBreve } from "@/lib/datetime"
 import type { DiarioState } from "@/lib/diario"
 import type { CalendarResult } from "@/lib/google/calendar"
 import type { MailMessage, MailResult } from "@/lib/mail"
-import { matchingFilter } from "@/lib/mail-filter-match"
 import type { MailFilterSummary } from "@/lib/queries/mail-filters"
 import type { SpotifyStatus } from "@/lib/queries/spotify"
 import { usePolling } from "@/lib/use-polling"
@@ -213,31 +212,34 @@ export function RightPanel({
     set()
   }, [])
 
-  const eventSignal = events.ok ? nextOrRunningEvent(events.events) : null
-  const eventLevel = events.ok ? agendaEmphasis(events.events).level : "none"
-  const showEvent = Boolean(eventSignal) && eventLevel !== "none"
-  const eventTimeLabel = eventSignal
-    ? eventSignal.running
-      ? "in corso"
-      : traQuanto(new Date(eventSignal.event.start as string), new Date())
-    : ""
-
-  const importantMail = mail.messages.filter((m) => matchingFilter(m, filters))
   const diarioWritten = Boolean(diario.testo.trim())
-  const showDiarioReminder = afterReminderHour && !diarioWritten
-
-  const attentionCount = (showEvent ? 1 : 0) + importantMail.length + (showDiarioReminder ? 1 : 0)
+  // Calcolo condiviso con Morning Briefing (lib/attention-signals.ts,
+  // Morning Briefing Architecture Audit v1, sez. D) — stessa fonte di
+  // verità, non due copie che potrebbero disallinearsi. "Non lette", non
+  // solo "importanti", quando il dato è disponibile — stato nativo di
+  // Gmail (message.unread), non un secondo stato nostro (vedi
+  // lib/google/gmail.ts). Libero non lo sa (sempre `unread: false`, non
+  // perché sia stata letta per davvero).
+  const {
+    showEvent,
+    eventSignal,
+    eventLevel,
+    eventTimeLabel,
+    importantMail,
+    unreadImportantMail,
+    showDiarioReminder,
+    attentionCount,
+  } = computeAttentionSignals({
+    events: events.ok ? events.events : [],
+    mail: mail.messages,
+    filters,
+    diarioWritten,
+    afterReminderHour,
+  })
 
   const habitsDone = Object.values(diario.habits).filter(Boolean).length
   const studyMinutes = Math.round(diario.pomodoroSessions * (DURATIONS.focus / 60))
 
-  // "Non lette", non solo "importanti", quando il dato è disponibile —
-  // stato nativo di Gmail (message.unread), non un secondo stato nostro
-  // (vedi lib/google/gmail.ts). Libero non lo sa (sempre `unread: false`,
-  // non perché sia stata letta per davvero) — se il conteggio "non lette"
-  // risulta zero non vuol dire che non ci sia nulla da segnalare, resta
-  // la dicitura generica.
-  const unreadImportantMail = importantMail.filter((m) => m.unread)
   // Presupposto: importantMail arriva già ordinata più-recente-prima (stesso
   // ordine di lib/mail.ts, mai ri-ordinata qui) — il primo elemento è la
   // mail più recente, per la micro-preview della Attention Rail compressa.
@@ -265,18 +267,16 @@ export function RightPanel({
   // blocco "Prossimo" — stesso impegno mostrato in entrambe le sezioni,
   // ma con ruolo diverso: qui è la sintesi in evidenza, lì è la riga
   // cliccabile.
-  const briefSentences: string[] = []
-  if (unreadImportantMail.length > 0) {
-    briefSentences.push(
-      `Hai ${unreadImportantMail.length} ${unreadImportantMail.length === 1 ? "mail non letta" : "mail non lette"} da gestire.`,
-    )
-  } else if (importantMail.length > 0) {
-    briefSentences.push(
-      `Hai ${importantMail.length} ${importantMail.length === 1 ? "mail importante" : "mail importanti"} da gestire.`,
-    )
-  }
-  if (showDiarioReminder) briefSentences.push("Diario ancora da scrivere.")
-  if (!showEvent) briefSentences.push("Nessun impegno imminente.")
+  const briefSentences = buildBriefSentences({
+    showEvent,
+    eventSignal,
+    eventLevel,
+    eventTimeLabel,
+    importantMail,
+    unreadImportantMail,
+    showDiarioReminder,
+    attentionCount,
+  })
 
   // Righe di Attenzione — stessa fonte/stessa logica di sempre (sopra),
   // solo raccolte in un array con identità stabile (key) così

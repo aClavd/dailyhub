@@ -11,6 +11,7 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DiarioReminder } from "@/components/dashboard/diario-reminder"
 import { MailLive } from "@/components/dashboard/mail-card"
 import { MailSkeletonBody } from "@/components/dashboard/mail-skeleton"
+import { MorningBriefingGate } from "@/components/dashboard/morning-briefing"
 import { RightPanel } from "@/components/dashboard/right-panel"
 import { SpotifyBody, SpotifySkeletonBody } from "@/components/dashboard/spotify-card"
 import { ToastProvider } from "@/components/dashboard/toast-context"
@@ -94,50 +95,59 @@ export default async function DashboardPage() {
   return (
     <ToastProvider>
       <BoardProvider initial={boardInitial}>
-        <div className="flex flex-1">
-          <Rail historyDays={historyDays} todayKey={todayKey} />
-          <div className="min-w-0 flex-1 px-4 pb-16 sm:px-6 lg:px-10 xl:px-14">
-            <TopBar />
-            <DashboardHeader
-              firstName={firstName}
-              spotifySlot={
-                <Suspense fallback={<SpotifySkeletonBody />}>
-                  <SpotifySection />
-                </Suspense>
-              }
-            />
+        <MorningBriefingGate
+          events={eventsInitial}
+          mail={mailInitial}
+          filters={mailFilters}
+          diarioInitial={diarioInitial}
+          todayKey={todayKey}
+          firstName={firstName}
+        >
+          <div className="flex flex-1">
+            <Rail historyDays={historyDays} todayKey={todayKey} />
+            <div className="min-w-0 flex-1 px-4 pb-16 sm:px-6 lg:px-10 xl:px-14">
+              <TopBar />
+              <DashboardHeader
+                firstName={firstName}
+                spotifySlot={
+                  <Suspense fallback={<SpotifySkeletonBody />}>
+                    <SpotifySection />
+                  </Suspense>
+                }
+              />
 
-            <Board
-              agendaSlot={
-                <Suspense fallback={<AgendaSkeletonBody />}>
-                  <AgendaSection />
-                </Suspense>
-              }
-              mailSlot={
-                <Suspense fallback={<MailSkeletonBody />}>
-                  <MailSection />
-                </Suspense>
-              }
-              diarioSlot={<DiarioWidget initial={diarioInitial} dayNumber={dayNumber} todayKey={todayKey} />}
-              pomodoroSlot={<PomodoroWidget initial={diarioInitial.pomodoroSessions} />}
-            />
-            <DiarioReminder
-              hasWrittenToday={Boolean(diarioInitial.testo.trim())}
+              <Board
+                agendaSlot={
+                  <Suspense fallback={<AgendaSkeletonBody />}>
+                    <AgendaSection />
+                  </Suspense>
+                }
+                mailSlot={
+                  <Suspense fallback={<MailSkeletonBody />}>
+                    <MailSection />
+                  </Suspense>
+                }
+                diarioSlot={<DiarioWidget initial={diarioInitial} dayNumber={dayNumber} todayKey={todayKey} />}
+                pomodoroSlot={<PomodoroWidget initial={diarioInitial.pomodoroSessions} />}
+              />
+              <DiarioReminder
+                hasWrittenToday={Boolean(diarioInitial.testo.trim())}
+                todayKey={todayKey}
+              />
+            </div>
+            <RightPanel
+              initialEvents={eventsInitial}
+              initialMail={mailInitial}
+              filters={mailFilters}
+              diarioInitial={diarioInitial}
               todayKey={todayKey}
+              googleError={session.error}
+              spotifyStatus={spotifyStatus}
+              liberoConfigured={isLiberoConfigured()}
+              userEmail={session.user.email}
             />
           </div>
-          <RightPanel
-            initialEvents={eventsInitial}
-            initialMail={mailInitial}
-            filters={mailFilters}
-            diarioInitial={diarioInitial}
-            todayKey={todayKey}
-            googleError={session.error}
-            spotifyStatus={spotifyStatus}
-            liberoConfigured={isLiberoConfigured()}
-            userEmail={session.user.email}
-          />
-        </div>
+        </MorningBriefingGate>
       </BoardProvider>
     </ToastProvider>
   )
