@@ -111,10 +111,24 @@ export function MailBody({
   }, [result.messages, tab])
 
   return (
+    // Mail Adaptive v1 (stesso pattern validato con Diario) — @container
+    // già dichiarato una volta per tutti i widget in widget-shell.tsx, qui
+    // solo regole locali che lo consumano. Soglie sulla geometria reale
+    // (lib/board.ts: CELL_MIN_REM 8/CELL_MAX_REM 23/gap 1rem), non
+    // copiate da Diario:
+    // - @max-[18rem] (COMPACT): Mail ha minW:2 (per le 3 tab, invariato)
+    //   — anche al minimo assoluto (2 colonne a CELL_MIN_REM, meno il
+    //   padding p-4 del guscio) il contenuto resta comunque ~15rem: 18rem
+    //   sta appena sopra quel pavimento reale, non sotto come per Diario
+    //   (minW:1, pavimento più basso).
+    // - @min-[34rem] (LARGE): a w=2 (il default) il contenuto può arrivare
+    //   fino a ~45rem a colonne piene — 34rem è oltre metà di quel range,
+    //   large scatta solo quando c'è davvero margine, non al primo widget
+    //   leggermente più largo del minimo.
     <div>
       <Segmented label="Casella" options={TABS} value={tab} onChange={setTab} />
 
-      <div className="mt-3 mb-2 flex items-center justify-between gap-2">
+      <div className="mt-3 mb-2 flex items-center justify-between gap-2 @min-[34rem]:mb-2.5">
         <p className="text-ink-faint font-mono text-[0.68rem] tracking-wide uppercase">
           {countLabel(messages.length)}
         </p>
@@ -184,14 +198,26 @@ function MailRow({ message }: { message: MailMessage }) {
         )}
       </div>
       <p className="mt-0.5 truncate text-sm">{message.subject}</p>
+      {/* TERTIARY (Mail Adaptive v1): sparisce solo in COMPACT — mai un
+       * dato perso, lo snippet non è mai stato l'unico modo di leggere
+       * qualcosa (la mail si apre lo stesso). In LARGE non solo resta,
+       * cresce a 2 righe invece di 1: "più contenuto utile visibile", non
+       * più spazio vuoto. whitespace-normal esplicito: line-clamp-2 da
+       * solo non basterebbe a spezzare la riga, truncate qui sopra ha
+       * già messo white-space:nowrap — va annullato esplicitamente,
+       * altrimenti le due regole si contendono la stessa proprietà senza
+       * che nessuna vinca del tutto. */}
       {message.snippet && (
-        <p className="text-ink-soft mt-0.5 truncate text-xs">{message.snippet}</p>
+        <p className="text-ink-soft mt-0.5 truncate text-xs @max-[18rem]:hidden @min-[34rem]:line-clamp-2 @min-[34rem]:whitespace-normal">
+          {message.snippet}
+        </p>
       )}
     </div>
   )
 
   const rowClass = cn(
     "border-border flex gap-3 border-t border-l-2 px-2.5 py-2.5 text-sm first:border-t-0",
+    "@max-[18rem]:px-2 @max-[18rem]:py-2 @min-[34rem]:py-3.5",
     message.provider === "gmail" ? "border-l-gmail-fg" : "border-l-libero-fg",
   )
 
