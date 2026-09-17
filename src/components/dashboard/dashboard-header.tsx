@@ -14,10 +14,12 @@ export function DashboardHeader({
 
   return (
     // Fase 5.1: py ridotto (era py-8/sm:py-10). Pass di calibrazione
-    // visiva: ridotto di nuovo (py-6/sm:py-8 → py-5/sm:py-6) — il saluto
-    // deve introdurre la giornata, non dominarla («Workspace > Greeting»),
-    // una riduzione leggera, non drastica: resta comunque uno spazio suo.
-    <section className="py-5 text-center sm:py-6">
+    // visiva: py-6/sm:py-8 → py-5/sm:py-6. Visual Calibration v2:
+    // py-5/sm:py-6 → py-4/sm:py-5 — stesso principio, un altro giro:
+    // il saluto deve introdurre la giornata, non il board, che ora è
+    // anche più grande (CELL_MAX_REM/ROW_HEIGHT_REM, lib/board.ts) e
+    // merita di percepirsi ancora di più come il contenuto vero.
+    <section className="py-4 text-center sm:py-5">
       <div className="mx-auto max-w-xs">
         <DailyQuote date={now} />
       </div>

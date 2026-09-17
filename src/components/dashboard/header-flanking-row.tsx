@@ -40,7 +40,9 @@ export function HeaderFlankingRow({
 
   return (
     <div
-      className="mx-auto mt-5"
+      // mt-5 → mt-4 (Visual Calibration v2) — stesso ritmo ridotto di
+      // dashboard-header.tsx (py-5→py-4).
+      className="mx-auto mt-4"
       style={{ width: `min(100%, ${displayWidth})`, minWidth: "fit-content" }}
     >
       <div className="flex flex-col items-center gap-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-4">

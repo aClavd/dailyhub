@@ -6,6 +6,7 @@ import {
   CELL_MAX_REM,
   CELL_MIN_REM,
   DND_MIME,
+  ROW_HEIGHT_REM,
   boardDisplayWidthRem,
   boardNaturalWidthRem,
   boardUsedCols,
@@ -104,12 +105,13 @@ export function Board({
         }}
         style={{ width: `min(100%, ${dropZoneWidth})` }}
         className={cn(
-          // min-h-48 (12rem, la stessa unità di auto-rows sulla griglia
-          // sotto): con la board vuota o quasi la griglia non ha righe,
-          // quindi zero altezza — senza questo minimo il box tratteggiato
-          // sarebbe una striscia di ~16px, difficile perfino da vedere.
-          // Con più blocchi (già oltre 12rem) non cambia niente.
-          "min-h-48 overflow-x-auto rounded-xl p-2 transition-colors sm:mx-auto",
+          // min-h-[14.5rem] (ROW_HEIGHT_REM, la stessa unità di
+          // gridAutoRows sulla griglia sotto): con la board vuota o quasi
+          // la griglia non ha righe, quindi zero altezza — senza questo
+          // minimo il box tratteggiato sarebbe una striscia di ~16px,
+          // difficile perfino da vedere. Con più blocchi (già oltre
+          // ROW_HEIGHT_REM) non cambia niente.
+          "min-h-[14.5rem] overflow-x-auto rounded-xl p-2 transition-colors sm:mx-auto",
           isDraggingWidget && "outline-primary outline-2 outline-dashed outline-offset-[-6px]",
           dragOver && "bg-brand-soft/60",
         )}
@@ -117,6 +119,7 @@ export function Board({
         <div
           style={{
             gridTemplateColumns: `repeat(${usedCols}, minmax(${CELL_MIN_REM}rem, ${CELL_MAX_REM}rem))`,
+            gridAutoRows: `${ROW_HEIGHT_REM}rem`,
             width: `min(100%, ${naturalWidth})`,
           }}
           className={cn(
@@ -127,11 +130,14 @@ export function Board({
             // colonne + width qui sopra: la griglia è larga quanto le
             // serve se c'è posto, altrimenti tutte le colonne si stringono
             // insieme (fino a 8rem) per restare dentro lo spazio disponibile.
+            // gridAutoRows in style, non una classe auto-rows-[...]
+            // statica: dipende da ROW_HEIGHT_REM (Visual Calibration v2),
+            // stesso motivo per cui gridTemplateColumns è già in style.
             // relative: durante un resize il blocco trascinato esce dal
             // flusso della griglia (position: absolute) per seguire il
             // mouse pixel per pixel — deve ancorarsi a questo contenitore,
             // non alla pagina (vedi widget-shell.tsx).
-            "board-grid relative grid auto-rows-[12rem] gap-4 sm:mx-auto",
+            "board-grid relative grid gap-4 sm:mx-auto",
           )}
         >
           {layout.map(({ type }) => {
@@ -179,13 +185,22 @@ export function Board({
       {!hasAgenda && <div className="hidden">{agendaSlot}</div>}
       {!hasMail && <div className="hidden">{mailSlot}</div>}
 
-      {/* Non più un widget finto dentro la griglia: è una didascalia sotto —
-          il feedback vero durante il trascinamento è il contorno tratteggiato
-          su tutta l'area sopra (isDraggingWidget), acceso già dal momento in
-          cui si solleva il blocco dal rail, non solo passandoci sopra. */}
-      <p className="text-ink-faint mt-4 text-center text-[0.7rem]">
-        Aggiungi altri blocchi trascinandoli dalla libreria a sinistra, o toccali.
-      </p>
+      {/* Non un widget finto dentro la griglia: è una didascalia sotto — il
+          feedback vero durante il trascinamento è il contorno tratteggiato
+          su tutta l'area sopra (isDraggingWidget), acceso già dal momento
+          in cui si solleva il blocco dal rail, non solo passandoci sopra.
+          Visual Calibration v2: solo a board vuota — con blocchi già
+          presenti il messaggio era pura ridondanza (chi ha già usato il
+          board sa come funziona) e contribuiva alla sensazione di "tela
+          non finita" anche a board popolata. Ancora più discreto
+          (text-[0.62rem], opacity ridotta) dove resta: qui è davvero
+          l'unica indicazione di come iniziare, non va tolto, solo
+          abbassato di peso. */}
+      {layout.length === 0 && (
+        <p className="text-ink-faint/70 mt-6 text-center text-[0.62rem]">
+          Aggiungi blocchi trascinandoli dalla libreria a sinistra, o toccali.
+        </p>
+      )}
     </div>
   )
 }

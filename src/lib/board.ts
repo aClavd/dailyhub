@@ -18,15 +18,29 @@ export const BOARD_COLS = 6
  * il `minmax()` del CSS Grid vero): prima erano due letterali duplicati
  * che potevano disallinearsi. CELL_MAX è quella "piena" quando c'è spazio
  * (Fase 5.1: alzata da 15 a 16.5, +10%; pass di calibrazione visiva:
- * alzata di nuovo a 19, +15%, stesso motivo — un layout tipico di 2-3
- * colonne usate restava ~824px anche su un monitor larghissimo, tutto
- * il resto spazio vuoto ai lati. Ancora: cresce l'unità di misura
- * comune, non le colonne (BOARD_COLS resta 6, la logica di
+ * 16.5→19, +15%; Visual Calibration v2: 19→23, +21% — stesso identico
+ * problema si ripresentava su monitor larghi: un layout tipico da 3-4
+ * colonne restava comunque una frazione ridotta della viewport, con
+ * spazio vuoto ai lati oltre il centraggio. Ancora: cresce l'unità di
+ * misura comune, non le colonne (BOARD_COLS resta 6, la logica di
  * posizionamento non cambia) né le proporzioni scelte da Claudio).
  * CELL_MIN resta la protezione su finestre strette, non tocca.
  */
-export const CELL_MAX_REM = 19
+export const CELL_MAX_REM = 23
 export const CELL_MIN_REM = 8
+
+/**
+ * Altezza di una riga, in rem — stesso principio/stessa proporzione di
+ * CELL_MAX_REM sopra (Visual Calibration v2): board corte (poche righe)
+ * lasciavano molto vuoto sotto i blocchi su una viewport alta, non
+ * risolvibile ingrandendo solo la larghezza. 12→14.5 (+21%, stesso
+ * rapporto dell'aumento di CELL_MAX_REM, per non alterare le proporzioni
+ * dei blocchi — un blocco 1x1 resta visivamente quadrato come prima, solo
+ * più grande). Unica fonte di verità, usata da board.tsx per
+ * `gridAutoRows` (via style, non una classe Tailwind statica: dipende da
+ * questa costante) e per l'altezza minima della zona di rilascio.
+ */
+export const ROW_HEIGHT_REM = 14.5
 
 /** Posizione e dimensione di un blocco sulla griglia logica, in celle (non px). */
 export type WidgetPlacement = {

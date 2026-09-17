@@ -215,7 +215,11 @@ export function Rail({
       <div
         className={cn(
           "flex min-h-0 flex-1 flex-col overflow-y-auto py-4",
-          railCollapsed ? "gap-4 px-2" : "gap-5 px-2.5",
+          // gap-5 → gap-6 da espansa (Visual Calibration v2, sez. 8): un
+          // filo più di separazione tra Libreria e Cronologia, "lista
+          // compressa" era il feedback esplicito — da compressa invariato,
+          // meno margine per apprezzare la differenza sui pochi px.
+          railCollapsed ? "gap-4 px-2" : "gap-6 px-2.5",
         )}
       >
         <RailSection label="Libreria — trascina o tocca" collapsed={railCollapsed}>
@@ -386,11 +390,11 @@ function RailSection({
   return (
     <div>
       {!collapsed && (
-        <p className="text-ink-faint mb-2 text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
+        <p className="text-ink-faint mb-2.5 text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
           {label}
         </p>
       )}
-      <div className={cn("flex flex-col items-center", collapsed ? "gap-2" : "gap-1")}>{children}</div>
+      <div className={cn("flex flex-col items-center", collapsed ? "gap-2" : "gap-1.5")}>{children}</div>
     </div>
   )
 }
@@ -461,10 +465,11 @@ function RailItem({
         // 64px, size-11 (44px) ci sta comoda e si avvicina di più
         // all'altezza reale di una riga da espansa (icona + titolo +
         // descrizione, ~54px). Vedi commento sopra su <aside>.
-        // py-2 → py-1.5: Libreria leggermente più compatta (Claudio: "un
-        // filo meno di padding", non compressa fino a diventare illeggibile
-        // — resta comunque icona + titolo + descrizione su due righe).
-        collapsed ? "size-11 justify-center" : "w-full gap-2.5 px-2.5 py-1.5 text-left",
+        // py-2 → py-1.5 (pass di calibrazione precedente) → py-2 di nuovo
+        // (Visual Calibration v2, sez. 8: "ridurre la sensazione di lista
+        // compressa" — richiesta esplicita opposta alla precedente, non
+        // una contraddizione: il design si ritocca nel tempo).
+        collapsed ? "size-11 justify-center" : "w-full gap-2.5 px-2.5 py-2 text-left",
         added && "cursor-default opacity-45 hover:border-border hover:bg-card",
         // "pointer", non "grab": si può anche solo cliccare/toccare per
         // aggiungere (onClick sopra) — il trascinamento è un'alternativa,
