@@ -116,7 +116,21 @@ function MorningBriefingScreen({
   const showAttention = data.attention.hasItem
 
   return (
-    <div className="flex flex-1 flex-col bg-background">
+    // min-h-dvh (non solo flex-1): flex-1 da solo basta SOLO se l'intera
+    // catena html{h-full}->body{min-h-full}->...->qui riesce a risolvere
+    // un'altezza percentuale reale (verificato dal vivo: funziona in una
+    // scheda normale) — ma non ha nessuna misura propria, dipende in toto
+    // da quella catena. min-h-dvh dà al briefing un pavimento di altezza
+    // indipendente (la vera altezza di viewport visibile), che non deve
+    // ereditare nulla da body/html/i Provider sopra — coerente con "il
+    // briefing è un'esperienza a pagina intera, non deve ereditare la
+    // geometria della board/dei suoi contenitori". w-full: stessa idea per
+    // la larghezza, esplicita invece di implicita (un <div> è già 100%
+    // di suo, ma qui non è lasciato al caso). flex-1 resta: se il
+    // contenitore flex sopra è già alto quanto la viewport (caso normale),
+    // non cambia nulla; se quella catena fallisse, min-h-dvh è comunque
+    // un pavimento (min-height vince sempre su un flex-basis più piccolo).
+    <div className="flex min-h-dvh w-full flex-1 flex-col bg-background">
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-6 py-16 sm:px-8">
         <h1
           className={cn(
