@@ -127,7 +127,24 @@ export function DiarioWidget({
   const isToday = editingDate === todayKey
 
   return (
-    <div className="flex flex-col gap-4">
+    // Diario Adaptive v1 (proof of concept) — il container query è già
+    // dichiarato una volta per tutti i widget in widget-shell.tsx
+    // (`@container`, sulla div che avvolge `children`): qui sotto solo
+    // regole locali che lo consumano, nessuna modifica al guscio.
+    // Soglie scelte dalla geometria reale (CELL_MIN_REM 8 / CELL_MAX_REM
+    // 23 / gap 1rem, lib/board.ts), non a caso:
+    // - @max-[16rem]: il Diario a minW (1 cella) sta per costruzione tra
+    //   8 e 23rem di larghezza — 16rem è circa a metà di quel range,
+    //   e coincide con dove il grid auto-fit di QuickStats sotto
+    //   collasserebbe comunque a una sola colonna (2×6.5rem+gap≈14rem) —
+    //   "compatto" qui significa "già stretto quanto quel meccanismo
+    //   indipendente lo percepisce", non un numero indovinato a parte.
+    // - @min-[30rem]: oltre la larghezza tipica di w=2 a colonne piene
+    //   (2×23+1gap=47rem, ma già da metà quel range c'è respiro reale) —
+    //   30rem è dove due colonne di QuickStats hanno già ampio margine e
+    //   la textarea può crescere senza sembrare sproporzionata.
+    // Tra le due soglie: MEDIUM, il comportamento di oggi, invariato.
+    <div className="flex flex-col gap-4 @max-[16rem]:gap-2.5 @min-[30rem]:gap-5">
       <DiaryHeader
         dayNumber={dayNumber}
         editingDate={editingDate}
@@ -233,7 +250,11 @@ function JournalSection({
     <div>
       <FieldLabel>Diario</FieldLabel>
       <textarea
-        className={textareaClass("heading")}
+        // LARGE: qualche riga in più di respiro (min-h, non il numero di
+        // `rows` — resta un attributo HTML stabile, non qualcosa che
+        // varia con la query) — "testo più generoso", nessun font
+        // aumentato, nessuna informazione nuova.
+        className={cn(textareaClass("heading"), "@min-[30rem]:min-h-36")}
         rows={4}
         value={testo}
         onChange={(event) => onChange(event.target.value)}
@@ -261,24 +282,32 @@ function HabitSection({
   }
 
   return (
-    <div className="border-border border-t pt-4">
+    <div className="border-border border-t pt-4 @max-[16rem]:pt-2.5">
       <FieldLabel>Abitudini</FieldLabel>
-      {habitList.length === 0 ? (
-        <p className="text-ink-faint text-[0.72rem]">
-          Nessuna abitudine ancora — aggiungine una qui sotto.
-        </p>
-      ) : (
-        habitList.map((name) => (
-          <CheckRow
-            key={name}
-            label={name}
-            done={Boolean(habits[name])}
-            onToggle={() => onToggle(name)}
-            onRemove={() => removeHabit(name)}
-          />
-        ))
-      )}
-      <div className="mt-2 flex gap-1.5">
+      {/* COMPACT: la lista diventa scorrevole invece di spingere in basso
+       * tutto il resto — MAI display:none, ogni checkbox resta
+       * raggiungibile (scroll, anche da tastiera: il focus nativo del
+       * browser scrolla l'elemento a fuoco in vista da solo). Sezione
+       * "secondaria, ma in forma più compatta" come richiesto — non
+       * declassata a irraggiungibile. */}
+      <div className="@max-[16rem]:max-h-32 @max-[16rem]:overflow-y-auto">
+        {habitList.length === 0 ? (
+          <p className="text-ink-faint text-[0.72rem]">
+            Nessuna abitudine ancora — aggiungine una qui sotto.
+          </p>
+        ) : (
+          habitList.map((name) => (
+            <CheckRow
+              key={name}
+              label={name}
+              done={Boolean(habits[name])}
+              onToggle={() => onToggle(name)}
+              onRemove={() => removeHabit(name)}
+            />
+          ))
+        )}
+      </div>
+      <div className="mt-2 flex gap-1.5 @max-[16rem]:mt-1.5">
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -322,7 +351,7 @@ function QuickStats({
   onSleep: (value: number | null) => void
 }) {
   return (
-    <div className="border-border border-t pt-4">
+    <div className="border-border border-t pt-4 @max-[16rem]:pt-2.5 @min-[30rem]:pt-5">
       {/* Era "Quick stats" — non diceva niente su cosa fosse né che peso/
           sonno si possono lasciare vuoti. Nome letterale + il placeholder
           di MiniStat ("non lo so", sotto) fanno il lavoro insieme: non
@@ -340,8 +369,10 @@ function QuickStats({
           — segnalato da Claudio ("kg e h... si fukka tutto"). auto-fit +
           minmax: due colonne quando c'è spazio, una sola (a piena
           larghezza, sempre leggibile) quando non ce n'è — nessuna soglia
-          a mano da indovinare, si adatta di continuo. */}
-      <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-3">
+          a mano da indovinare, si adatta di continuo. Diario Adaptive v1:
+          questo meccanismo NON viene toccato/sostituito, solo lo spazio
+          attorno (gap/padding) reagisce alla stessa @container. */}
+      <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-3 @max-[16rem]:mt-2 @max-[16rem]:gap-2 @min-[30rem]:gap-4">
         <MiniStat label="Peso" unit="kg" step={0.1} value={weight} onChange={onWeight} />
         <MiniStat label="Sonno" unit="h" step={0.5} value={sleepHours} onChange={onSleep} />
       </div>
@@ -363,7 +394,7 @@ function MiniStat({
   onChange: (value: number | null) => void
 }) {
   return (
-    <div className="border-border min-w-0 rounded-lg border px-2.5 py-2">
+    <div className="border-border min-w-0 rounded-lg border px-2.5 py-2 @max-[16rem]:px-2 @max-[16rem]:py-1.5 @min-[30rem]:px-3 @min-[30rem]:py-2.5">
       <span className="text-ink-faint block text-[0.62rem] tracking-wide uppercase">
         {label}
       </span>
