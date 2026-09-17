@@ -48,6 +48,13 @@ const quickActionClass =
 // attention-exit in globals.css.
 const ATTENTION_EXIT_MS = 200
 
+// Right Sidebar 2.0, sez. 13: aprendo la larghezza guida e il contenuto
+// segue (già così, vedi delay-75 sotto); chiudendo la sequenza si
+// inverte — il contenuto esce PRIMA, la larghezza si stringe solo dopo.
+// Stessa durata STANDARD di sopra, nome a parte solo per leggibilità nel
+// punto in cui è usata.
+const SIDEBAR_CLOSE_MS = 200
+
 type Row = { key: string; node: ReactNode }
 
 /**
@@ -152,6 +159,25 @@ export function RightPanel({
   const [mail, setMail] = useState(initialMail)
   const [eventFormOpen, setEventFormOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  // Right Sidebar 2.0, sez. 13 — vero solo per la finestra in cui il
+  // contenuto espanso sta uscendo PRIMA che la larghezza si stringa
+  // (chiusura, sequenza invertita rispetto all'apertura). toggleRightPanel
+  // (e quindi il salvataggio del collapsed su DB) parte solo alla fine di
+  // quella finestra, non al click.
+  const [closing, setClosing] = useState(false)
+
+  function handleToggleRightPanel() {
+    if (rightPanelCollapsed) {
+      toggleRightPanel()
+      return
+    }
+    if (closing) return // già in chiusura, click doppio ignorato
+    setClosing(true)
+    window.setTimeout(() => {
+      setClosing(false)
+      toggleRightPanel()
+    }, SIDEBAR_CLOSE_MS)
+  }
 
   usePolling(() => {
     void refreshAgenda().then(setEvents)
@@ -348,7 +374,7 @@ export function RightPanel({
           )}
           <button
             type="button"
-            onClick={toggleRightPanel}
+            onClick={handleToggleRightPanel}
             aria-label={rightPanelCollapsed ? "Espandi il pannello" : "Riduci il pannello"}
             aria-expanded={!rightPanelCollapsed}
             className="border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint active:translate-y-px grid size-6 shrink-0 place-items-center rounded-md border text-sm transition-colors duration-100"
@@ -446,8 +472,27 @@ export function RightPanel({
             </RailIndicator>
           )}
 
-          {(showEvent || importantMail.length > 0 || showDiarioReminder) && (
+          {showEvent || importantMail.length > 0 || showDiarioReminder ? (
             <span aria-hidden className="border-border w-5 shrink-0 border-t" />
+          ) : (
+            // Stato zero (Right Sidebar 2.0, sez. 7): non un rail "vuoto e
+            // basta" — un piccolo segnale positivo, stesso messaggio già
+            // usato dal Daily Brief ("Tutto tranquillo per ora"), stesso
+            // colore già usato per le abitudini fatte (text-good) — nessun
+            // rosso, nessun numero, nessun elemento che sembri rotto.
+            <RailIndicator
+              label="Nessuna attenzione richiesta"
+              preview={
+                <>
+                  <TooltipLabel>Attenzione</TooltipLabel>
+                  <p className="mt-0.5">Tutto tranquillo per ora</p>
+                </>
+              }
+            >
+              <span aria-hidden className="text-good text-sm leading-none">
+                ✓
+              </span>
+            </RailIndicator>
           )}
 
           <RailIndicator
@@ -480,20 +525,41 @@ export function RightPanel({
              * stato del Focus cambia categoria (idle→running→paused),
              * non ad ogni tick del countdown (focusState non cambia ogni
              * secondo, solo su avvio/pausa/completamento). */}
-            <WidgetIcon
-              key={focusState}
-              type="pomodoro"
-              className={cn(
-                "animate-in fade-in-0 duration-100 motion-reduce:animate-none size-4",
-                focusState === "running"
-                  ? "text-destructive"
-                  : focusState === "paused"
-                    ? "text-primary"
-                    : focusState === "idle-mounted" && diario.pomodoroSessions > 0
+            <span className="flex items-center gap-0.5">
+              <WidgetIcon
+                key={`icon-${focusState}`}
+                type="pomodoro"
+                className={cn(
+                  "animate-in fade-in-0 duration-100 motion-reduce:animate-none size-4",
+                  focusState === "running"
+                    ? "text-destructive"
+                    : focusState === "paused"
                       ? "text-primary"
-                      : "text-ink-faint",
+                      : focusState === "idle-mounted" && diario.pomodoroSessions > 0
+                        ? "text-primary"
+                        : "text-ink-faint",
+                )}
+              />
+              {/* "P 42" — minuti rimasti accanto all'icona, non solo nel
+               * tooltip (Right Sidebar 2.0, sez. 5/9): solo quando c'è
+               * davvero un conto alla rovescia (attivo o in pausa), mai un
+               * numero a riposo. */}
+              {(focusState === "running" || focusState === "paused") && pomodoroLive && (
+                <span
+                  key={`minutes-${focusState}`}
+                  className={cn(
+                    "animate-in fade-in-0 duration-100 motion-reduce:animate-none font-mono text-[0.68rem] font-semibold tabular-nums",
+                    focusState === "running" ? "text-destructive" : "text-primary",
+                  )}
+                >
+                  {focusState === "running" && pomodoroLive.endAt ? (
+                    <FocusMinutes endAt={pomodoroLive.endAt} />
+                  ) : (
+                    Math.max(1, Math.ceil(pomodoroLive.pausedLeft / 60))
+                  )}
+                </span>
               )}
-            />
+            </span>
           </RailIndicator>
 
           {habitList.length > 0 && (
@@ -520,9 +586,22 @@ export function RightPanel({
       )}
 
       {!rightPanelCollapsed && (
-        // Stesso delay-75 di sopra, stessa ragione — coerenza tra le due
-        // direzioni (apri/chiudi) e con il rail sinistro (rail.tsx).
-        <div className="animate-in fade-in-0 slide-in-from-right-1 motion-reduce:animate-none flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4 duration-200 delay-75">
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4 motion-reduce:animate-none",
+            closing
+              ? // Chiusura (sez. 13): il contenuto esce PRIMA — la
+                // larghezza dell'<aside> resta w-80 per tutta questa
+                // finestra (rightPanelCollapsed non è ancora cambiato,
+                // vedi handleToggleRightPanel sopra), si stringe solo
+                // dopo. animate-out (tw-animate-css), stesso "vocabolario"
+                // di animate-in, solo alla rovescia.
+                "animate-out fade-out-0 slide-out-to-right-1 duration-200"
+              : // Apertura: invariato — delay-75 perché la larghezza ha
+                // già iniziato a muoversi (coerenza con rail.tsx).
+                "animate-in fade-in-0 slide-in-from-right-1 duration-200 delay-75",
+          )}
+        >
           <section>
             <SectionLabel>Daily Brief</SectionLabel>
             {attentionCount === 0 ? (
@@ -695,13 +774,17 @@ export function RightPanel({
             )}
           </section>
 
+          {/* Non più una sezione a sé con lo stesso peso di Focus (bordo +
+              SectionLabel identici) — Right Sidebar 2.0, sez. 11: "Today
+              deve comunicare senza competere con Attention/Focus". Una
+              riga sola, subito sotto, nessun bordo proprio — il senso
+              resta lo stesso (solo abitudini, come prima: sufficiente,
+              non riscritto in categorie nuove). */}
           {habitList.length > 0 && (
-            <section className="border-border border-t pt-4">
-              <SectionLabel>Oggi</SectionLabel>
-              <p className="text-ink-faint mt-1.5 text-[0.72rem]">
-                {habitsDone}/{habitList.length} abitudini
-              </p>
-            </section>
+            <p className="text-ink-faint -mt-2 text-[0.68rem]">
+              <span className="font-semibold tracking-[0.04em] uppercase">Oggi</span>{" "}
+              {habitsDone}/{habitList.length} abitudini
+            </p>
           )}
         </div>
       )}
@@ -853,16 +936,15 @@ function StaticClock({ seconds }: { seconds: number }) {
   return <span className="font-mono tabular-nums">{formatClock(seconds)}</span>
 }
 
-/** Countdown live per la Attention Rail — legge `endAt` (board-context.tsx,
- * cambia solo su avvio/pausa/completamento in pomodoro-widget.tsx) e
- * ricalcola i secondi rimasti con un setInterval TUTTO SUO: un secondo
- * orologio che legge la stessa ora vera del widget centrale, non un
- * secondo timer (Sidebar System Refinement, Step 5 — "NON creare un
- * secondo timer"). Isolato in un componente a parte apposta: il tick di
- * QUESTO span, ogni secondo, non fa ri-renderizzare il resto del pannello
- * (a differenza di aggiornare `pomodoroLive` in board-context ogni tick,
- * che ri-renderizzerebbe tutta l'app — vedi il commento lì). */
-function FocusClock({ endAt }: { endAt: number }) {
+/** Secondi rimasti, ricalcolati con un setInterval TUTTO SUO a partire da
+ * `endAt` (board-context.tsx, cambia solo su avvio/pausa/completamento in
+ * pomodoro-widget.tsx) — un secondo orologio che legge la stessa ora vera
+ * del widget centrale, non un secondo timer (Sidebar System Refinement,
+ * Step 5 — "NON creare un secondo timer"). Estratta una volta sola (prima
+ * era duplicata in FocusClock/FocusActive): tre usi diversi (mm:ss in
+ * rail, mm:ss grande in sidebar, minuti soli nel badge del rail — Right
+ * Sidebar 2.0 sez. 5/9) dalla stessa lettura. */
+function useCountdownSeconds(endAt: number): number {
   const [left, setLeft] = useState(() => Math.max(0, Math.round((endAt - Date.now()) / 1000)))
   useEffect(() => {
     const tick = () => setLeft(Math.max(0, Math.round((endAt - Date.now()) / 1000)))
@@ -870,7 +952,21 @@ function FocusClock({ endAt }: { endAt: number }) {
     const id = window.setInterval(tick, 1000)
     return () => window.clearInterval(id)
   }, [endAt])
+  return left
+}
+
+function FocusClock({ endAt }: { endAt: number }) {
+  const left = useCountdownSeconds(endAt)
   return <span className="font-mono tabular-nums">{formatClock(left)}</span>
+}
+
+/** Minuti soli (arrotondati per eccesso — "ancora un minuto" resta "1",
+ * non "0" fino all'ultimo istante), per il badge "P 42" della Attention
+ * Rail compressa (Right Sidebar 2.0, sez. 5/9: l'esempio del documento
+ * mostra un numero accanto alla lettera, oggi c'era solo l'icona). */
+function FocusMinutes({ endAt }: { endAt: number }) {
+  const left = useCountdownSeconds(endAt)
+  return <>{Math.max(1, Math.ceil(left / 60))}</>
 }
 
 /** Come FocusClock, con numero grande + barra di progresso — solo per la
@@ -887,13 +983,7 @@ function FocusActive({
   textClass: string
   barClass: string
 }) {
-  const [left, setLeft] = useState(() => Math.max(0, Math.round((endAt - Date.now()) / 1000)))
-  useEffect(() => {
-    const tick = () => setLeft(Math.max(0, Math.round((endAt - Date.now()) / 1000)))
-    tick()
-    const id = window.setInterval(tick, 1000)
-    return () => window.clearInterval(id)
-  }, [endAt])
+  const left = useCountdownSeconds(endAt)
   const progress = totalSec > 0 ? (100 * (totalSec - left)) / totalSec : 0
   return (
     <div className="mt-1.5">
@@ -934,9 +1024,14 @@ function RailIndicator({
        * malapena e non vale la complessità in più (a differenza della
        * lista Attenzione espansa, dove le righe sono grandi abbastanza
        * da giustificarlo). */}
+      {/* min-w/min-h-6 (24px), non solo padding: il contenuto varia da
+       * un'icona size-4 a un semplice glifo ✓ o un numero — senza un
+       * minimo esplicito il bersaglio cliccabile di alcuni indicatori
+       * restava sotto i 24px raccomandati (WCAG 2.5.8) — Right Sidebar
+       * 2.0, sez. 16. */}
       <TooltipTrigger
         aria-label={label}
-        className="animate-in fade-in-0 duration-100 motion-reduce:animate-none grid shrink-0 place-items-center rounded-md p-0.5"
+        className="animate-in fade-in-0 duration-100 motion-reduce:animate-none grid min-h-6 min-w-6 shrink-0 place-items-center rounded-md p-1"
       >
         {children}
       </TooltipTrigger>
