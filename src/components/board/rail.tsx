@@ -409,7 +409,11 @@ function RailSection({
   )
 }
 
-function RailItem({
+/** Esportata (Mobile Navigation & Surfaces v1): stessa identica riga
+ * "tocca per aggiungere" usata qui nella Libreria desktop, riusata dalla
+ * Libreria mobile (library-dialog.tsx) — un solo catalogo/una sola
+ * funzione addWidget, due punti da cui aprirla, non due Librerie. */
+export function RailItem({
   type,
   collapsed,
   added = true,

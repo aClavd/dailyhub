@@ -106,7 +106,13 @@ export default async function DashboardPage() {
           <div className="flex flex-1">
             <Rail historyDays={historyDays} todayKey={todayKey} />
             <div className="min-w-0 flex-1 px-4 pb-16 sm:px-6 lg:px-10 xl:px-14">
-              <TopBar todayKey={todayKey} />
+              <TopBar
+                todayKey={todayKey}
+                googleError={session.error}
+                spotifyStatus={spotifyStatus}
+                liberoConfigured={isLiberoConfigured()}
+                userEmail={session.user.email}
+              />
               <DashboardHeader
                 firstName={firstName}
                 spotifySlot={
