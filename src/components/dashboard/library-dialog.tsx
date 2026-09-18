@@ -31,7 +31,7 @@ export function LibraryDialog() {
         </div>
         <DialogClose
           aria-label="Chiudi"
-          className="text-ink-faint hover:bg-muted hover:text-foreground grid size-7 shrink-0 place-items-center rounded-md text-base leading-none"
+          className="relative text-ink-faint hover:bg-muted hover:text-foreground grid size-7 shrink-0 place-items-center rounded-md text-base leading-none after:absolute after:-inset-2 after:content-['']"
         >
           &times;
         </DialogClose>

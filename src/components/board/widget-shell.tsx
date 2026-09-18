@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 
+import { ChevronDown, ChevronUp } from "lucide-react"
+
 import { resizeEdge, type ResizeEdge } from "@/lib/board-resize"
 import { getMobileOrder, REORDER_MIME, WIDGET_META, type WidgetType } from "@/lib/board"
 import { cn } from "@/lib/utils"
@@ -67,6 +69,8 @@ export function WidgetShell({
     commitLayout,
     removeWidget,
     moveWidget,
+    moveMobileOrder,
+    mobileEditMode,
     isDraggingReorder,
     setIsDraggingReorder,
     leavingWidgets,
@@ -242,20 +246,29 @@ export function WidgetShell({
 
   if (!placement) return null
 
-  // Mobile Work Composition v1 — due valori derivati SOLO per la
-  // composizione sotto i 1024px, mai persistiti, ricalcolati a ogni
-  // render dallo stesso `committedLayout` già in mano (mai un secondo
-  // stato/listener di resize): esposti come custom property CSS, letti
-  // solo dentro le media query di globals.css — sul desktop restano
-  // dichiarati ma inerti (nessuna regola desktop li consulta).
-  // --order: sequenza deterministica (y, x, indice originale — vedi
-  // getMobileOrder), per quando grid-row/column-start diventano "auto".
+  // Mobile Work Composition v1 — derivato SOLO per la composizione sotto
+  // i 1024px, mai persistito, ricalcolato a ogni render dallo stesso
+  // `committedLayout` già in mano (mai un secondo stato/listener di
+  // resize): esposto come custom property CSS, letta solo dentro le
+  // media query di globals.css — sul desktop resta dichiarata ma inerte.
   // --tablet-span: quanto delle 2 colonne tablet occupa questo blocco —
   // 2 (piena larghezza) solo se il TIPO ha bisogno di più di una colonna
   // stretta per essere leggibile (stesso WIDGET_META.minW già usato per
   // il ridimensionamento desktop, non un numero nuovo inventato qui).
-  const mobileOrder = getMobileOrder(committedLayout).get(type) ?? 0
   const tabletSpan = meta.minW >= 2 ? 2 : 1
+
+  // Mobile Interaction v1 — posizione di questo blocco nell'ordine
+  // visivo mobile (getMobileOrder, invariata), solo per disabilitare ▲/▼
+  // quando è già all'estremo: l'ordine nel DOM (board.tsx, ordinato allo
+  // stesso modo) è quello che decide DAVVERO la sequenza visiva, questo
+  // serve solo alle due maniglie qui sotto.
+  const mobileOrderMap = getMobileOrder(committedLayout)
+  const mobileOrderedTypes = [...committedLayout]
+    .sort((a, b) => (mobileOrderMap.get(a.type) ?? 0) - (mobileOrderMap.get(b.type) ?? 0))
+    .map((p) => p.type)
+  const mobileIndex = mobileOrderedTypes.indexOf(type)
+  const isFirstMobile = mobileIndex <= 0
+  const isLastMobile = mobileIndex === -1 || mobileIndex >= mobileOrderedTypes.length - 1
 
   return (
     <>
@@ -312,7 +325,6 @@ export function WidgetShell({
                 gridColumnEnd: `span ${placement.w}`,
                 gridRowStart: placement.y + 1,
                 gridRowEnd: `span ${placement.h}`,
-                "--order": mobileOrder,
                 "--tablet-span": tabletSpan,
               } as React.CSSProperties)
         }
@@ -322,7 +334,18 @@ export function WidgetShell({
           // placement, il contenuto che non ci sta scorre dentro invece di
           // deformarla. board-cell: vedi globals.css, sotto sm: forza una
           // colonna piena larghezza (batte questo style inline).
-          "board-cell bg-card ring-foreground/10 relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl ring-1",
+          // overflow-hidden RIMOSSA da qui (Mobile Interaction v1) — ritagliava
+          // anche le aree di tocco invisibili estese (after:-inset-*) di
+          // rimuovi/sposta/ridimensiona vicino al bordo, rendendole di
+          // fatto ancora piccole quanto prima nonostante il CSS corretto
+          // (verificato dal vivo: un clic nella zona estesa risultava fuori
+          // dal blocco). Il contenuto scrollabile ha già la sua clip
+          // (overflow-y-auto sul div sotto); l'unico effetto visibile
+          // rimasto è che la spina di rilevanza (bordo sinistro) e le
+          // righe di indicazione del resize non sono più ritagliate
+          // esattamente sull'angolo arrotondato — impercettibile (3px),
+          // preferibile ad aree di tocco rotte.
+          "board-cell bg-card ring-foreground/10 relative flex h-full min-w-0 flex-col rounded-xl ring-1",
           (dragOver || resizing) && "ring-primary ring-2",
           // Contorno tratteggiato su OGNI blocco (tranne quello già sotto
           // il cursore, che ha già l'anello pieno sopra) dall'inizio di
@@ -351,11 +374,16 @@ export function WidgetShell({
         {/* "Spina" sul bordo sinistro — trasparente di default, si accende
             solo quando il contenuto segnala una rilevanza reale (Fase 5.2 —
             evento imminente, mail recente, sessione di studio attiva). Mai
-            un cambio di posizione/dimensione, solo colore. */}
+            un cambio di posizione/dimensione, solo colore. rounded-l-xl
+            (stesso raggio della sezione, Mobile Interaction v1): prima la
+            clippava overflow-hidden del genitore — rimosso per non tagliare
+            più le aree di tocco estese dei controlli (grip/rimuovi/angolo di
+            ridimensionamento); senza un proprio arrotondamento la barra
+            sporgeva a spigolo vivo oltre l'angolo arrotondato della card. */}
         <div
           aria-hidden
           className={cn(
-            "pointer-events-none absolute inset-y-0 left-0 z-10 w-[3px] transition-colors",
+            "pointer-events-none absolute inset-y-0 left-0 z-10 w-[3px] rounded-l-xl transition-colors",
             effectiveEmphasis === "urgente"
               ? "bg-destructive/80"
               : effectiveEmphasis === "attenzione"
@@ -383,10 +411,47 @@ export function WidgetShell({
             // size-6→size-7, icona size-3.5→size-4: era troppo debole per
             // leggersi come maniglia (Claudio, punto collegato — non si
             // capiva nemmeno che il blocco si potesse prendere).
-            className="text-ink-faint hover:bg-muted hover:text-foreground grid size-7 shrink-0 cursor-grab place-items-center rounded-md active:cursor-grabbing"
+            // Mobile Interaction v1 — relative + after:-inset-2: l'area di
+            // tocco vera arriva a 44px (28+8+8) senza che l'icona/il box
+            // visivo crescano (resterebbe una maniglia "gigante" in
+            // un'intestazione già stretta) — il ::after generato è dentro
+            // lo stesso bottone, un tocco lì attiva comunque questo stesso
+            // onDragStart/onClick, non un elemento a parte.
+            className="relative text-ink-faint hover:bg-muted hover:text-foreground grid size-7 shrink-0 cursor-grab place-items-center rounded-md active:cursor-grabbing after:absolute after:-inset-2 after:content-['']"
           >
             <GripIcon className="size-4" />
           </button>
+          {/* ▲▼ riordino mobile (Mobile Interaction v1) — solo in modalità
+              "Modifica layout" (board.tsx) e solo sotto i 1024px
+              (lg:hidden, difensivo: la modalità stessa non ha nessun
+              trigger visibile a desktop). Alternativa al trascinamento
+              HTML5 sopra (non affidabile su touch): sposta `type` di una
+              posizione nell'ordine visivo mobile (moveMobileOrder,
+              board-context.tsx) — stesso repackLayout/stessa persistenza
+              di sempre, non un secondo layout. Disabilitato quando il
+              blocco è già all'estremo in quella direzione. */}
+          {mobileEditMode && (
+            <div className="flex shrink-0 items-center gap-0.5 lg:hidden">
+              <button
+                type="button"
+                onClick={() => moveMobileOrder(type, "up")}
+                disabled={isFirstMobile}
+                aria-label={`Sposta ${meta.title} più in alto`}
+                className="relative text-ink-faint hover:bg-muted hover:text-foreground grid size-7 shrink-0 place-items-center rounded-md disabled:opacity-30 after:absolute after:-inset-2 after:content-['']"
+              >
+                <ChevronUp className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveMobileOrder(type, "down")}
+                disabled={isLastMobile}
+                aria-label={`Sposta ${meta.title} più in basso`}
+                className="relative text-ink-faint hover:bg-muted hover:text-foreground grid size-7 shrink-0 place-items-center rounded-md disabled:opacity-30 after:absolute after:-inset-2 after:content-['']"
+              >
+                <ChevronDown className="size-3.5" />
+              </button>
+            </div>
+          )}
           <WidgetIcon type={type} className="text-ink-faint size-3.5 shrink-0" />
           <h3 className="font-heading min-w-0 flex-1 truncate text-sm font-medium">
             {meta.title}
@@ -405,7 +470,12 @@ export function WidgetShell({
             type="button"
             onClick={() => removeWidget(type)}
             aria-label={`Rimuovi ${meta.title}`}
-            className="text-ink-faint hover:bg-muted hover:text-foreground -mr-1 grid size-6 shrink-0 place-items-center rounded-md text-base leading-none"
+            // Mobile Interaction v1 — stessa tecnica del grip sopra:
+            // after:-inset-2.5 porta l'area di tocco a 44px (24+10+10)
+            // senza allargare il box visivo (era già -mr-1 per stare
+            // vicino al bordo dell'header, l'area invisibile in più non
+            // sposta né allarga nient'altro nel flusso).
+            className="relative text-ink-faint hover:bg-muted hover:text-foreground -mr-1 grid size-6 shrink-0 place-items-center rounded-md text-base leading-none after:absolute after:-inset-2.5 after:content-['']"
           >
             &times;
           </button>
@@ -422,37 +492,46 @@ export function WidgetShell({
         </EmphasisContext.Provider>
 
         {/* Maniglie di ridimensionamento: tutti e quattro i bordi, così si può
-            afferrare il blocco da qualsiasi lato. Zona di presa larga (12px)
-            con una riga che si accende al passaggio del mouse, così si vede
-            dove si può trascinare. */}
+            afferrare il blocco da qualsiasi lato. Zona di presa larga
+            (16px, prima 12px — Mobile Interaction v1: allargata quanto
+            possibile senza sporgere nel gap tra i blocchi e rischiare di
+            "rubare" il tocco al vicino) con una riga che si accende al
+            passaggio del mouse, così si vede dove si può trascinare.
+            touch-action:none (touch-none) già presente: impedisce allo
+            scroll nativo della pagina di intercettare il gesto qui —
+            invariato, era già corretto. */}
         <div
           onPointerDown={startResize(["top"])}
-          className="group/edge absolute inset-x-3 top-0 z-10 h-3 cursor-ns-resize touch-none"
+          className="group/edge absolute inset-x-3 top-0 z-10 h-4 cursor-ns-resize touch-none"
         >
           <span className="bg-primary absolute inset-x-2 top-0 h-[3px] scale-x-0 rounded-full opacity-0 transition group-hover/edge:scale-x-100 group-hover/edge:opacity-100" />
         </div>
         <div
           onPointerDown={startResize(["bottom"])}
-          className="group/edge absolute inset-x-3 bottom-0 z-10 h-3 cursor-ns-resize touch-none"
+          className="group/edge absolute inset-x-3 bottom-0 z-10 h-4 cursor-ns-resize touch-none"
         >
           <span className="bg-primary absolute inset-x-2 bottom-0 h-[3px] scale-x-0 rounded-full opacity-0 transition group-hover/edge:scale-x-100 group-hover/edge:opacity-100" />
         </div>
         <div
           onPointerDown={startResize(["left"])}
-          className="group/edge absolute inset-y-3 left-0 z-10 w-3 cursor-ew-resize touch-none"
+          className="group/edge absolute inset-y-3 left-0 z-10 w-4 cursor-ew-resize touch-none"
         >
           <span className="bg-primary absolute inset-y-2 left-0 w-[3px] scale-y-0 rounded-full opacity-0 transition group-hover/edge:scale-y-100 group-hover/edge:opacity-100" />
         </div>
         <div
           onPointerDown={startResize(["right"])}
-          className="group/edge absolute inset-y-3 right-0 z-10 w-3 cursor-ew-resize touch-none"
+          className="group/edge absolute inset-y-3 right-0 z-10 w-4 cursor-ew-resize touch-none"
         >
           <span className="bg-primary absolute inset-y-2 right-0 w-[3px] scale-y-0 rounded-full opacity-0 transition group-hover/edge:scale-y-100 group-hover/edge:opacity-100" />
         </div>
         <div
           onPointerDown={startResize(["right", "bottom"])}
           title="Trascina per ridimensionare"
-          className="text-ink-faint hover:text-primary absolute right-0 bottom-0 z-20 grid size-7 cursor-nwse-resize touch-none place-items-center"
+          // Mobile Interaction v1 — relative + after:-inset-2: area di
+          // tocco a 44px (28+8+8), stessa tecnica di grip/rimuovi sopra.
+          // Resta dentro il padding del contenuto (p-4, sez. @container
+          // sotto): non arriva a sovrapporre un textarea/input reale.
+          className="text-ink-faint hover:text-primary absolute right-0 bottom-0 z-20 grid size-7 cursor-nwse-resize touch-none place-items-center after:absolute after:-inset-2 after:content-['']"
         >
           <ResizeCornerIcon className="size-4" />
         </div>

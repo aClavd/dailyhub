@@ -10,6 +10,7 @@ import {
   boardDisplayWidthRem,
   boardNaturalWidthRem,
   boardUsedCols,
+  getMobileOrder,
   isLibraryWidget,
 } from "@/lib/board"
 import { cn } from "@/lib/utils"
@@ -29,7 +30,8 @@ export function Board({
   diarioSlot: React.ReactNode
   pomodoroSlot: React.ReactNode
 }) {
-  const { layout, addWidget, isDraggingWidget, setIsDraggingWidget } = useBoard()
+  const { layout, addWidget, isDraggingWidget, setIsDraggingWidget, mobileEditMode, toggleMobileEditMode } =
+    useBoard()
   // dragOver: il cursore è ESATTAMENTE sopra la zona in questo momento (dà
   // il riempimento pieno, il feedback "forte"). isDraggingWidget (dal
   // context, acceso da rail.tsx al dragstart) è vero per tutta la durata
@@ -69,8 +71,51 @@ export function Board({
   // la board e la riga Meteo/saluto/Spotify restano sempre allineate.
   const dropZoneWidth = `${boardDisplayWidthRem(layout)}rem`
 
+  // Mobile Interaction v1, sez. accessibilità — l'ordine nel DOM ora segue
+  // SEMPRE lo stesso criterio già usato per la composizione mobile
+  // (getMobileOrder: y, poi x, poi indice originale come tie-breaker),
+  // non l'ordine grezzo dell'array salvato (che dopo un trascinamento
+  // desktop può disallinearsi dalla posizione visiva — moveWidget scambia
+  // solo x/y/w/h, non la posizione nell'array). Prima la sequenza visiva
+  // sotto i 1024px veniva forzata via CSS `order`, disallineando tab/
+  // screen reader dall'ordine a schermo; ordinando qui l'array PRIMA di
+  // renderizzarlo, DOM e visuale coincidono sempre — su desktop non
+  // cambia nulla (lì la posizione è comunque esplicita via grid-column/
+  // row-start, non dall'ordine di lettura), su mobile/tablet risolve il
+  // problema alla radice invece di doverlo compensare con `order` in CSS
+  // (rimosso da globals.css: non serve più, l'auto-posizionamento della
+  // griglia segue già l'ordine nel DOM quando *-start è "auto").
+  const mobileOrder = getMobileOrder(layout)
+  const orderedLayout = [...layout].sort(
+    (a, b) => (mobileOrder.get(a.type) ?? 0) - (mobileOrder.get(b.type) ?? 0),
+  )
+
   return (
     <div>
+      {/* "Modifica layout" (Mobile Interaction v1) — solo sotto i 1024px
+          (`lg:hidden`): a desktop le maniglie di riordino/ridimensionamento
+          sono già sempre attive (mouse, hover per scoprirle), qui invece
+          l'unico scopo è non affollare ogni header con le maniglie ▲▼ di
+          riordino mobile quando non si sta riorganizzando davvero — resize
+          e rimozione restano sempre attivi, con o senza questa modalità.
+          Nessuna nuova pagina/vista: un interruttore locale (mobileEditMode,
+          board-context.tsx), non persistito. */}
+      {layout.length > 0 && (
+        <div className="mb-3 flex justify-end lg:hidden">
+          <button
+            type="button"
+            onClick={toggleMobileEditMode}
+            aria-pressed={mobileEditMode}
+            className={cn(
+              "border-border text-ink-soft hover:text-foreground active:translate-y-px min-h-11 rounded-md border px-3 text-xs font-medium transition-colors",
+              mobileEditMode && "bg-brand-soft text-primary border-transparent",
+            )}
+          >
+            {mobileEditMode ? "Fatto" : "Modifica layout"}
+          </button>
+        </div>
+      )}
+
       {/* I gestori del drop stanno qui, sul contenitore ESTERNO (largo
           dropZoneWidth, sopra — almeno 3 colonne, non la sola naturalWidth
           della griglia sotto), non sulla griglia stretta — quella con pochi
@@ -140,7 +185,7 @@ export function Board({
             "board-grid relative grid gap-4 sm:mx-auto",
           )}
         >
-          {layout.map(({ type }) => {
+          {orderedLayout.map(({ type }) => {
             if (type === "agenda") {
               return (
                 <WidgetShell key={type} type="agenda">

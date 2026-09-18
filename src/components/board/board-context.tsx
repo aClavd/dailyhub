@@ -14,6 +14,7 @@ import {
 import {
   WIDGET_META,
   findFreeSpot,
+  getMobileOrder,
   repackLayout,
   type ActiveBoardState,
   type BoardState,
@@ -36,6 +37,27 @@ type BoardApi = {
   removeWidget: (type: WidgetType) => void
   /** Scambia posizione e dimensione di due blocchi (si trascina l'uno sull'altro). */
   moveWidget: (from: WidgetType, to: WidgetType) => void
+  /**
+   * Mobile Interaction v1 — alternativa al trascinamento (HTML5 DnD, non
+   * affidabile su touch) per riordinare da mobile/tablet: sposta `type` di
+   * una posizione nell'ORDINE VISIVO mobile (getMobileOrder, lib/board.ts —
+   * la stessa funzione già usata per la composizione mobile), poi ricostruisce
+   * un layout valido con `repackLayout` (esistente, invariata) e lo
+   * committa/persiste come qualunque altra modifica — non un secondo
+   * layout "mobile": è lo stesso `WidgetPlacement[]` di sempre, cambiato
+   * da un'azione esplicita, mai da una semplice apertura da telefono.
+   * No-op se `type` è già all'estremo in quella direzione.
+   */
+  moveMobileOrder: (type: WidgetType, direction: "up" | "down") => void
+  /** Modalità "Modifica layout" (Mobile Interaction v1) — solo UI, non
+   * persistita (si azzera da sé a un reload, come isDraggingWidget/
+   * isDraggingReorder sopra): mostra le maniglie ▲▼ di riordino mobile
+   * nell'header di ogni blocco. Non cambia nient'altro (resize/remove
+   * restano sempre attivi, come oggi) — l'unico scopo è non affollare
+   * permanentemente ogni header con controlli che servono solo quando si
+   * sta riorganizzando davvero. */
+  mobileEditMode: boolean
+  toggleMobileEditMode: () => void
   placementOf: (type: WidgetType) => WidgetPlacement | undefined
   /** Anteprima di un resize in corso: la board intera si ridisegna su questo
    * layout (attivo + vicini che cedono spazio) senza ancora salvare. */
@@ -190,6 +212,7 @@ export function BoardProvider({
   const [todayDiarioPatch, setTodayDiarioPatch] = useState<Partial<DiarioState>>({})
   const [leavingWidgets, setLeavingWidgets] = useState<Set<WidgetType>>(() => new Set())
   const [pomodoroLive, setPomodoroLive] = useState<PomodoroLive>(null)
+  const [mobileEditMode, setMobileEditMode] = useState(false)
   const [, startTransition] = useTransition()
 
   // Letto da `persist` senza essere una dipendenza reattiva — cambia solo
@@ -296,6 +319,10 @@ export function BoardProvider({
     [committedLayout, setLayout],
   )
 
+  const toggleMobileEditMode = useCallback(() => {
+    setMobileEditMode((v) => !v)
+  }, [])
+
   const layout = previewLayout ?? committedLayout
   const placementOf = useCallback((type: WidgetType) => layout.find((p) => p.type === type), [layout])
 
@@ -305,6 +332,31 @@ export function BoardProvider({
       setPreviewLayout(null)
     },
     [setLayout],
+  )
+
+  const moveMobileOrder = useCallback(
+    (type: WidgetType, direction: "up" | "down") => {
+      const orderMap = getMobileOrder(committedLayout)
+      const ordered = [...committedLayout].sort(
+        (a, b) => (orderMap.get(a.type) ?? 0) - (orderMap.get(b.type) ?? 0),
+      )
+      const index = ordered.findIndex((p) => p.type === type)
+      const swapWith = direction === "up" ? index - 1 : index + 1
+      if (index === -1 || swapWith < 0 || swapWith >= ordered.length) return
+      const next = [...ordered]
+      const tmp = next[index]
+      next[index] = next[swapWith]
+      next[swapWith] = tmp
+      // repackLayout: stessa funzione già usata per "aggiungi"/"rimuovi" —
+      // ricostruisce x/y dal primo posto libero, nell'ordine dell'array,
+      // mantenendo il w/h di ciascun blocco. Passargli l'array nel NUOVO
+      // ordine (non quello vecchio) è l'unica cosa che serve: l'ordine di
+      // lettura risultante (getMobileOrder su questo output) riproduce
+      // esattamente l'ordine appena scambiato, per costruzione dello
+      // stesso bin-packing riga-per-riga.
+      commitLayout(repackLayout(next))
+    },
+    [committedLayout, commitLayout],
   )
 
   const toggleRail = useCallback(() => {
@@ -411,6 +463,9 @@ export function BoardProvider({
       addWidget,
       removeWidget,
       moveWidget,
+      moveMobileOrder,
+      mobileEditMode,
+      toggleMobileEditMode,
       placementOf,
       setPreview: setPreviewLayout,
       commitLayout,
@@ -447,6 +502,9 @@ export function BoardProvider({
       addWidget,
       removeWidget,
       moveWidget,
+      moveMobileOrder,
+      mobileEditMode,
+      toggleMobileEditMode,
       placementOf,
       commitLayout,
       railCollapsed,

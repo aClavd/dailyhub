@@ -344,12 +344,20 @@
    regola unica `grid-row: auto !important`, che sovrascriveva l'intera
    proprietà, span compreso — corretto qui).
 
-   L'ordine visivo segue --order (custom property, sempre presente
-   nell'inline style, sez. lib/board.ts:getMobileOrder) quando
-   *-start diventa "auto": non l'ordine del DOM, la composizione y/x/
-   indice che l'utente ha costruito. Sul desktop (>=1024px, nessuna
-   regola qui sotto) resta dichiarata ma inerte — *-start è già esplicito
-   lì, `order` non ha alcun effetto quando la posizione non è "auto". */
+   L'ordine visivo, quando *-start diventa "auto", segue l'ordine nel DOM
+   — Mobile Interaction v1: board.tsx ora ordina l'array PRIMA di
+   renderizzarlo (stesso criterio y/x/indice di getMobileOrder, lib/
+   board.ts), quindi l'auto-posizionamento della griglia (che segue
+   "l'ordine nel documento modificato dall'ordine", di default lo stesso
+   ordine del DOM quando nessuna `order` è dichiarata) lo rispetta senza
+   bisogno di una proprietà CSS a parte — prima (Mobile Work Composition
+   v1) serviva una custom property `--order` perché il DOM non era
+   ordinato correttamente: ora che lo è, quella custom property è stata
+   rimossa (widget-shell.tsx), risolvendo anche il disallineamento tra
+   ordine visivo e ordine di tabulazione/screen reader che ne derivava
+   (Mobile Product Audit v1). Sul desktop (>=1024px, nessuna regola qui
+   sotto) *-start resta esplicito, l'ordine del DOM non ha alcun effetto
+   sulla posizione — solo su tab-order/screen reader, in meglio. */
 
 /* <768px — colonna singola, piena larghezza, un solo blocco per riga. */
 @media (max-width: 767px) {
@@ -361,7 +369,6 @@
     grid-column-start: 1 !important;
     grid-column-end: -1 !important;
     grid-row-start: auto !important;
-    order: var(--order, 0);
   }
 }
 
@@ -382,6 +389,5 @@
     grid-column-start: auto !important;
     grid-column-end: span var(--tablet-span, 1) !important;
     grid-row-start: auto !important;
-    order: var(--order, 0);
   }
 }
