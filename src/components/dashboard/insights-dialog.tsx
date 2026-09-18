@@ -4,11 +4,12 @@ import type { ReactNode } from "react"
 import { useEffect, useState, useTransition } from "react"
 
 import { Button } from "@/components/ui/button"
-import { DialogClose, DialogPopup, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogClose, DialogPopup, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Segmented } from "@/components/widgets/_shared"
 import { DURATIONS } from "@/components/widgets/pomodoro-widget"
 import { logout, reconnectGoogle } from "@/lib/actions/auth"
-import { fetchDiarioRange, fetchDiarioStreaks } from "@/lib/actions/history"
+import { fetchDiarioRange, fetchDiarioStreaks, fetchHabitStreaks } from "@/lib/actions/history"
+import { fetchLettura } from "@/lib/actions/lettura"
 import { disconnectSpotify } from "@/lib/actions/spotify"
 import {
   addDays,
@@ -25,9 +26,11 @@ import {
 } from "@/lib/datetime"
 import { isDiarioEntryEmpty, type DiarioState } from "@/lib/diario"
 import type { DiarioStreaks } from "@/lib/queries/diario"
+import type { LetturaState } from "@/lib/queries/lettura"
 import type { SpotifyStatus } from "@/lib/queries/spotify"
 import { cn } from "@/lib/utils"
 
+import { HistoryExplorer } from "./history-explorer"
 import { HabitGrid, MoodChart, SleepChart, StudyChart, WeightChart } from "./insights-charts"
 
 type Tab = "Andamento" | "Account"
@@ -55,6 +58,25 @@ const PERIOD_SHIFT: Record<Period, (cursor: Date, dir: 1 | -1) => Date> = {
   Settimana: (c, dir) => addDays(c, dir * 7),
   Mese: (c, dir) => addMonths(c, dir),
   Anno: (c, dir) => addYears(c, dir),
+}
+
+// Progress / Andamento v1: il flusso continuo di prima (tessere → griglia
+// → grafici → abitudini, tutto insieme) diventa 4 sezioni con un lavoro
+// preciso ciascuna — Overview (il ritmo generale), Focus, Habits, Journal
+// — invece di un unico muro. Il selettore periodo resta condiviso sopra,
+// non per-sezione: è la stessa "finestra temporale" a cambiare cosa
+// mostra, non 4 selettori indipendenti.
+type Section = "Overview" | "Focus" | "Habits" | "Journal"
+const SECTIONS: readonly Section[] = ["Overview", "Focus", "Habits", "Journal"]
+
+/** Collegamento contestuale verso la Cronologia estesa (HistoryExplorer) —
+ * "Progress non deve duplicare la Memoria, deve rimandarci" — stesso
+ * periodo che si sta guardando qui, non un generico "apri la cronologia". */
+const MEMORY_LINK_LABEL: Record<Period, string> = {
+  Giorno: "Apri questa giornata nella memoria",
+  Settimana: "Esplora questa settimana nella memoria",
+  Mese: "Esplora questo mese nella memoria",
+  Anno: "Esplora quest'anno nella memoria",
 }
 
 /** 0-6: quanti gruppi di campi del diario sono compilati quel giorno —
@@ -134,10 +156,14 @@ export function InsightsDialog({
   userEmail?: string | null
 }) {
   const [tab, setTab] = useState<Tab>("Andamento")
+  const [section, setSection] = useState<Section>("Overview")
   const [period, setPeriod] = useState<Period>("Settimana")
   const [cursor, setCursor] = useState(() => parseChiave(todayKey))
   const [entries, setEntries] = useState<Record<string, DiarioState>>({})
   const [streaks, setStreaks] = useState<DiarioStreaks | null>(null)
+  const [habitStreaks, setHabitStreaks] = useState<Record<string, DiarioStreaks> | null>(null)
+  const [lettura, setLettura] = useState<LetturaState | null>(null)
+  const [memoryOpen, setMemoryOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   // Rilegge le voci del periodo in vista a ogni cambio di periodo/cursore
@@ -164,12 +190,36 @@ export function InsightsDialog({
     })
   }, [tab, streaks])
 
+  // Lettura: stato attuale (Overview) — riusa lo stesso Server Action già
+  // esistente per il blocco Lettura (lib/actions/lettura.ts), nessuna
+  // query nuova, una sola lettura leggera all'apertura del dialog.
+  useEffect(() => {
+    if (tab !== "Andamento" || lettura) return
+    startTransition(async () => {
+      setLettura(await fetchLettura())
+    })
+  }, [tab, lettura])
+
+  // Serie per abitudine (Habits): come le serie generali sopra, su tutta
+  // la storia — letta solo quando si apre davvero la sezione, non ad ogni
+  // apertura del dialog.
+  useEffect(() => {
+    if (section !== "Habits" || habitStreaks || habitList.length === 0) return
+    startTransition(async () => {
+      setHabitStreaks(await fetchHabitStreaks([...habitList]))
+    })
+  }, [section, habitStreaks, habitList])
+
   const dates = PERIOD_DATES[period](cursor)
   const days = dates.map((date) => ({ date, entry: entries[chiaveGiorno(date)] }))
   const activeDays = days.filter((d) => d.entry && !isDiarioEntryEmpty(d.entry)).length
   const totalPomodori = days.reduce((sum, d) => sum + (d.entry?.pomodoroSessions ?? 0), 0)
   const totalMinuti = Math.round(totalPomodori * (DURATIONS.focus / 60))
   const weeks = buildWeeksGrid(dates)
+  // Diverso da activeDays sopra: quello conta QUALUNQUE segnale (umore,
+  // abitudini, pomodoro...), questo solo "ho scritto qualcosa" — la
+  // costanza del diario in senso stretto (Journal).
+  const daysWithText = days.filter((d) => d.entry?.testo.trim()).length
 
   return (
     <DialogPopup className="max-w-3xl">
@@ -233,50 +283,102 @@ export function InsightsDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <StatTile label="Giorni con attività" value={String(activeDays)} />
-              <StatTile label="Serie attuale" value={streaks ? `${streaks.current} g` : "…"} />
-              <StatTile label="Serie più lunga" value={streaks ? `${streaks.longest} g` : "…"} />
-              <StatTile label="Studio" value={`${totalPomodori} pom. · ${totalMinuti} min`} />
-            </div>
+            {/* Memoria (audit, sez. G/H): non un secondo browser di giorni
+                dentro Progress — un collegamento contestuale verso quello
+                che esiste già (HistoryExplorer), sullo stesso periodo che
+                si sta guardando qui. Dialog annidato: quello di Impostazioni
+                resta aperto sotto, si chiude solo questo (ESC/×). */}
+            <Dialog open={memoryOpen} onOpenChange={setMemoryOpen}>
+              <DialogTrigger className="text-primary self-start text-xs font-medium hover:underline">
+                {MEMORY_LINK_LABEL[period]} →
+              </DialogTrigger>
+              <HistoryExplorer todayKey={todayKey} initialDate={chiaveGiorno(cursor)} />
+            </Dialog>
 
-            <div>
-              <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
-                Giorni con attività
-              </p>
-              <div className="mt-2 overflow-x-auto pb-1">
-                <div className="flex w-max gap-[3px]">
-                  {weeks.map((week, wi) => (
-                    <div key={wi} className="flex flex-col gap-[3px]">
-                      {week.map((d, di) => {
-                        if (!d) return <span key={di} className="size-[11px]" />
-                        const level = activityScore(entries[chiaveGiorno(d)])
-                        return (
-                          <span
-                            key={di}
-                            title={`${dataBreve(d)} — ${level === 0 ? "nessuna attività" : `${level}/6`}`}
-                            className={cn("size-[11px] rounded-[2px]", ACTIVITY_LEVEL_CLASS[level])}
-                          />
-                        )
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <Segmented label="Sezione" options={SECTIONS} value={section} onChange={setSection} />
 
             {isPending && Object.keys(entries).length === 0 && (
               <p className="text-ink-faint text-center text-xs">Carico…</p>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <MoodChart days={days} />
-              <WeightChart days={days} />
-              <SleepChart days={days} />
-              <StudyChart days={days} />
-            </div>
+            {section === "Overview" && (
+              <>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <StatTile label="Giorni con attività" value={String(activeDays)} />
+                  <StatTile label="Serie attuale" value={streaks ? `${streaks.current} g` : "…"} />
+                  <StatTile label="Serie più lunga" value={streaks ? `${streaks.longest} g` : "…"} />
+                  <StatTile label="Studio" value={`${totalPomodori} pom. · ${totalMinuti} min`} />
+                </div>
 
-            <HabitGrid days={days} habitList={habitList} />
+                <div>
+                  <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
+                    Giorni con attività
+                  </p>
+                  <div className="mt-2 overflow-x-auto pb-1">
+                    <div className="flex w-max gap-[3px]">
+                      {weeks.map((week, wi) => (
+                        <div key={wi} className="flex flex-col gap-[3px]">
+                          {week.map((d, di) => {
+                            if (!d) return <span key={di} className="size-[11px]" />
+                            const level = activityScore(entries[chiaveGiorno(d)])
+                            return (
+                              <span
+                                key={di}
+                                title={`${dataBreve(d)} — ${level === 0 ? "nessuna attività" : `${level}/6`}`}
+                                className={cn("size-[11px] rounded-[2px]", ACTIVITY_LEVEL_CLASS[level])}
+                              />
+                            )
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
+                    Lettura
+                  </p>
+                  <div className="mt-1.5">
+                    <LetturaRow lettura={lettura} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {section === "Focus" && (
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <StatTile label="Tempo di studio" value={`${totalMinuti} min`} />
+                  <StatTile label="Sessioni completate" value={String(totalPomodori)} />
+                </div>
+                <p className="text-ink-faint text-[0.65rem]">
+                  Ogni sessione dura 25 minuti — &quot;Salta&quot; conta come completata: il timer non
+                  distingue le due cose, nessuna durata reale è misurata.
+                </p>
+                <StudyChart days={days} />
+              </div>
+            )}
+
+            {section === "Habits" &&
+              (habitList.length > 0 ? (
+                <HabitGrid days={days} habitList={habitList} streaks={habitStreaks ?? undefined} />
+              ) : (
+                <p className="text-ink-faint py-6 text-center text-xs italic">
+                  Nessuna abitudine configurata nel Diario.
+                </p>
+              ))}
+
+            {section === "Journal" && (
+              <div className="flex flex-col gap-3">
+                <StatTile label="Giorni con voce scritta" value={String(daysWithText)} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <MoodChart days={days} />
+                  <SleepChart days={days} />
+                  <WeightChart days={days} />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -290,6 +392,29 @@ function StatTile({ label, value }: { label: string; value: string }) {
       <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">{label}</p>
       <p className="font-heading mt-1 text-lg font-semibold tabular-nums">{value}</p>
     </div>
+  )
+}
+
+/** Riga di stato Lettura — SOLO il presente (audit, sez. Reading): titolo +
+ * pagina attuale/totale, mai un "andamento" (LetturaWidget non ha storico,
+ * ogni salvataggio sovrascrive il precedente — vedi lib/queries/lettura.ts).
+ * `null` finché non è ancora arrivata dal server: nessun testo, non un
+ * placeholder che sparisce con uno scatto. */
+function LetturaRow({ lettura }: { lettura: LetturaState | null }) {
+  if (!lettura) return null
+  if (!lettura.titolo.trim()) {
+    return <p className="text-ink-faint text-sm italic">Nessun libro in corso.</p>
+  }
+  return (
+    <p className="text-ink-soft text-sm">
+      <span className="font-medium">{lettura.titolo}</span>
+      {lettura.totale > 0 && (
+        <span className="text-ink-faint">
+          {" "}
+          — pag. {lettura.pagina} di {lettura.totale}
+        </span>
+      )}
+    </p>
   )
 }
 

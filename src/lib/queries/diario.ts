@@ -153,26 +153,59 @@ export async function getDiarioStreaks(): Promise<DiarioStreaks> {
   return computeStreaks(activeDates)
 }
 
+/** Come computeStreaks, ma per UNA singola abitudine — "attivo" quel
+ * giorno vuol dire che `habits[habitName]` era true, non una qualunque
+ * attività. Pura (Progress / Andamento v1, sez. Habits): riceve righe già
+ * lette, non fa query. */
+export function computeHabitStreak(
+  habitName: string,
+  rowsAsc: readonly { date: string; habits: Record<string, boolean> }[],
+): DiarioStreaks {
+  const activeDates = rowsAsc.filter((row) => row.habits[habitName]).map((row) => row.date)
+  return computeStreaks(activeDates)
+}
+
+/** Serie (attuale/più lunga) per ogni abitudine in `habitNames` — una sola
+ * lettura di tutta la storia (come getDiarioStreaks sopra: una serie non ha
+ * senso tagliata al periodo in vista), poi computeHabitStreak per ciascun
+ * nome. Un'unica query per N abitudini, non N query separate. */
+export async function getHabitStreaks(
+  habitNames: readonly string[],
+): Promise<Record<string, DiarioStreaks>> {
+  const result: Record<string, DiarioStreaks> = {}
+  if (habitNames.length === 0) return result
+  const session = await auth()
+  if (!session?.user?.id) return result
+
+  const rows = await prisma.journalEntry.findMany({
+    where: { userId: session.user.id },
+    orderBy: { date: "asc" },
+    select: { date: true, habits: true },
+  })
+  const parsed = rows.map((row) => ({
+    date: row.date,
+    habits: (row.habits as Record<string, boolean>) ?? {},
+  }))
+  for (const name of habitNames) {
+    result[name] = computeHabitStreak(name, parsed)
+  }
+  return result
+}
+
 export type DiarioSearchHit = { date: string; snippet: string }
 
 const SNIPPET_MAX = 140
 
 /**
- * Cerca "quando ho scritto X" nel diario — solo in testo/obiettivo
- * (`contains`, case-insensitive, nativo su Postgres, nessuna estensione
- * richiesta). Non cerca dentro le abitudini (JSON, ricerca
- * strutturalmente diversa, nomi pochi e prevedibili): ricerca onesta su
- * quello che scrivi per davvero, non un'illusione di "cerca ovunque".
+ * Cerca "quando ho scritto X" in testo/obiettivo — `contains`,
+ * case-insensitive, nativo su Postgres, nessuna estensione richiesta.
+ * Ricerca onesta su quello che scrivi per davvero, non un'illusione di
+ * "cerca ovunque" (né semantica, né AI).
  */
-export async function searchDiario(query: string, limit = 30): Promise<DiarioSearchHit[]> {
-  const q = query.trim()
-  if (!q) return []
-  const session = await auth()
-  if (!session?.user?.id) return []
-
+async function searchDiarioText(userId: string, q: string, limit: number): Promise<DiarioSearchHit[]> {
   const rows = await prisma.journalEntry.findMany({
     where: {
-      userId: session.user.id,
+      userId,
       OR: [
         { testo: { contains: q, mode: "insensitive" } },
         { obiettivo: { contains: q, mode: "insensitive" } },
@@ -193,4 +226,77 @@ export async function searchDiario(query: string, limit = 30): Promise<DiarioSea
       snippet: snippet.length > SNIPPET_MAX ? `${snippet.slice(0, SNIPPET_MAX)}…` : snippet,
     }
   })
+}
+
+/** Umore ESATTO (non substring: "Buono" non deve combaciare "Buono?" scritto
+ * a mano da nessuna parte — mood è sempre uno dei 5 valori fissi di MOODS,
+ * `equals` case-insensitive basta e non serve altro). Query nativa —
+ * poche righe possibili, mood è un campo scalare, non JSON. */
+async function searchDiarioMood(userId: string, q: string, limit: number): Promise<DiarioSearchHit[]> {
+  const rows = await prisma.journalEntry.findMany({
+    where: { userId, mood: { equals: q, mode: "insensitive" } },
+    orderBy: { date: "desc" },
+    take: limit,
+    select: { date: true, mood: true },
+  })
+  return rows.map((row) => ({ date: row.date, snippet: `Umore: ${row.mood}` }))
+}
+
+/** Abitudine ESATTA ("Skincare" trova i giorni in cui quella chiave era
+ * true, non una sottostringa di un nome diverso). `habits` è JSON: Postgres
+ * non ha un modo pulito per confrontare una CHIAVE case-insensitive senza
+ * SQL a mano — letta qui tutta la storia (stesso schema già in uso per
+ * getDiarioStreaks/getHabitStreaks, "una serie/una ricerca guarda sempre
+ * tutto, non il periodo in vista") e filtrata in JS. Un'abitudine nata di
+ * recente semplicemente non ha quella chiave nei giorni precedenti — nessun
+ * falso positivo per costruzione, non serve un controllo a parte. */
+async function searchDiarioHabit(userId: string, q: string, limit: number): Promise<DiarioSearchHit[]> {
+  const rows = await prisma.journalEntry.findMany({
+    where: { userId },
+    orderBy: { date: "desc" },
+    select: { date: true, habits: true },
+  })
+  const hits: DiarioSearchHit[] = []
+  const qLower = q.toLowerCase()
+  for (const row of rows) {
+    const habits = (row.habits as Record<string, boolean>) ?? {}
+    const matchedKey = Object.keys(habits).find((k) => k.toLowerCase() === qLower && habits[k])
+    if (matchedKey) hits.push({ date: row.date, snippet: `Abitudine: ${matchedKey}` })
+    if (hits.length >= limit) break
+  }
+  return hits
+}
+
+/**
+ * Ricerca della Memoria (Memory v1.1) — un solo campo, tre modi di
+ * combaciare: testo/obiettivo per sottostringa (com'era), umore/abitudine
+ * per corrispondenza ESATTA (non semantica, non AI — "Skincare" trova
+ * l'abitudine Skincare, non un giorno che parla vagamente di skincare).
+ * Un giorno può combaciare per più di un motivo: tenuto una sola volta,
+ * preferendo lo snippet più ricco (testo/obiettivo) su quelli sintetici
+ * (umore/abitudine) — l'ordine di raccolta qui sotto, prima di ordinare
+ * per data, decide quale resta grazie alla stabilità di Array.sort.
+ */
+export async function searchDiario(query: string, limit = 30): Promise<DiarioSearchHit[]> {
+  const q = query.trim()
+  if (!q) return []
+  const session = await auth()
+  if (!session?.user?.id) return []
+  const userId = session.user.id
+
+  const [textHits, moodHits, habitHits] = await Promise.all([
+    searchDiarioText(userId, q, limit),
+    searchDiarioMood(userId, q, limit),
+    searchDiarioHabit(userId, q, limit),
+  ])
+
+  const seen = new Set<string>()
+  const merged: DiarioSearchHit[] = []
+  for (const hit of [...textHits, ...moodHits, ...habitHits].sort((a, b) => b.date.localeCompare(a.date))) {
+    if (seen.has(hit.date)) continue
+    seen.add(hit.date)
+    merged.push(hit)
+    if (merged.length >= limit) break
+  }
+  return merged
 }

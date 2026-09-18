@@ -11,6 +11,7 @@ import {
   getDiarioHistory,
   getDiarioRange,
   getDiarioStreaks,
+  getHabitStreaks,
   searchDiario,
   type DiarioSearchHit,
   type DiarioStreaks,
@@ -40,4 +41,9 @@ export async function fetchDiarioRange(
 
 export async function fetchDiarioStreaks(): Promise<DiarioStreaks> {
   return getDiarioStreaks()
+}
+
+/** Ponte per la sezione Habits della scheda Andamento (insights-dialog.tsx). */
+export async function fetchHabitStreaks(habitNames: string[]): Promise<Record<string, DiarioStreaks>> {
+  return getHabitStreaks(habitNames)
 }

@@ -47,7 +47,10 @@ function GearIcon(props: SVGProps<SVGSVGElement>) {
  * di testo accanto, e da sola non diceva "cronologia" a nessuno —
  * segnalato da Claudio ("fammi capire che quel quadrato rappresenta la
  * cronologia"). */
-function HistoryIcon(props: SVGProps<SVGSVGElement>) {
+/** Esportata (Memory v1.1): stesso segno grafico per "Memoria" ovunque
+ * compaia un punto d'accesso — anche in top-bar.tsx (mobile), non
+ * un'icona ridisegnata lì apposta. */
+export function HistoryIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -285,14 +288,21 @@ export function Rail({
                 railCollapsed ? "justify-center" : "justify-between",
               )}
             >
+              {/* "Cronologia" → "Memoria" (Memory v1.1, sez. naming): qui è
+                  esattamente il punto in cui si parla del concetto ampio
+                  ("rivivi le tue giornate"), non solo di un elenco tecnico
+                  — stessa parola già usata dai collegamenti da Progress
+                  (insights-dialog.tsx). Non rinominato ovunque nel file:
+                  i commenti di sviluppo restano "Cronologia" come nota
+                  storica, non sono testo mostrato all'utente. */}
               {!railCollapsed && (
                 <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
-                  Cronologia — ultimi 7 giorni
+                  Memoria — ultimi 7 giorni
                 </p>
               )}
               <DialogTrigger
-                aria-label="Apri calendario e ricerca"
-                title="Calendario e ricerca"
+                aria-label="Apri Memoria"
+                title="Memoria — calendario e ricerca"
                 className="text-ink-faint hover:bg-muted hover:text-foreground grid size-6 shrink-0 place-items-center rounded-md transition-colors"
               >
                 <HistoryIcon className="size-3.5" />
@@ -366,7 +376,7 @@ export function Rail({
                 da espansa: da compressa non c'è testo da mostrare. */}
             {!railCollapsed && (
               <DialogTrigger className="text-primary hover:underline mt-2 shrink-0 text-left text-[0.68rem] font-medium">
-                Vedi tutta la cronologia →
+                Vedi tutta la memoria →
               </DialogTrigger>
             )}
 

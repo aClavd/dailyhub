@@ -5,6 +5,7 @@ import type { ReactNode } from "react"
 import { DURATIONS } from "@/components/widgets/pomodoro-widget"
 import { dataBreve } from "@/lib/datetime"
 import { moodTextColorClass, type DiarioState } from "@/lib/diario"
+import type { DiarioStreaks } from "@/lib/queries/diario"
 import { cn } from "@/lib/utils"
 
 // Grafici della scheda Andamento (insights-dialog.tsx) — SVG scritti a
@@ -199,8 +200,23 @@ export function StudyChart({ days }: { days: DayEntry[] }) {
  * periodo: fatta (verde), non fatta ma il giorno ha una voce (vuoto), o
  * nessuna voce quel giorno (tenue, distinto apposta da "non fatta" — sono
  * due cose diverse, non conteggiarle insieme).
+ *
+ * `streaks` (Progress / Andamento v1, sez. Habits): serie attuale per
+ * abitudine, SEMPRE su tutta la storia (computeHabitStreak,
+ * lib/queries/diario.ts), non sul periodo in vista — stesso principio già
+ * usato per la serie generale. Opzionale: `undefined` finché non è ancora
+ * arrivata dal server (nessun "0g" lampeggiante mentre carica), omessa del
+ * tutto quando è 0 — una serie a zero non è un'informazione, è rumore.
  */
-export function HabitGrid({ days, habitList }: { days: DayEntry[]; habitList: readonly string[] }) {
+export function HabitGrid({
+  days,
+  habitList,
+  streaks,
+}: {
+  days: DayEntry[]
+  habitList: readonly string[]
+  streaks?: Record<string, DiarioStreaks>
+}) {
   if (habitList.length === 0) return null
   return (
     <ChartCard title="Abitudini">
@@ -208,6 +224,7 @@ export function HabitGrid({ days, habitList }: { days: DayEntry[]; habitList: re
         {habitList.map((habit) => {
           const withEntry = days.filter((d) => d.entry)
           const done = withEntry.filter((d) => d.entry?.habits[habit]).length
+          const streak = streaks?.[habit]
           return (
             <div key={habit} className="flex items-center gap-2">
               <span className="w-20 shrink-0 truncate text-xs">{habit}</span>
@@ -227,6 +244,14 @@ export function HabitGrid({ days, habitList }: { days: DayEntry[]; habitList: re
                   )
                 })}
               </div>
+              {streak && streak.current > 0 && (
+                <span
+                  title={`Serie attuale: ${streak.current} ${streak.current === 1 ? "giorno" : "giorni"} di fila (record: ${streak.longest})`}
+                  className="text-primary w-10 shrink-0 text-right font-mono text-[0.62rem] font-semibold tabular-nums"
+                >
+                  {streak.current}g
+                </span>
+              )}
               <span className="text-ink-faint w-14 shrink-0 text-right font-mono text-[0.62rem] tabular-nums">
                 {withEntry.length > 0 ? `${done}/${withEntry.length}` : "—"}
               </span>

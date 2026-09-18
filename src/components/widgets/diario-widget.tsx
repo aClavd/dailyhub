@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 
+import { HistoryIcon } from "@/components/board/rail"
 import { useBoard } from "@/components/board/board-context"
+import { HistoryExplorer } from "@/components/dashboard/history-explorer"
+import { Dialog, DialogTrigger } from "@/components/ui/dialog"
 import { fetchDiarioEntry } from "@/lib/actions/history"
 import { saveDiarioEntry } from "@/lib/actions/diario"
 import { addDays, chiaveGiorno, dataBreve, parseChiave } from "@/lib/datetime"
@@ -150,6 +153,7 @@ export function DiarioWidget({
         editingDate={editingDate}
         isToday={isToday}
         saveStatus={saveStatus}
+        todayKey={todayKey}
         onPrev={() => goTo(chiaveGiorno(addDays(parseChiave(editingDate), -1)))}
         onNext={() => goTo(chiaveGiorno(addDays(parseChiave(editingDate), 1)))}
       />
@@ -181,6 +185,7 @@ function DiaryHeader({
   editingDate,
   isToday,
   saveStatus,
+  todayKey,
   onPrev,
   onNext,
 }: {
@@ -188,6 +193,7 @@ function DiaryHeader({
   editingDate: string
   isToday: boolean
   saveStatus: SaveStatus
+  todayKey: string
   onPrev: () => void
   onNext: () => void
 }) {
@@ -207,16 +213,37 @@ function DiaryHeader({
         <span className="text-ink-faint min-w-0 flex-1 truncate text-center font-mono text-[0.68rem] tracking-wide uppercase">
           {isToday ? `Giorno ${dayNumber} · oggi` : dataBreve(parseChiave(editingDate))}
         </span>
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={isToday}
-          aria-label="Torna a oggi"
-          title={isToday ? undefined : "Torna a oggi"}
-          className={navButton}
-        >
-          ›
-        </button>
+        {/* ›  + Memoria raggruppati (Memory v1.1, sez. 4): con
+            justify-between sulla riga, un quarto figlio a sé sarebbe finito
+            distanziato dal › invece che affiancato — qui restano un
+            blocco unico sul lato destro. @max-[16rem]:hidden: alla
+            larghezza più compatta del Diario (minW, ~1 cella) la riga è
+            già stretta con solo ‹/label/› — un quarto controllo lì
+            avrebbe rischiato di affollarla (valutato, non forzato: vedi
+            il report). Da MEDIUM in su (il comportamento di sempre) c'è
+            spazio, resta visibile. */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={isToday}
+            aria-label="Torna a oggi"
+            title={isToday ? undefined : "Torna a oggi"}
+            className={navButton}
+          >
+            ›
+          </button>
+          <Dialog>
+            <DialogTrigger
+              aria-label="Apri Memoria"
+              title="Vedi nella Memoria"
+              className={cn(navButton, "@max-[16rem]:hidden")}
+            >
+              <HistoryIcon className="size-3.5" />
+            </DialogTrigger>
+            <HistoryExplorer todayKey={todayKey} initialDate={todayKey} />
+          </Dialog>
+        </div>
       </div>
       {/* "salvataggio…"/"salvato": prima il salvataggio automatico non dava
           nessun segnale, dava l'impressione di dover fare qualcosa per

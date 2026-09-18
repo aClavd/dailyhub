@@ -29,17 +29,32 @@ const GIORNI_BREVI = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
 
 /**
  * Cronologia estesa — mese/settimana, ricerca, riepilogo di un giorno.
- * Apribile dalla sezione Cronologia nel rail (rail.tsx), stesso
- * `<Dialog>` (Base UI). Mostra solo diario/abitudini/peso/sonno/
- * pomodoro: è tutto quello che il DB storicizza per giorno — niente
- * eventi di calendario (quelli sono nel blocco Calendario a parte, non
- * hanno una "cronologia": si legge sempre il calendario vero) né
- * Note/Lettura (contenuto continuo, non per-giorno), dichiarato
+ * Apribile dalla sezione Memoria nel rail (rail.tsx) e ora anche dalla
+ * testata mobile (top-bar.tsx) e dal Diario (diario-widget.tsx), stesso
+ * `<Dialog>` (Base UI) in ognuno — questo componente resta l'UNICA
+ * implementazione di Memory (Memory Architecture Audit v1: "HistoryExplorer
+ * = Memory", non una seconda cosa da costruire). Mostra solo diario/
+ * abitudini/peso/sonno/pomodoro: è tutto quello che il DB storicizza per
+ * giorno — niente eventi di calendario (quelli sono nel blocco Calendario
+ * a parte, non hanno una "cronologia": si legge sempre il calendario
+ * vero) né Note/Lettura (contenuto continuo, non per-giorno), dichiarato
  * apposta, non nascosto.
+ *
+ * `initialDate` (Progress / Andamento v1): apertura da un collegamento
+ * contestuale della scheda Andamento ("Esplora nella memoria", stesso
+ * periodo che si stava guardando lì) — di default resta `todayKey` come
+ * sempre (il Quick Action "Cerca nella memoria" in right-panel.tsx non
+ * passa questo prop, nessun cambio di comportamento per quel chiamante).
  */
-export function HistoryExplorer({ todayKey }: { todayKey: string }) {
+export function HistoryExplorer({
+  todayKey,
+  initialDate,
+}: {
+  todayKey: string
+  initialDate?: string
+}) {
   const [mode, setMode] = useState<Mode>("Mese")
-  const [cursor, setCursor] = useState(() => parseChiave(todayKey))
+  const [cursor, setCursor] = useState(() => parseChiave(initialDate ?? todayKey))
   const [entries, setEntries] = useState<Record<string, DiarioState>>({})
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [query, setQuery] = useState("")
@@ -103,9 +118,15 @@ export function HistoryExplorer({ todayKey }: { todayKey: string }) {
     <DialogPopup>
       <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3.5">
         <div>
-          <DialogTitle>Cronologia</DialogTitle>
+          {/* "Cronologia" → "Memoria" (Memory v1.1) — qui è il titolo del
+              concetto intero, non un'etichetta tecnica: "Rivivi le tue
+              giornate" (copia di supporto suggerita) fusa nella stessa
+              riga del sottotitolo esistente, che restava utile (dice
+              cosa NON copre) — due righe separate sarebbero state solo
+              rumore in più. */}
+          <DialogTitle>Memoria</DialogTitle>
           <p className="text-ink-faint mt-0.5 text-[0.68rem]">
-            Diario, abitudini, peso, sonno, pomodoro — non eventi o note
+            Rivivi le tue giornate — diario, abitudini, peso, sonno, pomodoro.
           </p>
         </div>
         <DialogClose
@@ -116,39 +137,50 @@ export function HistoryExplorer({ todayKey }: { todayKey: string }) {
         </DialogClose>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 border-b border-border px-5 py-3">
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault()
-              runSearch()
-            }
-          }}
-          placeholder="Cerca nel diario…"
-          className="bg-muted border-border focus:outline-primary min-w-0 flex-1 rounded-md border px-2.5 py-1.5 text-sm focus:outline-2"
-        />
-        <button
-          type="button"
-          onClick={runSearch}
-          className="border-border text-ink-soft hover:text-foreground shrink-0 rounded-md border px-3 py-1.5 text-xs font-medium"
-        >
-          Cerca
-        </button>
-        {searchResults && (
+      <div className="flex shrink-0 flex-col gap-1.5 border-b border-border px-5 py-3">
+        <div className="flex items-center gap-2">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault()
+                runSearch()
+              }
+            }}
+            placeholder="Cerca nel diario…"
+            className="bg-muted border-border focus:outline-primary min-w-0 flex-1 rounded-md border px-2.5 py-1.5 text-sm focus:outline-2"
+          />
           <button
             type="button"
-            onClick={() => {
-              setQuery("")
-              setSearchResults(null)
-            }}
-            aria-label="Annulla ricerca"
-            className="text-ink-faint hover:text-foreground shrink-0 text-xs"
+            onClick={runSearch}
+            className="border-border text-ink-soft hover:text-foreground shrink-0 rounded-md border px-3 py-1.5 text-xs font-medium"
           >
-            annulla
+            Cerca
           </button>
-        )}
+          {searchResults && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("")
+                setSearchResults(null)
+              }}
+              aria-label="Annulla ricerca"
+              className="text-ink-faint hover:text-foreground shrink-0 text-xs"
+            >
+              annulla
+            </button>
+          )}
+        </div>
+        {/* Memory v1.1, sez. 3: dice esplicitamente cos'è (corrispondenza
+            esatta su parola/abitudine/umore), non un assistente — la
+            stessa onestà già richiesta per il resto di Memory/Progress,
+            qui applicata al posto dove sarebbe più facile far credere
+            il contrario. */}
+        <p className="text-ink-faint text-[0.62rem]">
+          Cerca per parola, abitudine (es. &quot;Skincare&quot;) o umore (es. &quot;Ottimo&quot;) — corrispondenza
+          esatta, non un assistente.
+        </p>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
