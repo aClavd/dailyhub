@@ -22,6 +22,17 @@ const AUTO_DISMISS_MS = 20_000
 // davvero il toast dall'array (altrimenti sparirebbe di scatto a metà).
 const EXIT_MS = 200
 
+// Mobile Product Audit v1 (poi Mobile Attention v1): il contenitore era
+// ancorato solo in basso (`bottom-4`, nessun `top`) e cresceva verso
+// l'alto senza limite — con molti avvisi insieme (caso limite verificato:
+// filtro mail molto ampio) può superare l'altezza del viewport, e la
+// parte più vecchia della pila resta irraggiungibile (un elemento fixed
+// non scorre con la pagina). MAX_VISIBLE: mostra solo i più recenti, una
+// riga "+N altre" per il resto — nessuna sorgente/dismiss/auto-dismiss
+// cambia, ogni toast scompare comunque da solo dopo AUTO_DISMISS_MS anche
+// se non è (più) visibile.
+const MAX_VISIBLE = 3
+
 const ToastContext = createContext<((toast: ToastInput) => void) | null>(null)
 
 /**
@@ -55,12 +66,24 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [removeAfterExit],
   )
 
+  // I più recenti prima (in fondo alla pila, più vicini a dove si guarda):
+  // solo quelli davvero mostrati contano per il conteggio "+N altre" —
+  // quelli più vecchi restano comunque negli `toasts`, con il proprio
+  // timer di scadenza, solo non disegnati.
+  const visible = toasts.slice(-MAX_VISIBLE)
+  const hiddenCount = Math.max(0, toasts.length - MAX_VISIBLE)
+
   return (
     <ToastContext.Provider value={pushToast}>
       {children}
       {toasts.length > 0 && (
         <div className="fixed right-4 bottom-4 z-40 flex w-72 flex-col gap-2">
-          {toasts.map((t, index) => (
+          {hiddenCount > 0 && (
+            <p className="text-ink-faint bg-card border-border rounded-md border px-3 py-1.5 text-center text-[0.68rem]">
+              +{hiddenCount} {hiddenCount === 1 ? "altro avviso" : "altri avvisi"}
+            </p>
+          )}
+          {visible.map((t, index) => (
             <ToastRow key={t.id} toast={t} index={index} onDismiss={() => removeAfterExit(t.id)} />
           ))}
         </div>

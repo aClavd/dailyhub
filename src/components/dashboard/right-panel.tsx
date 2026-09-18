@@ -9,28 +9,21 @@ import { WidgetIcon } from "@/components/board/widget-icon"
 import { Dialog, DialogTrigger } from "@/components/ui/dialog"
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip"
 import { DURATIONS, PHASE_BAR, PHASE_LABELS, PHASE_TEXT } from "@/components/widgets/pomodoro-widget"
-import { refreshAgenda } from "@/lib/actions/calendar"
-import { refreshMail } from "@/lib/actions/mail"
-import { buildBriefSentences, computeAttentionSignals } from "@/lib/attention-signals"
+import { buildBriefSentences } from "@/lib/attention-signals"
 import type { WidgetType } from "@/lib/board"
-import { greeting, oraBreve } from "@/lib/datetime"
+import { oraBreve } from "@/lib/datetime"
 import type { DiarioState } from "@/lib/diario"
 import type { CalendarResult } from "@/lib/google/calendar"
 import type { MailMessage, MailResult } from "@/lib/mail"
 import type { MailFilterSummary } from "@/lib/queries/mail-filters"
 import type { SpotifyStatus } from "@/lib/queries/spotify"
-import { usePolling } from "@/lib/use-polling"
+import { useLiveAttention } from "@/lib/use-attention"
 import { cn } from "@/lib/utils"
 
-import { CHECK_EVERY_MS as DIARIO_CHECK_MS, REMINDER_HOUR } from "./diario-reminder"
 import { HistoryExplorer } from "./history-explorer"
 import { InsightsDialog } from "./insights-dialog"
 import { NewEventForm } from "./new-event-form"
 
-// Stesso intervallo già usato da Impegni/Mail (agenda-card.tsx/mail-card.tsx)
-// — il pannello legge esattamente gli stessi dati, ha senso restare
-// sincronizzato alla stessa cadenza, non una terza scelta arbitraria.
-const REFRESH_MS = 90_000
 const MAX_MAIL_ROWS = 3
 
 // Sez. 9 (Sidebar System Refinement): non più una card per azione (bordo +
@@ -154,8 +147,6 @@ export function RightPanel({
   // pomodoro-widget.tsx: sovrapposto qui campo per campo, sempre la
   // versione più fresca di ciascun campo.
   const diario: DiarioState = { ...diarioInitial, ...todayDiarioPatch }
-  const [events, setEvents] = useState(initialEvents)
-  const [mail, setMail] = useState(initialMail)
   const [eventFormOpen, setEventFormOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   // Right Sidebar 2.0, sez. 13 — vero solo per la finestra in cui il
@@ -178,48 +169,13 @@ export function RightPanel({
     }, SIDEBAR_CLOSE_MS)
   }
 
-  usePolling(() => {
-    void refreshAgenda().then(setEvents)
-  }, REFRESH_MS)
-  usePolling(() => {
-    void refreshMail().then(setMail)
-  }, REFRESH_MS)
-
-  // Promemoria diario: stessa soglia/cadenza di diario-reminder.tsx, ma
-  // calcolata SOLO dentro un effect (mai durante il render) — l'ora del
-  // server che ha disegnato la pagina e quella di chi la guarda possono
-  // differire, calcolarla durante il render rischierebbe un mismatch di
-  // idratazione. Parte da `false` (come il primo render server), si
-  // aggiorna un istante dopo il mount se è già oltre le 20.
-  const [afterReminderHour, setAfterReminderHour] = useState(false)
-  useEffect(() => {
-    const check = () => setAfterReminderHour(new Date().getHours() >= REMINDER_HOUR)
-    check()
-    const id = window.setInterval(check, DIARIO_CHECK_MS)
-    return () => window.clearInterval(id)
-  }, [])
-
-  // Stesso motivo/stessa tecnica di afterReminderHour sopra: il saluto del
-  // Daily Brief (greeting(), la stessa funzione già usata dal saluto
-  // principale in testata — non un secondo testo inventato) dipende
-  // dall'ora, quindi va calcolato solo lato client. `null` finché
-  // l'effect non gira una volta — la riga semplicemente non compare per
-  // un istante, invece di rischiare un mismatch fra ora del server e ora
-  // di chi guarda.
-  const [greetingWord, setGreetingWord] = useState<string | null>(null)
-  useEffect(() => {
-    const set = () => setGreetingWord(greeting())
-    set()
-  }, [])
-
-  const diarioWritten = Boolean(diario.testo.trim())
-  // Calcolo condiviso con Morning Briefing (lib/attention-signals.ts,
-  // Morning Briefing Architecture Audit v1, sez. D) — stessa fonte di
-  // verità, non due copie che potrebbero disallinearsi. "Non lette", non
-  // solo "importanti", quando il dato è disponibile — stato nativo di
-  // Gmail (message.unread), non un secondo stato nostro (vedi
-  // lib/google/gmail.ts). Libero non lo sa (sempre `unread: false`, non
-  // perché sia stata letta per davvero).
+  // Eventi/mail live + segnali di Attention + saluto — estratti in
+  // lib/use-attention.ts (Mobile Attention v1): stessa identica logica
+  // riusata anche da top-bar.tsx per la superficie mobile, non due copie
+  // che potrebbero disallinearsi. "Non lette", non solo "importanti",
+  // quando il dato è disponibile — stato nativo di Gmail (message.unread),
+  // non un secondo stato nostro (vedi lib/google/gmail.ts). Libero non lo
+  // sa (sempre `unread: false`, non perché sia stata letta per davvero).
   const {
     showEvent,
     eventSignal,
@@ -229,12 +185,12 @@ export function RightPanel({
     unreadImportantMail,
     showDiarioReminder,
     attentionCount,
-  } = computeAttentionSignals({
-    events: events.ok ? events.events : [],
-    mail: mail.messages,
+    greetingWord,
+  } = useLiveAttention({
+    initialEvents,
+    initialMail,
     filters,
-    diarioWritten,
-    afterReminderHour,
+    diarioWritten: Boolean(diario.testo.trim()),
   })
 
   const habitsDone = Object.values(diario.habits).filter(Boolean).length
@@ -792,7 +748,9 @@ export function RightPanel({
   )
 }
 
-function SectionLabel({ children }: { children: ReactNode }) {
+/** Esportata (Mobile Attention v1): stessa etichetta di sezione, riusata
+ * dalla superficie Attenzione mobile (attention-dialog.tsx). */
+export function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
       {children}
@@ -800,7 +758,10 @@ function SectionLabel({ children }: { children: ReactNode }) {
   )
 }
 
-function AttentionRow({
+/** Esportata (Mobile Attention v1) — stessa riga, stesso onClick, stessa
+ * attention-emphasis: la superficie Attenzione mobile mostra ESATTAMENTE
+ * queste righe, non una versione riscritta apposta. */
+export function AttentionRow({
   type,
   title,
   time,
@@ -861,7 +822,8 @@ function AttentionRow({
 /** Riga mail dell'Attention Center — link vero verso il messaggio quando
  * c'è (Gmail), riga informativa senza azione quando non c'è (Libero non
  * espone un link diretto, vedi lib/mail.ts): mai un'azione finta. */
-function MailRow({ message }: { message: MailMessage }) {
+/** Esportata (Mobile Attention v1) — stesso motivo di AttentionRow sopra. */
+export function MailRow({ message }: { message: MailMessage }) {
   // animation-duration-200 (non duration-200): stessa ragione di
   // AttentionRow — non condividere la variabile con transition-colors qui.
   const rowClass =
@@ -932,7 +894,9 @@ function formatClock(seconds: number): string {
 
 /** Countdown congelato — nessun ticking, per lo stato "in pausa" (il tempo
  * rimasto non scorre finché non si riprende). */
-function StaticClock({ seconds }: { seconds: number }) {
+/** Esportata (Mobile Attention v1): stesso Focus, stesso countdown "in
+ * pausa" congelato, riusato dalla superficie Attenzione mobile. */
+export function StaticClock({ seconds }: { seconds: number }) {
   return <span className="font-mono tabular-nums">{formatClock(seconds)}</span>
 }
 
@@ -972,7 +936,10 @@ function FocusMinutes({ endAt }: { endAt: number }) {
 /** Come FocusClock, con numero grande + barra di progresso — solo per la
  * sezione Focus espansa: stesso linguaggio visivo del widget centrale
  * (PHASE_BAR/PHASE_TEXT riusati dal chiamante, non ridefiniti qui). */
-function FocusActive({
+/** Esportata (Mobile Attention v1) — stesso identico Focus attivo (numero
+ * grande + barra), nessun secondo timer: legge lo stesso `endAt` di
+ * pomodoroLive (board-context.tsx) del widget centrale. */
+export function FocusActive({
   endAt,
   totalSec,
   textClass,

@@ -108,6 +108,10 @@ export default async function DashboardPage() {
             <div className="min-w-0 flex-1 px-4 pb-16 sm:px-6 lg:px-10 xl:px-14">
               <TopBar
                 todayKey={todayKey}
+                initialEvents={eventsInitial}
+                initialMail={mailInitial}
+                filters={mailFilters}
+                diarioInitial={diarioInitial}
                 googleError={session.error}
                 spotifyStatus={spotifyStatus}
                 liberoConfigured={isLiberoConfigured()}
