@@ -2,6 +2,7 @@ import "server-only"
 
 import { cache } from "react"
 
+import { auth } from "@/auth"
 import { getGmailMessages } from "@/lib/google/gmail"
 import { getLiberoMessages } from "@/lib/libero-mail"
 
@@ -49,8 +50,25 @@ export type MailResult = {
  * getTodayEvents() in lib/google/calendar.ts: sia MailSection (page.tsx)
  * sia il Daily Brief del pannello destro la chiamano nella stessa
  * richiesta, deduplicata invece di due giri reali verso Gmail/Libero.
+ *
+ * Controllo sessione QUI (Pre-Deploy Security Audit v1), non solo nel
+ * redirect di dashboard/page.tsx: getGmailMessages() già si autoprotegge
+ * (torna "unauthenticated" senza sessione), ma getLiberoMessages() usa
+ * credenziali server-side GLOBALI (LIBERO_EMAIL/LIBERO_APP_PASSWORD, un
+ * solo account condiviso, non per-utente) e prima di questa modifica non
+ * aveva nessun controllo proprio — chiamata da qui, da refreshMail()
+ * (Server Action usata da MailLive) senza nessun altro cancello in mezzo.
+ * "La dashboard ha già il redirect" non basta: chi chiama refreshMail/
+ * getMail deve poter dimostrare da SOLO di avere una sessione valida,
+ * senza dare per scontato che il chiamante l'abbia già verificata.
  */
 export const getMail = cache(async (): Promise<MailResult> => {
+  const session = await auth()
+  if (!session?.user?.id) {
+    const reason = { ok: false as const, reason: "unauthenticated" as const }
+    return { messages: [], gmail: reason, libero: reason }
+  }
+
   const [gmail, libero] = await Promise.all([getGmailMessages(), getLiberoMessages()])
 
   const messages: MailMessage[] = [

@@ -44,6 +44,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    /**
+     * DailyHub è un'app personale a un solo utente (Pre-Deploy Security
+     * Audit v1) — questo callback gira PRIMA che Auth.js crei qualunque
+     * sessione/cookie valido: un'email non ammessa non arriva mai a
+     * "jwt"/"session" sotto, quindi non vede mai un dato privato, nemmeno
+     * per un istante. `ALLOWED_EMAIL` è una env var (mai un'email scritta
+     * qui nel codice) confrontata case-insensitive (Google non distingue
+     * maiuscole/minuscole) e con gli spazi tolti (un copia-incolla nel
+     * pannello di Vercel può introdurne per sbaglio).
+     *
+     * Fallisce CHIUSO, non aperto: se `ALLOWED_EMAIL` non è impostata (es.
+     * dimenticata su Vercel) l'accesso è negato a chiunque, compreso il
+     * proprietario — mai il contrario ("nessuna variabile = tutti dentro"),
+     * che lascerebbe l'app pubblica aperta in silenzio nel modo peggiore
+     * possibile: senza nessun errore visibile finché qualcuno non se ne
+     * accorge da solo.
+     */
+    async signIn({ user }) {
+      const allowed = process.env.ALLOWED_EMAIL?.trim().toLowerCase()
+      if (!allowed) return false
+      return user.email?.trim().toLowerCase() === allowed
+    },
     async jwt({ token, account }) {
       // 1) Primo accesso: salva i token restituiti da Google nel JWT.
       if (account) {
