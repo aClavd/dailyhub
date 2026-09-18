@@ -212,6 +212,32 @@ export function sanitizeLayout(layout: readonly WidgetPlacement[]): WidgetPlacem
   return repackLayout(layout)
 }
 
+/**
+ * Ordine per la composizione mobile/tablet a colonna singola/ridotta
+ * (Mobile Work Composition v1) — un valore per tipo, pensato per la
+ * proprietà CSS `order` (che l'auto-posizionamento della griglia rispetta
+ * anche quando grid-column/grid-row-start diventano "auto", vedi
+ * globals.css e widget-shell.tsx). Non riordina l'array, non tocca
+ * x/y/w/h, non viene mai salvato: puro, derivato da `layout` a ogni
+ * render, stesso identico input dà sempre lo stesso risultato.
+ *
+ * Criterio (mai alfabetico, mai un ordine hardcoded per tipo — deve
+ * riflettere la composizione che l'utente ha costruito lui, non una
+ * gerarchia decisa qui): 1) y desktop, 2) x desktop, 3) posizione
+ * originale nell'array come tie-breaker finale (blocchi sovrapposti o un
+ * layout irregolare restano comunque ordinati in modo deterministico,
+ * nessuno sparisce). y pesa più di x (moltiplicatore 10_000 contro 100):
+ * BOARD_COLS è 6, un indice nell'array realisticamente sotto le decine —
+ * nessuna combinazione reale può far "traboccare" un termine nell'altro.
+ */
+export function getMobileOrder(layout: readonly WidgetPlacement[]): Map<WidgetType, number> {
+  const order = new Map<WidgetType, number>()
+  layout.forEach((p, index) => {
+    order.set(p.type, p.y * 10_000 + p.x * 100 + index)
+  })
+  return order
+}
+
 /** Piazza una sequenza di blocchi in ordine, uno via via nel primo posto libero. */
 function packInOrder(types: readonly WidgetType[]): WidgetPlacement[] {
   const layout: WidgetPlacement[] = []

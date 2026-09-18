@@ -332,19 +332,56 @@
   }
 }
 
-/* La board posiziona ogni blocco con grid-column/grid-row inline (calcolati
-   da x/y/w/h in board.tsx), che batte qualsiasi classe Tailwind per
-   specificità. Sotto sm: vogliamo però una colonna singola a piena
-   larghezza (niente griglia logica su schermi stretti) — l'unico modo di
-   vincere uno style inline da un breakpoint è questo, per questo l'unico
-   !important del progetto. */
-@media (max-width: 639px) {
+/* Mobile Work Composition v1 — la board posiziona ogni blocco con
+   grid-column-start/end e grid-row-start/end inline, in forma longhand
+   apposta (calcolati da x/y/w/h in widget-shell.tsx): battono qualsiasi
+   classe per specificità, l'unico modo di vincerli da un breakpoint è
+   !important (gli unici di tutto il progetto, qui in due varianti) — ma
+   sovrascrivendo SOLO *-start, non *-end. *-end è lo SPAN (largo w
+   colonne/alto h righe): lasciato all'inline style anche qui sotto, un
+   blocco alto 2 righe resta alto 2 righe anche impilato o su una griglia
+   ridotta, non si schiaccia a una riga sola (bug reale della vecchia
+   regola unica `grid-row: auto !important`, che sovrascriveva l'intera
+   proprietà, span compreso — corretto qui).
+
+   L'ordine visivo segue --order (custom property, sempre presente
+   nell'inline style, sez. lib/board.ts:getMobileOrder) quando
+   *-start diventa "auto": non l'ordine del DOM, la composizione y/x/
+   indice che l'utente ha costruito. Sul desktop (>=1024px, nessuna
+   regola qui sotto) resta dichiarata ma inerte — *-start è già esplicito
+   lì, `order` non ha alcun effetto quando la posizione non è "auto". */
+
+/* <768px — colonna singola, piena larghezza, un solo blocco per riga. */
+@media (max-width: 767px) {
   .board-grid {
     grid-template-columns: 1fr !important;
     width: 100% !important;
   }
   .board-cell {
-    grid-column: 1 / -1 !important;
-    grid-row: auto !important;
+    grid-column-start: 1 !important;
+    grid-column-end: -1 !important;
+    grid-row-start: auto !important;
+    order: var(--order, 0);
+  }
+}
+
+/* 768–1023px (tablet) — 2 colonne (verificato sulla geometria reale dei
+   widget, non un numero indovinato: a questa larghezza una colonna vale
+   almeno 340px, ben sopra CELL_MIN_REM/8rem=128px). --tablet-span (sempre
+   nell'inline style, sez. widget-shell.tsx) vale 2 per i tipi che hanno
+   bisogno di più di una colonna stretta per restare leggibili (stesso
+   WIDGET_META.minW già usato per il ridimensionamento desktop — Mail e
+   Calendario oggi), altrimenti 1: un blocco così prende comunque tutta
+   la riga invece di restare troppo stretto per il proprio contenuto. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .board-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+  }
+  .board-cell {
+    grid-column-start: auto !important;
+    grid-column-end: span var(--tablet-span, 1) !important;
+    grid-row-start: auto !important;
+    order: var(--order, 0);
   }
 }

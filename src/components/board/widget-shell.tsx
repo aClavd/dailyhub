@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 
 import { resizeEdge, type ResizeEdge } from "@/lib/board-resize"
-import { REORDER_MIME, WIDGET_META, type WidgetType } from "@/lib/board"
+import { getMobileOrder, REORDER_MIME, WIDGET_META, type WidgetType } from "@/lib/board"
 import { cn } from "@/lib/utils"
 
 import { useBoard } from "./board-context"
@@ -242,6 +242,21 @@ export function WidgetShell({
 
   if (!placement) return null
 
+  // Mobile Work Composition v1 — due valori derivati SOLO per la
+  // composizione sotto i 1024px, mai persistiti, ricalcolati a ogni
+  // render dallo stesso `committedLayout` già in mano (mai un secondo
+  // stato/listener di resize): esposti come custom property CSS, letti
+  // solo dentro le media query di globals.css — sul desktop restano
+  // dichiarati ma inerti (nessuna regola desktop li consulta).
+  // --order: sequenza deterministica (y, x, indice originale — vedi
+  // getMobileOrder), per quando grid-row/column-start diventano "auto".
+  // --tablet-span: quanto delle 2 colonne tablet occupa questo blocco —
+  // 2 (piena larghezza) solo se il TIPO ha bisogno di più di una colonna
+  // stretta per essere leggibile (stesso WIDGET_META.minW già usato per
+  // il ridimensionamento desktop, non un numero nuovo inventato qui).
+  const mobileOrder = getMobileOrder(committedLayout).get(type) ?? 0
+  const tabletSpan = meta.minW >= 2 ? 2 : 1
+
   return (
     <>
       {/* Segnaposto tratteggiato nella cella "di atterraggio" (quella a
@@ -284,10 +299,22 @@ export function WidgetShell({
                 height: liveRect.height,
                 zIndex: 30,
               }
-            : {
-                gridColumn: `${placement.x + 1} / span ${placement.w}`,
-                gridRow: `${placement.y + 1} / span ${placement.h}`,
-              }
+            : ({
+                // Longhand (start/end), non la scorciatoia gridColumn/gridRow:
+                // le media query sotto i 1024px (globals.css) devono poter
+                // sovrascrivere SOLO *-start (dove inizia il blocco), senza
+                // toccare *-end (lo span, cioè w/h) — un blocco alto 2 righe
+                // resta alto 2 righe anche impilato in colonna singola,
+                // invece di schiacciarsi a una sola riga come succedeva con
+                // la vecchia regola `grid-row: auto !important` (che
+                // sovrascriveva l'intera proprietà, span compreso).
+                gridColumnStart: placement.x + 1,
+                gridColumnEnd: `span ${placement.w}`,
+                gridRowStart: placement.y + 1,
+                gridRowEnd: `span ${placement.h}`,
+                "--order": mobileOrder,
+                "--tablet-span": tabletSpan,
+              } as React.CSSProperties)
         }
         className={cn(
           // h-full riempie esattamente la cella (o le celle) assegnate dalla
