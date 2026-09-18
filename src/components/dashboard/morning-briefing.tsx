@@ -116,21 +116,20 @@ function MorningBriefingScreen({
   const showAttention = data.attention.hasItem
 
   return (
-    // min-h-dvh (non solo flex-1): flex-1 da solo basta SOLO se l'intera
-    // catena html{h-full}->body{min-h-full}->...->qui riesce a risolvere
-    // un'altezza percentuale reale (verificato dal vivo: funziona in una
-    // scheda normale) — ma non ha nessuna misura propria, dipende in toto
-    // da quella catena. min-h-dvh dà al briefing un pavimento di altezza
-    // indipendente (la vera altezza di viewport visibile), che non deve
-    // ereditare nulla da body/html/i Provider sopra — coerente con "il
-    // briefing è un'esperienza a pagina intera, non deve ereditare la
-    // geometria della board/dei suoi contenitori". w-full: stessa idea per
-    // la larghezza, esplicita invece di implicita (un <div> è già 100%
-    // di suo, ma qui non è lasciato al caso). flex-1 resta: se il
-    // contenitore flex sopra è già alto quanto la viewport (caso normale),
-    // non cambia nulla; se quella catena fallisse, min-h-dvh è comunque
-    // un pavimento (min-height vince sempre su un flex-basis più piccolo).
-    <div className="flex min-h-dvh w-full flex-1 flex-col bg-background">
+    // fixed inset-0 (non più flex-1/min-h-dvh): quel tentativo si è
+    // rivelato ancora fragile dal vivo (dipendeva comunque dal supporto
+    // dell'unità dvh e/o dalla catena di altezze body/html/Provider,
+    // verificata funzionante solo in un test headless, non nell'uso
+    // reale). `fixed` + `inset-0` non dipende da NESSUNA di quelle due
+    // cose: si ancora ai bordi del viewport per definizione dello standard
+    // CSS, indipendentemente da come sono alti/bassi body/html o cosa
+    // propagano i Provider sopra — la stessa garanzia che il briefing "è
+    // una pagina intera, non eredita la geometria della board" ma senza
+    // fare affidamento su un'unità o una catena di ereditarietà.
+    // overflow-y-auto: uscendo dal flusso normale, la pagina non scrolla
+    // più da sola se il contenuto (tante sezioni + poco spazio) supera
+    // l'altezza del viewport — deve poterlo fare questo div stesso.
+    <div className="fixed inset-0 flex flex-col overflow-y-auto bg-background">
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-6 py-16 sm:px-8">
         <h1
           className={cn(
