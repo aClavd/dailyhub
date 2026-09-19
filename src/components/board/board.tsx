@@ -92,8 +92,12 @@ export function Board({
 
   return (
     <div>
-      {/* "Modifica layout" (Mobile Interaction v1) — solo sotto i 1024px
-          (`lg:hidden`): a desktop le maniglie di riordino/ridimensionamento
+      {/* "Modifica layout" (Mobile Interaction v1) — solo sotto i 1536px
+          (`2xl:hidden` — Responsive Grid Fix 1024-1279px: soglia spostata
+          da lg:/1024 a 2xl:/1536, non xl:/1280 [misurato insufficiente,
+          vedi top-bar.tsx] — insieme a rail.tsx/right-panel.tsx/
+          top-bar.tsx/widget-shell.tsx, la composizione tablet resta attiva
+          fino a lì): a desktop le maniglie di riordino/ridimensionamento
           sono già sempre attive (mouse, hover per scoprirle), qui invece
           l'unico scopo è non affollare ogni header con le maniglie ▲▼ di
           riordino mobile quando non si sta riorganizzando davvero — resize
@@ -101,7 +105,7 @@ export function Board({
           Nessuna nuova pagina/vista: un interruttore locale (mobileEditMode,
           board-context.tsx), non persistito. */}
       {layout.length > 0 && (
-        <div className="mb-3 flex justify-end lg:hidden">
+        <div className="mb-3 flex justify-end 2xl:hidden">
           <button
             type="button"
             onClick={toggleMobileEditMode}

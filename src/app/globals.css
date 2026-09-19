@@ -355,8 +355,9 @@
    ordinato correttamente: ora che lo è, quella custom property è stata
    rimossa (widget-shell.tsx), risolvendo anche il disallineamento tra
    ordine visivo e ordine di tabulazione/screen reader che ne derivava
-   (Mobile Product Audit v1). Sul desktop (>=1024px, nessuna regola qui
-   sotto) *-start resta esplicito, l'ordine del DOM non ha alcun effetto
+   (Mobile Product Audit v1). Sul desktop (>=1536px, nessuna regola qui
+   sotto — soglia dal Responsive Grid Fix 1024-1279px, prima 1024px)
+   *-start resta esplicito, l'ordine del DOM non ha alcun effetto
    sulla posizione — solo su tab-order/screen reader, in meglio. */
 
 /* <768px — colonna singola, piena larghezza, un solo blocco per riga. */
@@ -372,15 +373,38 @@
   }
 }
 
-/* 768–1023px (tablet) — 2 colonne (verificato sulla geometria reale dei
+/* 768–1535px (tablet) — 2 colonne (verificato sulla geometria reale dei
    widget, non un numero indovinato: a questa larghezza una colonna vale
    almeno 340px, ben sopra CELL_MIN_REM/8rem=128px). --tablet-span (sempre
    nell'inline style, sez. widget-shell.tsx) vale 2 per i tipi che hanno
    bisogno di più di una colonna stretta per restare leggibili (stesso
    WIDGET_META.minW già usato per il ridimensionamento desktop — Mail e
    Calendario oggi), altrimenti 1: un blocco così prende comunque tutta
-   la riga invece di restare troppo stretto per il proprio contenuto. */
-@media (min-width: 768px) and (max-width: 1023px) {
+   la riga invece di restare troppo stretto per il proprio contenuto.
+
+   Limite superiore 1535px, non più 1023px (Responsive Grid Fix
+   1024-1279px) — causa root, misurata con Playwright su un layout tipico
+   a 6 colonne (agenda + mail + diario affiancati riempiono già tutte le
+   BOARD_COLS=6, non un caso limite): rail sinistra (w-60/240px) + right
+   panel (w-80/320px) + il padding del contenitore centrale lasciano al
+   board meno spazio di quanto richieda anche al proprio minimo — minmax(
+   CELL_MIN_REM, CELL_MAX_REM) in board.tsx non scende mai sotto 8rem per
+   colonna, quindi 6 colonne non stanno mai in meno di 848px (6×8rem + 5
+   gap da 1rem) — fino a ~1536px di finestra, non 1280px come sembrava
+   controllando solo il blocco Mail (che per posizione in griglia sta
+   comodo anche più stretto, mentre Diario e Calendario no). Il grid non
+   si sovrapponeva visivamente al right panel (che resta sempre sopra) ma
+   i blocchi più a destra restavano raggiungibili solo con lo scroll
+   orizzontale di sicurezza del board (mai pensato per essere l'unico modo
+   di vederli) — di fatto contenuto nascosto, verificato con Playwright su
+   tutte le larghezze 1024/1100/1200/1279/1280/1440/1535/1536. Sotto
+   1536px non c'è ancora spazio sufficiente per rail+griglia+right panel
+   insieme, ma la composizione tablet qui sotto (2 colonne, niente
+   rail/right panel — vedi rail.tsx/right-panel.tsx/top-bar.tsx, soglia
+   2xl: anziché lg:) ci sta comoda: stessa composizione già in uso fino a
+   1023px, solo estesa più in là invece di introdurre una terza
+   composizione. */
+@media (min-width: 768px) and (max-width: 1535px) {
   .board-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     width: 100% !important;

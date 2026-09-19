@@ -25,8 +25,23 @@ import { LibraryDialog } from "./library-dialog"
  * l'Account center nel dialog Impostazioni (insights-dialog.tsx, sez. 13-14
  * del documento di rifinitura sidebar) quella riga era ridondante —
  * "Esci" si è spostato lì (lib/actions/auth.ts:logout, stessa Server
- * Action). `lg:hidden` sull'intero header, non solo sul marchio: su
+ * Action). `2xl:hidden` sull'intero header, non solo sul marchio: su
  * desktop non c'è più nulla da mostrare qui, niente riga vuota col bordo.
+ * (Responsive Grid Fix 1024-1279px — la soglia era lg:/1024px, poi
+ * misurata di nuovo con più cura: rail (240px) + right panel (320px) +
+ * padding lasciano al board, con un layout tipico a 6 colonne (agenda +
+ * mail + diario affiancati riempiono già le 6 colonne di BOARD_COLS — non
+ * un caso limite), meno spazio di quanto la griglia richieda anche al
+ * proprio minimo (minmax(CELL_MIN_REM, ...) non scende mai sotto 8rem per
+ * colonna: 6×8rem + 5 gap = 848px) fino a ~1536px di finestra, non 1280px
+ * come sembrava misurando solo il blocco Mail. Sotto quella soglia i
+ * blocchi più a destra (Diario, Calendario) restavano raggiungibili solo
+ * con lo scroll orizzontale di sicurezza del board, mai pensato per
+ * essere l'unico modo di vederli. La composizione tablet, già corretta
+ * fino a 1023px, resta quindi attiva fino a 1535px: la soglia di tutto il
+ * "chrome" desktop [rail.tsx, right-panel.tsx, questo file, board.tsx,
+ * widget-shell.tsx] è 2xl:/1536px, unica larghezza verificata dove il
+ * grid desktop ha sempre spazio a sufficienza per 6 colonne piene.)
  *
  * Mobile Navigation & Surfaces v1 — la TopBar diventa il punto d'accesso
  * mobile alle superfici secondarie: quattro icone dirette (Memoria,
@@ -91,7 +106,7 @@ export function TopBar({
     "border-border bg-card text-ink-soft hover:text-foreground hover:border-ink-faint active:translate-y-px grid size-11 shrink-0 place-items-center rounded-md border transition-colors"
 
   return (
-    <header className="flex items-center justify-between border-b border-border py-3.5 lg:hidden">
+    <header className="flex items-center justify-between border-b border-border py-3.5 2xl:hidden">
       <div className="flex items-center gap-2">
         <span className="bg-primary size-2 rounded-full" />
         <span className="font-heading text-base font-semibold">

@@ -247,7 +247,8 @@ export function WidgetShell({
   if (!placement) return null
 
   // Mobile Work Composition v1 — derivato SOLO per la composizione sotto
-  // i 1024px, mai persistito, ricalcolato a ogni render dallo stesso
+  // i 1536px (soglia dal Responsive Grid Fix 1024-1279px, prima 1024px),
+  // mai persistito, ricalcolato a ogni render dallo stesso
   // `committedLayout` già in mano (mai un secondo stato/listener di
   // resize): esposto come custom property CSS, letta solo dentro le
   // media query di globals.css — sul desktop resta dichiarata ma inerte.
@@ -314,7 +315,7 @@ export function WidgetShell({
               }
             : ({
                 // Longhand (start/end), non la scorciatoia gridColumn/gridRow:
-                // le media query sotto i 1024px (globals.css) devono poter
+                // le media query sotto i 1536px (globals.css) devono poter
                 // sovrascrivere SOLO *-start (dove inizia il blocco), senza
                 // toccare *-end (lo span, cioè w/h) — un blocco alto 2 righe
                 // resta alto 2 righe anche impilato in colonna singola,
@@ -422,16 +423,19 @@ export function WidgetShell({
             <GripIcon className="size-4" />
           </button>
           {/* ▲▼ riordino mobile (Mobile Interaction v1) — solo in modalità
-              "Modifica layout" (board.tsx) e solo sotto i 1024px
-              (lg:hidden, difensivo: la modalità stessa non ha nessun
-              trigger visibile a desktop). Alternativa al trascinamento
+              "Modifica layout" (board.tsx) e solo sotto i 1536px
+              (2xl:hidden, difensivo: la modalità stessa non ha nessun
+              trigger visibile a desktop — Responsive Grid Fix 1024-1279px:
+              soglia spostata da lg:/1024 a 2xl:/1536, non xl:/1280
+              [misurato insufficiente, vedi top-bar.tsx], insieme al resto
+              del "chrome" mobile/desktop). Alternativa al trascinamento
               HTML5 sopra (non affidabile su touch): sposta `type` di una
               posizione nell'ordine visivo mobile (moveMobileOrder,
               board-context.tsx) — stesso repackLayout/stessa persistenza
               di sempre, non un secondo layout. Disabilitato quando il
               blocco è già all'estremo in quella direzione. */}
           {mobileEditMode && (
-            <div className="flex shrink-0 items-center gap-0.5 lg:hidden">
+            <div className="flex shrink-0 items-center gap-0.5 2xl:hidden">
               <button
                 type="button"
                 onClick={() => moveMobileOrder(type, "up")}

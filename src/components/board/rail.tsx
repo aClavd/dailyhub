@@ -117,7 +117,16 @@ export function Rail({
         // Motion Language v1, livello STANDARD (200ms) — stessa durata del
         // pannello destro (right-panel.tsx), era 150ms: allineata,
         // "stessa logica per tutte le sidebar".
-        "hidden shrink-0 flex-col overflow-hidden border-r border-border bg-card transition-[width] duration-200 motion-reduce:transition-none lg:sticky lg:top-0 lg:flex lg:h-screen",
+        // Responsive Grid Fix 1024-1279px — soglia spostata da lg: (1024)
+        // a 2xl: (1536, come right-panel.tsx — non xl:/1280, misurato
+        // insufficiente: vedi top-bar.tsx per i numeri): sotto 1536px lo
+        // spazio tra questo rail e il right panel non basta al board a 6
+        // colonne (minmax(CELL_MIN_REM, ...), mai sotto 8rem/colonna) per
+        // restare dentro i propri confini — i blocchi più a destra
+        // finivano nascosti oltre lo scroll orizzontale del board. La
+        // composizione tablet resta attiva fino a 1535px, esattamente
+        // come per right-panel.tsx.
+        "hidden shrink-0 flex-col overflow-hidden border-r border-border bg-card transition-[width] duration-200 motion-reduce:transition-none 2xl:sticky 2xl:top-0 2xl:flex 2xl:h-screen",
         // 52px → 64px (Fase successiva): a 52px le icone della Libreria
         // erano già al massimo consentito dalla larghezza (size-9 = 36px,
         // niente margine), sensibilmente più piccole delle righe da

@@ -289,7 +289,16 @@ export function RightPanel({
         // durata del contenuto sotto, non più un numero a sé (era 150ms) —
         // la larghezza e il contenuto entrante appartengono alla stessa
         // transizione percepita, non due timer indipendenti.
-        "hidden shrink-0 flex-col overflow-hidden border-l border-border bg-card transition-[width] duration-200 motion-reduce:transition-none lg:sticky lg:top-0 lg:flex lg:h-screen",
+        // Responsive Grid Fix 1024-1279px — soglia spostata da lg: (1024)
+        // a 2xl: (1536, come rail.tsx — non xl:/1280, misurato insufficiente:
+        // vedi top-bar.tsx per i numeri): sotto 1536px non c'è spazio
+        // sufficiente perché il board a 6 colonne (minmax(CELL_MIN_REM,
+        // ...), mai sotto 8rem/colonna) resti dentro i propri confini tra
+        // rail e questo pannello — i blocchi più a destra finivano
+        // nascosti oltre lo scroll orizzontale del board. La composizione
+        // tablet (TopBar, board a colonne flessibili senza questo minimo)
+        // resta quindi attiva fino a 1535px.
+        "hidden shrink-0 flex-col overflow-hidden border-l border-border bg-card transition-[width] duration-200 motion-reduce:transition-none 2xl:sticky 2xl:top-0 2xl:flex 2xl:h-screen",
         // w-10 (40px) bastava per il solo pulsante — un'"Attention Rail"
         // vera con indicatori distinti (non un unico numero) chiede
         // qualche px in più, stesso tipo di aggiustamento già fatto per
