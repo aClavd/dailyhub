@@ -307,7 +307,13 @@ export function InsightsDialog({
                   <StatTile label="Giorni con attività" value={String(activeDays)} />
                   <StatTile label="Serie attuale" value={streaks ? `${streaks.current} g` : "…"} />
                   <StatTile label="Serie più lunga" value={streaks ? `${streaks.longest} g` : "…"} />
-                  <StatTile label="Studio" value={`${totalPomodori} pom. · ${totalMinuti} min`} />
+                  {/* "X pom · Ym", non "X pom. · Y min" (Product Polish v1,
+                      issue #4) — stesso principio già in uso nelle due
+                      tessere Serie sopra ("X g", non "X giorni"): un'unità
+                      abbreviata subito dopo il numero, senza spazio prima
+                      di "m", recupera qualche carattere in più di margine
+                      per i valori reali (non solo "0 pom · 0m" di prova). */}
+                  <StatTile label="Studio" value={`${totalPomodori} pom · ${totalMinuti}m`} />
                 </div>
 
                 <div>
@@ -390,7 +396,15 @@ function StatTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-border rounded-lg border p-2.5">
       <p className="text-ink-faint text-[0.62rem] font-semibold tracking-[0.08em] uppercase">{label}</p>
-      <p className="font-heading mt-1 text-lg font-semibold tabular-nums">{value}</p>
+      {/* Product Polish v1 — issue #4: text-lg→text-base (18px→16px, -11%,
+          non una riduzione "eccessiva") su TUTTE e 4 le tessere, non solo
+          "Studio" — un font diverso da tessera a tessera avrebbe rotto la
+          coerenza che l'obiettivo chiede, un valore più corto (sotto)
+          l'unica cosa specifica di quella tessera. whitespace-nowrap:
+          se anche così un valore reale molto lungo non entrasse, meglio
+          un leggero overflow orizzontale contenuto dal `truncate` che un
+          a-capo a metà unità ("...0" / "min") come prima. */}
+      <p className="font-heading mt-1 truncate text-base font-semibold tabular-nums">{value}</p>
     </div>
   )
 }

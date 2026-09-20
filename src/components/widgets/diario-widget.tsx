@@ -146,8 +146,17 @@ export function DiarioWidget({
     //   (2×23+1gap=47rem, ma già da metà quel range c'è respiro reale) —
     //   30rem è dove due colonne di QuickStats hanno già ampio margine e
     //   la textarea può crescere senza sembrare sproporzionata.
-    // Tra le due soglie: MEDIUM, il comportamento di oggi, invariato.
-    <div className="flex flex-col gap-4 @max-[16rem]:gap-2.5 @min-[30rem]:gap-5">
+    // Tra le due soglie: MEDIUM, il comportamento di oggi — gap-4→gap-3.5
+    // (Product Polish v1, issue #2: 2px in meno tra ogni sezione, sommati
+    // ai ritocchi in QuickStats/HabitSection sotto e in FieldLabel
+    // [_shared.tsx] per ridurre quanto resta oltre l'altezza h:2 della
+    // card. Non basta ad azzerarlo del tutto con un diario "pieno" — vedi
+    // il report finale, issue residua — ma riduce il margine da coprire
+    // con lo scroll interno esistente (min-h-0 flex-1 overflow-y-auto,
+    // widget-shell.tsx, invariato) senza intaccare l'area di scrittura
+    // (textarea, righe invariate) né l'altezza di riga delle abitudini
+    // (CheckRow, target di tocco di Mobile Interaction v1 — non toccata).
+    <div className="flex flex-col gap-3.5 @max-[16rem]:gap-2.5 @min-[30rem]:gap-5">
       <DiaryHeader
         dayNumber={dayNumber}
         editingDate={editingDate}
@@ -309,7 +318,10 @@ function HabitSection({
   }
 
   return (
-    <div className="border-border border-t pt-4 @max-[16rem]:pt-2.5">
+    // pt-4→pt-3, come QuickStats sotto (Product Polish v1, issue #2) —
+    // stessa quantità su entrambe le sezioni con border-t, per restare
+    // simmetriche.
+    <div className="border-border border-t pt-3 @max-[16rem]:pt-2.5">
       <FieldLabel>Abitudini</FieldLabel>
       {/* COMPACT: la lista diventa scorrevole invece di spingere in basso
        * tutto il resto — MAI display:none, ogni checkbox resta
@@ -378,7 +390,15 @@ function QuickStats({
   onSleep: (value: number | null) => void
 }) {
   return (
-    <div className="border-border border-t pt-4 @max-[16rem]:pt-2.5 @min-[30rem]:pt-5">
+    // Product Polish v1 — issue #2 (clipping ~8px sul fondo, altezza
+    // default h:2): pt-4→pt-3 qui e py-2→py-1.5 su MiniStat sotto
+    // recuperano lo spazio che mancava, senza toccare l'altezza del
+    // widget né il meccanismo di scroll interno (min-h-0 flex-1
+    // overflow-y-auto, widget-shell.tsx, invariato — resta come rete
+    // di sicurezza per chi ha molte abitudini). @min-[30rem]:pt-5
+    // (spazio generoso quando il blocco è già largo) invariato: il
+    // problema si vedeva solo alla larghezza MEDIUM/default.
+    <div className="border-border border-t pt-3 @max-[16rem]:pt-2.5 @min-[30rem]:pt-5">
       {/* Era "Quick stats" — non diceva niente su cosa fosse né che peso/
           sonno si possono lasciare vuoti. Nome letterale + il placeholder
           di MiniStat ("non lo so", sotto) fanno il lavoro insieme: non
@@ -399,7 +419,7 @@ function QuickStats({
           a mano da indovinare, si adatta di continuo. Diario Adaptive v1:
           questo meccanismo NON viene toccato/sostituito, solo lo spazio
           attorno (gap/padding) reagisce alla stessa @container. */}
-      <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-3 @max-[16rem]:mt-2 @max-[16rem]:gap-2 @min-[30rem]:gap-4">
+      <div className="mt-2.5 grid grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-3 @max-[16rem]:mt-2 @max-[16rem]:gap-2 @min-[30rem]:mt-3 @min-[30rem]:gap-4">
         <MiniStat label="Peso" unit="kg" step={0.1} value={weight} onChange={onWeight} />
         <MiniStat label="Sonno" unit="h" step={0.5} value={sleepHours} onChange={onSleep} />
       </div>
@@ -421,7 +441,7 @@ function MiniStat({
   onChange: (value: number | null) => void
 }) {
   return (
-    <div className="border-border min-w-0 rounded-lg border px-2.5 py-2 @max-[16rem]:px-2 @max-[16rem]:py-1.5 @min-[30rem]:px-3 @min-[30rem]:py-2.5">
+    <div className="border-border min-w-0 rounded-lg border px-2.5 py-1.5 @max-[16rem]:px-2 @max-[16rem]:py-1.5 @min-[30rem]:px-3 @min-[30rem]:py-2.5">
       <span className="text-ink-faint block text-[0.62rem] tracking-wide uppercase">
         {label}
       </span>

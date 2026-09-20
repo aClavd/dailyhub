@@ -3,8 +3,12 @@
 import { cn } from "@/lib/utils"
 
 export function FieldLabel({ children }: { children: React.ReactNode }) {
+  // Product Polish v1 — issue #2 (Diario, clipping): mb-1.5→mb-1, usato
+  // solo da diario-widget.tsx (verificato, nessun altro chiamante) —
+  // pochi px in meno tra ogni etichetta e il campo sotto, su tutte e tre
+  // le sezioni (Diario/Abitudini/Umore-peso-sonno).
   return (
-    <span className="text-ink-faint mb-1.5 block text-[0.62rem] font-semibold tracking-[0.07em] uppercase first:mt-0 [&:not(:first-child)]:mt-3">
+    <span className="text-ink-faint mb-1 block text-[0.62rem] font-semibold tracking-[0.07em] uppercase first:mt-0 [&:not(:first-child)]:mt-3">
       {children}
     </span>
   )

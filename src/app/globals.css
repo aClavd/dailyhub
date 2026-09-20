@@ -226,6 +226,23 @@
   }
 }
 
+/* Product Polish v1 — issue #1 (Lettura, "pagine totali" tagliato):
+   spinner nativo di <input type="number"> disattivato SOLO dove la
+   classe .no-spinner è applicata esplicitamente (lettura-widget.tsx),
+   non globalmente — le frecce ±1 occupavano ~16-20px in Chrome/Safari
+   dentro un input già stretto, spazio che serve al testo per un valore
+   a 3 cifre. Nessuna perdita di funzionalità: il valore si scrive
+   comunque a mano, la tastiera numerica mobile resta invariata
+   (type="number" non tocca). */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  appearance: textfield;
+}
+
 /* ============================================================
    Motion Language v1 (vedi l'audit "DailyHub — Motion Language &
    Microinteraction"). Quattro livelli, una sola curva (ease-out)

@@ -14,6 +14,25 @@ import { GripIcon, ResizeCornerIcon, WidgetIcon } from "./widget-icon"
 type LiveRect = { left: number; top: number; width: number; height: number }
 
 /**
+ * Product Polish v1 — issue #3 (titoli w:1 troncati a "St…"/"N…"/"L…" a
+ * desktop stretto, preesistente al lavoro mobile). Il titolo CANONICO
+ * (WIDGET_META[type].title, sopra) resta invariato — è quello letto dagli
+ * screen reader per grip/rimuovi/riordino (aria-label) e dalla Libreria:
+ * abbreviarlo lì avrebbe reso quei controlli meno chiari, non più
+ * leggibili. Qui invece, solo per il testo VISIBILE dell'intestazione,
+ * una forma più corta ma comunque riconoscibile — non un'iniziale sola:
+ * "Pomodoro" (non "Studio") perché l'icona è già un timer, "Note" perché
+ * "rapide" è il dettaglio meno necessario a colpo d'occhio. Solo le due
+ * voci che davvero traboccano nella colonna più stretta (Lettura, 7
+ * caratteri, sta già comoda anche a 128px). Mai "St…"/tagli a metà
+ * parola: un'abbreviazione o l'intera parola, mai una sillaba mozzata.
+ */
+const SHORT_TITLES: Partial<Record<WidgetType, string>> = {
+  pomodoro: "Pomodoro",
+  note: "Note",
+}
+
+/**
  * Livello di rilevanza da segnalare sul blocco — cambia solo il colore
  * della "spina" sul bordo sinistro (vedi sotto): mai la posizione, la
  * dimensione o la visibilità di un widget.
@@ -346,7 +365,14 @@ export function WidgetShell({
           // righe di indicazione del resize non sono più ritagliate
           // esattamente sull'angolo arrotondato — impercettibile (3px),
           // preferibile ad aree di tocco rotte.
-          "board-cell bg-card ring-foreground/10 relative flex h-full min-w-0 flex-col rounded-xl ring-1",
+          // @container (Product Polish v1, issue #3): stesso meccanismo già
+          // in uso in diario-widget.tsx, qui sulla sezione intera (non solo
+          // sul contenuto, che ha già il proprio @container più sotto,
+          // indipendente — un container annidato dentro un altro non
+          // interferisce, ciascun figlio risolve la query sull'antenato
+          // più vicino) così anche l'intestazione può reagire alla
+          // larghezza REALE del blocco, non a un breakpoint della board.
+          "board-cell bg-card ring-foreground/10 @container relative flex h-full min-w-0 flex-col rounded-xl ring-1",
           (dragOver || resizing) && "ring-primary ring-2",
           // Contorno tratteggiato su OGNI blocco (tranne quello già sotto
           // il cursore, che ha già l'anello pieno sopra) dall'inizio di
@@ -456,10 +482,39 @@ export function WidgetShell({
               </button>
             </div>
           )}
-          <WidgetIcon type={type} className="text-ink-faint size-3.5 shrink-0" />
-          <h3 className="font-heading min-w-0 flex-1 truncate text-sm font-medium">
-            {meta.title}
-          </h3>
+          {/* Icona + titolo in un wrapper a sé, gap-1 (4px) invece del
+              gap-1.5 (6px) dell'intestazione — SOLO tra loro due, grip e
+              chiusura restano al loro spazio: un gap sul contenitore
+              esterno si applica a ogni figlio, non si può stringerne uno
+              solo senza isolarli così (Product Polish v1, issue #3:
+              pochi px in più al testo prima di dover abbreviare). */}
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            <WidgetIcon type={type} className="text-ink-faint size-3.5 shrink-0" />
+            {/* title=: tooltip nativo col nome COMPLETO sempre, anche
+                quando sotto è mostrata la forma abbreviata — scoperta al
+                passaggio del mouse, nessun JS/componente nuovo. Le due
+                <span> si escludono a vicenda via container query sullo
+                stesso @container della sezione (dichiarato sotto, sul
+                <section> — non quello già esistente sul contenuto, quello
+                resta suo): solo lo screen reader legge quella visibile
+                alla larghezza attuale, mai un'etichetta visibile diversa
+                da quella letta ad alta voce. Nessuna nuova soglia
+                responsive globale — la @container misura SOLO questo
+                blocco, non la board. */}
+            <h3
+              className="font-heading min-w-0 flex-1 truncate text-sm font-medium"
+              title={meta.title}
+            >
+              {SHORT_TITLES[type] ? (
+                <>
+                  <span className="@max-[9rem]:hidden">{meta.title}</span>
+                  <span className="hidden @max-[9rem]:inline">{SHORT_TITLES[type]}</span>
+                </>
+              ) : (
+                meta.title
+              )}
+            </h3>
+          </div>
           {emphasisLabel && (
             <span
               className={cn(

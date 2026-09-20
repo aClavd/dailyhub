@@ -68,9 +68,18 @@ export function AgendaBody({
   const [open, setOpen] = useState(false)
   const emphasis = result.ok ? agendaEmphasis(result.events) : { level: "none" as const }
   return (
-    <div>
+    // Product Polish v1 — issue #5: h-full flex flex-col qui, non prima —
+    // senza, il blocco Impegni prendeva solo l'altezza del proprio
+    // contenuto, lasciando tutto lo spazio vuoto sotto quando il
+    // messaggio era corto (sessione scaduta, nessun impegno). L'ALTEZZA
+    // della card (h:2, WidgetPlacement) resta quella che è sempre stata —
+    // nessun auto-height, nessuna logica nuova — solo il contenuto corto
+    // ora si centra in quello spazio invece di restare incollato in alto
+    // con un vuoto sotto. Con impegni veri (AgendaList non vuota) non
+    // cambia niente: la lista riempie lo spazio dall'alto come sempre.
+    <div className="flex h-full flex-col">
       <EmphasisReporter level={emphasis.level} label={emphasis.label} />
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
         <p className="text-ink-faint font-mono text-[0.68rem] tracking-wide uppercase">
           {result.ok ? countLabel(result.events.length) : "—"}
         </p>
@@ -87,11 +96,13 @@ export function AgendaBody({
           <NewEventForm open={open} onCreated={onCreated} onClose={() => setOpen(false)} />
         </Dialog>
       </div>
-      {result.ok ? (
-        <AgendaList events={result.events} />
-      ) : (
-        <AgendaError reason={result.reason} />
-      )}
+      <div className="min-h-0 flex-1">
+        {result.ok ? (
+          <AgendaList events={result.events} />
+        ) : (
+          <AgendaError reason={result.reason} />
+        )}
+      </div>
     </div>
   )
 }
@@ -104,9 +115,9 @@ function countLabel(n: number) {
 function AgendaList({ events }: { events: CalendarEvent[] }) {
   if (events.length === 0) {
     return (
-      <p className="text-ink-faint py-6 text-center text-sm">
-        Nessun impegno in calendario per oggi.
-      </p>
+      <div className="flex h-full min-h-24 flex-col items-center justify-center">
+        <p className="text-ink-faint text-center text-sm">Nessun impegno in calendario per oggi.</p>
+      </div>
     )
   }
 
@@ -217,13 +228,15 @@ function Tag({
 function AgendaError({ reason }: { reason: "unauthenticated" | "token" | "api" }) {
   if (reason === "api") {
     return (
-      <p className="text-ink-soft py-6 text-center text-sm">
-        Non riesco a leggere il calendario adesso. Riprova tra poco.
-      </p>
+      <div className="flex h-full min-h-24 flex-col items-center justify-center">
+        <p className="text-ink-soft text-center text-sm">
+          Non riesco a leggere il calendario adesso. Riprova tra poco.
+        </p>
+      </div>
     )
   }
   return (
-    <div className="py-5 text-center">
+    <div className="flex h-full min-h-24 flex-col items-center justify-center text-center">
       <p className="text-ink-soft text-sm">La sessione con Google è scaduta.</p>
       <form action={reconnectGoogle}>
         <Button type="submit" variant="outline" size="sm" className="mt-3">
